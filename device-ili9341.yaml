@@ -1,0 +1,81 @@
+# Generic ESP32 / ESP8266 + ILI9341 SPI (240×320)
+# To use ESP8266: change platform to espressif8266, board to d1_mini
+# SPI pins below are for ESP32. For ESP8266: CLK=14, MOSI=13, CS=15, DC=2, RST=4
+
+esphome:
+  name: esp32-ili9341
+  friendly_name: ESP32 ILI9341
+
+esp32:
+  board: esp32dev
+  framework:
+    type: arduino
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  ap:
+    ssid: "ESP32-ILI9341-AP"
+    password: "esp32display"
+
+captive_portal:
+
+ota:
+  - platform: esphome
+    password: !secret ota_password
+
+api:
+  password: !secret api_password
+
+logger:
+
+# ─── SPI Bus ─────────────────────────────────────────────────────────────────
+spi:
+  clk_pin: GPIO18
+  mosi_pin: GPIO23
+  miso_pin: GPIO19
+
+# ─── ILI9341 Display ─────────────────────────────────────────────────────────
+display:
+  - platform: ili9xxx
+    model: ILI9341
+    id: main_display
+    cs_pin: GPIO5
+    dc_pin: GPIO2
+    reset_pin: GPIO4
+    dimensions:
+      width: 240
+      height: 320
+
+# ─── Backlight ───────────────────────────────────────────────────────────────
+output:
+  - platform: ledc
+    id: backlight_output
+    pin: GPIO15
+
+light:
+  - platform: monochromatic
+    id: backlight
+    output: backlight_output
+    restore_mode: ALWAYS_ON
+
+# ─── LVGL UI ─────────────────────────────────────────────────────────────────
+lvgl:
+  displays:
+    - main_display
+  pages:
+    - id: main_page
+      widgets:
+        - label:
+            text: "Hello ILI9341"
+            align: CENTER
+
+# ─── React SPA web server ─────────────────────────────────────────────────────
+external_components:
+  - source:
+      type: local
+      path: components
+    components: [react_spa]
+
+react_spa:
+  port: 80

@@ -1,0 +1,13 @@
+secrets.yaml
+
+# ESPHome build artifacts
+.esphome/
+
+# Webapp
+webapp/node_modules/
+webapp/dist/
+
+# OS
+.DS_Store
+**/__pycache__/
+.claude/
