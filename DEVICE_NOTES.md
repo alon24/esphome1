@@ -171,6 +171,50 @@ else
     lv_obj_add_flag(keyboard, LV_OBJ_FLAG_HIDDEN);
 ```
 
+### Font anti-aliasing on complex backgrounds
+
+LVGL 8 blends each glyph's semi-transparent edge pixels against whatever background is behind the label. On a non-uniform background (e.g. coloured rectangles) this makes text look jagged/pixelated.
+
+**Fix:** Always give labels a solid `bg_color` + `LV_OPA_COVER` matching the intended background:
+```cpp
+lv_obj_set_style_bg_color(lbl, lv_color_hex(0x0a0a14), LV_STATE_DEFAULT);
+lv_obj_set_style_bg_opa(lbl, LV_OPA_COVER, LV_STATE_DEFAULT);
+```
+Without this, text looks sharp on a flat dark background but pixelated when overlaid on colourful content.
+
+### lv_obj_align vs lv_obj_set_pos
+
+`lv_obj_align()` triggers LVGL's layout engine which applies default theme sizing, padding and borders — text can look styled/boxed unexpectedly.
+
+`lv_obj_set_pos()` + `lv_obj_set_width()` bypasses the layout engine and renders text exactly as specified. Prefer this for custom UI elements.
+
+### Enabling LVGL font sizes
+
+ESPHome only compiles LVGL font modules that are referenced in the YAML. To use a font size in C++ code, add a dummy off-screen label with that font in the `lvgl: pages:` section:
+```yaml
+- label:
+    text: ""
+    x: -200
+    y: -200
+    text_font: MONTSERRAT_32
+```
+Available built-in sizes: 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32, 34, 36, 38, 40, 42, 44, 46, 48.
+
+### Screen test framework
+
+`custom/screen_tests.h` — reusable screen tests, screen-size-aware via `lv_disp_get_hor/ver_res()`. Tap the centre (160×160 invisible button) to cycle tests.
+
+- **Test 1:** Concentric dashed rectangles at 0/5/10/20/40/80px insets — boundary calibration
+- **Test 2:** All font sizes 8–40, fills screen width, stops when next row won't fit
+
+### ESPHome build cache pitfall
+
+`esphome upload` can flash a stale binary if PlatformIO didn't detect custom header changes. Always verify with:
+```bash
+stat .esphome/build/esp32-display/.pioenvs/esp32-display/firmware.bin | grep Modify
+```
+The firmware timestamp must be newer than the last header edit. If not, `touch custom/*.h` to force a rebuild.
+
 ### Screen scrolling
 LVGL screens are scrollable by default. When content fills the screen, LVGL enables scroll which confuses the layout:
 ```cpp

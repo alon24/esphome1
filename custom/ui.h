@@ -114,7 +114,7 @@ static lv_obj_t *_make_textarea(lv_obj_t *parent, const char *initial,
 
 // ── Main UI init — call once after LVGL is ready ───────────────────────────
 static void ui_init() {
-  screen_test_1();
+  _run_test(1);
   g_status_label = nullptr;
   g_network_list = nullptr;
   g_ssid_ta      = nullptr;
