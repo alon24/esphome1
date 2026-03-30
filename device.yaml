@@ -11,15 +11,17 @@ esphome:
     - custom/ui_helpers.h
     - custom/wifi_setup.h
     - custom/version_info.h
-    - custom/tab_home.h
-    - custom/tab_settings.h
-    - custom/tab_wifi.h
-    - custom/maindashboard.h
+    - custom/test_screen.h
+    # app pages (3-tab dashboard) — swap back to restore
+    # - custom/tab_home.h
+    # - custom/tab_settings.h
+    # - custom/tab_wifi.h
+    # - custom/maindashboard.h
   on_boot:
     - priority: -200
       then:
         - lambda: |-
-            maindashboard_create();
+            test_screen_create();
             for (int i = 0; i < 10; i++)
               ESP_LOGI("FW", ">>> FIRMWARE VERSION: %s <<<", FW_VERSION_STR);
 
@@ -116,24 +118,24 @@ display:
     vsync_pulse_width: 4
     data_pins:
       red:
-        - 14   # R4 MSB
-        - 21   # R3
-        - 47   # R2
-        - 48   # R1
         - 45   # R0 LSB
+        - 48   # R1
+        - 47   # R2
+        - 21   # R3
+        - 14   # R4 MSB
       green:
-        - 4    # G5 MSB
-        - 16   # G4
-        - 15   # G3
-        - 7    # G2
-        - 6    # G1
         - 5    # G0 LSB
+        - 6    # G1
+        - 7    # G2
+        - 15   # G3
+        - 16   # G4
+        - 4    # G5 MSB
       blue:
-        - 1    # B4 MSB
-        - 9    # B3
-        - 46   # B2
-        - 3    # B1
         - 8    # B0 LSB
+        - 3    # B1
+        - 46   # B2
+        - 9    # B3
+        - 1    # B4 MSB
 
 # ─── GT911 Capacitive Touch ──────────────────────────────────────────────────
 i2c:
@@ -155,7 +157,7 @@ lvgl:
   touchscreens:
     - touch_screen
   color_depth: 16
-  byte_order: little_endian
+  byte_order: big_endian
   bg_color: 0x0e0e0e
   default_font: MONTSERRAT_24
   full_refresh: true

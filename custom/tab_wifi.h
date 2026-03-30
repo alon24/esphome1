@@ -249,9 +249,16 @@ static void tab_wifi_create(lv_obj_t *parent, lv_obj_t *root) {
     lv_obj_set_style_border_color(g_wifi_ssid_ta, lv_color_hex(0x333333), LV_STATE_DEFAULT);
     lv_obj_set_style_border_width(g_wifi_ssid_ta, 1, LV_STATE_DEFAULT);
     lv_obj_set_style_radius(g_wifi_ssid_ta, 6, LV_STATE_DEFAULT);
-    lv_obj_add_event_cb(g_wifi_ssid_ta, [](lv_event_t *) {
-        _wifi_kb_show(g_wifi_ssid_ta);
-    }, LV_EVENT_CLICKED, nullptr);
+    // LV_EVENT_ALL + FOCUSED/DEFOCUSED — correct pattern per manufacturer example.
+    // Our cb is registered FIRST; on FOCUSED it calls lv_keyboard_set_textarea which
+    // adds lv_keyboard_def_event_cb. On DEFOCUSED, our cb fires first and calls
+    // lv_keyboard_set_textarea(NULL), which REMOVES the def_event_cb before it can
+    // auto-hide — so we have full control over keyboard visibility.
+    lv_obj_add_event_cb(g_wifi_ssid_ta, [](lv_event_t *e) {
+        lv_event_code_t code = lv_event_get_code(e);
+        if (code == LV_EVENT_FOCUSED)   _wifi_kb_show(g_wifi_ssid_ta);
+        else if (code == LV_EVENT_DEFOCUSED) _wifi_kb_hide();
+    }, LV_EVENT_ALL, nullptr);
 
     // Password section
     lv_obj_t *pass_hdr = lv_label_create(right);
@@ -277,9 +284,11 @@ static void tab_wifi_create(lv_obj_t *parent, lv_obj_t *root) {
     lv_obj_set_style_border_color(g_wifi_pass_ta, lv_color_hex(0x333333), LV_STATE_DEFAULT);
     lv_obj_set_style_border_width(g_wifi_pass_ta, 1, LV_STATE_DEFAULT);
     lv_obj_set_style_radius(g_wifi_pass_ta, 6, LV_STATE_DEFAULT);
-    lv_obj_add_event_cb(g_wifi_pass_ta, [](lv_event_t *) {
-        _wifi_kb_show(g_wifi_pass_ta);
-    }, LV_EVENT_CLICKED, nullptr);
+    lv_obj_add_event_cb(g_wifi_pass_ta, [](lv_event_t *e) {
+        lv_event_code_t code = lv_event_get_code(e);
+        if (code == LV_EVENT_FOCUSED)   _wifi_kb_show(g_wifi_pass_ta);
+        else if (code == LV_EVENT_DEFOCUSED) _wifi_kb_hide();
+    }, LV_EVENT_ALL, nullptr);
 
     // ── Buttons row ───────────────────────────────────────────────────────────
     g_wifi_scan_btn = _wifi_btn(right, "SCAN",    12, 165, 190, 44, 0x1a3a1a, 0x00CC44);
@@ -348,9 +357,8 @@ static void tab_wifi_create(lv_obj_t *parent, lv_obj_t *root) {
         }
     }
 
-    // ── Floating keyboard — child of lv_layer_top() so it always renders above
-    // all app content. lv_layer_top() is LVGL's built-in overlay layer.
-    g_wifi_keyboard = lv_keyboard_create(lv_layer_top());
+    // ── Floating keyboard — child of lv_scr_act() per manufacturer example.
+    g_wifi_keyboard = lv_keyboard_create(lv_scr_act());
     lv_obj_set_pos(g_wifi_keyboard, 0, 280);
     lv_obj_set_size(g_wifi_keyboard, 800, 200);
     lv_obj_set_style_bg_color(g_wifi_keyboard, lv_color_hex(0x111111), LV_STATE_DEFAULT);
@@ -367,9 +375,10 @@ static void tab_wifi_create(lv_obj_t *parent, lv_obj_t *root) {
     }, LV_EVENT_CANCEL, nullptr);
 }
 
-// Called from maindashboard when wifi tab is shown (optional pre-clear)
+// Called from maindashboard when wifi tab is shown.
+// Show keyboard immediately — bypasses FOCUSED/CLICKED timing issues entirely.
 static void tab_wifi_on_show() {
-    _wifi_kb_hide();
+    if (g_wifi_pass_ta) _wifi_kb_show(g_wifi_pass_ta);
     if (g_wifi_status_lbl)
         lv_label_set_text(g_wifi_status_lbl, "Scan for networks to begin");
 }

@@ -29,11 +29,26 @@ Everything learned building the WiFi setup UI on this board. Written to bootstra
 | PCLK | 42 |
 
 ### Data pins (RGB565 — 16-bit)
-| Channel | GPIOs (MSB → LSB) |
+
+Physical GPIO↔display wire mapping (hardware fixed):
+
+| Channel | GPIOs (LSB → MSB, i.e. bit0 first) |
 |---|---|
-| Red (5 bits) | 14, 21, 47, 48, 45 |
-| Green (6 bits) | 4, 16, 15, 7, 6, 5 |
-| Blue (5 bits) | 1, 9, 46, 3, 8 |
+| Red (5 bits) | 45, 48, 47, 21, 14 |
+| Green (6 bits) | 5, 6, 7, 15, 16, 4 |
+| Blue (5 bits) | 8, 3, 46, 9, 1 |
+
+**CRITICAL — Pin order in device.yaml must be LSB-first (not MSB-first).**
+
+ESPHome's `mipi_rgb/display.py` applies `dpins = dpins[8:16] + dpins[0:8]` (a byte-swap) after concatenating `[blue_pins + green_pins + red_pins]`. This transform is designed for LSB-first ordering. If pins are listed MSB-first, R and B channel data end up swapped on the physical wires, causing red to appear as blue.
+
+Correct device.yaml data_pins block:
+```yaml
+data_pins:
+  red:   [45, 48, 47, 21, 14]   # R0 LSB → R4 MSB
+  green: [5, 6, 7, 15, 16, 4]   # G0 LSB → G5 MSB
+  blue:  [8, 3, 46, 9, 1]        # B0 LSB → B4 MSB
+```
 
 ---
 
@@ -148,22 +163,34 @@ Reference implementation (ESP-IDF + LVGL 9):
 - ESPHome uses LVGL **8.4.0**
 - The reference repo (limpens) uses LVGL **9.x** — API differences apply
 
-### CRITICAL: byte_order must be little_endian for this display
+### CRITICAL: byte_order and data_pins must be set together
 
-The ESP32-S3 RGB parallel interface transmits 16-bit pixel values atomically across D0–D15. No byte reordering occurs in hardware. ESPHome's LVGL component defaults `byte_order` to `big_endian`, which sets `LV_COLOR_16_SWAP=1`, causing LVGL to byte-swap every color before writing it to the framebuffer.
+ESPHome's `mipi_rgb` display component applies a **byte-swap** transform on the data pin array at code-generation time. This transform pairs with LVGL's `big_endian` byte order (LV_COLOR_16_SWAP=1). Both must be set correctly together — getting only one right causes wrong colors.
 
-**Symptom:** Dark grays (e.g. `0x1a1a1a`) appear as **pink/magenta** on screen. Anti-aliased text appears blurred with wrong-color halos.
-
-**Root cause:** With `LV_COLOR_16_SWAP=1`, `lv_color_hex(0x1a1a1a)` stores `full=0xC318` in memory. The display receives bits `1100 0011 0001 1000` on D15:D0 and interprets them as RGB565: R≈199, G≈97, B≈197 — magenta.
-
-**Fix — required in every ESPHome LVGL project on this board:**
+**Correct configuration:**
 ```yaml
+# display section:
+data_pins:
+  red:   [45, 48, 47, 21, 14]   # LSB → MSB order
+  green: [5, 6, 7, 15, 16, 4]
+  blue:  [8, 3, 46, 9, 1]
+
+# lvgl section:
 lvgl:
   color_depth: 16
-  byte_order: little_endian   # sets LV_COLOR_16_SWAP=0 — CRITICAL
+  byte_order: big_endian        # LV_COLOR_16_SWAP=1
 ```
 
-Without this, **all** colors are wrong. Equal-channel grays shift to magenta, other colors shift unpredictably.
+**What goes wrong with wrong settings:**
+
+| data_pins order | byte_order | Result |
+|---|---|---|
+| LSB→MSB | big_endian | ✅ Correct colors |
+| MSB→LSB | big_endian | Gray appears dark/wrong (pink/magenta) |
+| MSB→LSB | little_endian | Gray appears OK, but red↔blue swapped |
+| LSB→MSB | little_endian | Colors completely wrong |
+
+**Why:** ESPHome does `dpins = dpins[8:16] + dpins[0:8]` in `mipi_rgb/display.py` after concatenating `[blue + green + red]`. This transform produces the same pin→bit assignment as Arduino_GFX's big-endian mode, which pairs with big-endian LVGL pixel format. With LSB-first pin ordering + big-endian LVGL, the math works out to deliver exactly the right GPIO signal for each color bit.
 
 ### LVGL 8 keyboard auto-hide bug
 `lv_keyboard_set_textarea(kb, ta)` in LVGL 8 registers a `LV_EVENT_DEFOCUSED` handler on the textarea that **automatically hides the keyboard** when focus leaves. At startup, if no textarea is focused, the keyboard hides itself immediately.

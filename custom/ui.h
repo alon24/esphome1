@@ -114,10 +114,65 @@ static lv_obj_t *_make_textarea(lv_obj_t *parent, const char *initial,
 
 // ── Main UI init — call once after LVGL is ready ───────────────────────────
 static void ui_init() {
-  _run_test(1);
-  g_status_label = nullptr;
-  g_network_list = nullptr;
-  g_ssid_ta      = nullptr;
-  g_password_ta  = nullptr;
-  g_keyboard     = nullptr;
+  lv_obj_t *scr = lv_scr_act();
+  lv_obj_set_style_bg_color(scr, lv_color_hex(0x1a1a2e), LV_STATE_DEFAULT);
+  lv_obj_clear_flag(scr, LV_OBJ_FLAG_SCROLLABLE);
+
+  // ── Top bar ──────────────────────────────────────────────────────────────
+  lv_obj_t *topbar = lv_obj_create(scr);
+  lv_obj_set_pos(topbar, 0, 0);
+  lv_obj_set_size(topbar, 800, 44);
+  lv_obj_set_style_bg_color(topbar, lv_color_hex(0x12122a), LV_STATE_DEFAULT);
+  lv_obj_set_style_border_width(topbar, 0, LV_STATE_DEFAULT);
+  lv_obj_set_style_radius(topbar, 0, LV_STATE_DEFAULT);
+  lv_obj_set_style_pad_all(topbar, 0, LV_STATE_DEFAULT);
+  lv_obj_clear_flag(topbar, LV_OBJ_FLAG_SCROLLABLE);
+
+  lv_obj_t *title = lv_label_create(topbar);
+  lv_label_set_text(title, "ESP32 Display");
+  lv_obj_align(title, LV_ALIGN_LEFT_MID, 12, 0);
+  lv_obj_set_style_text_font(title, &lv_font_montserrat_24, LV_STATE_DEFAULT);
+  lv_obj_set_style_text_color(title, lv_color_hex(0xa78bfa), LV_STATE_DEFAULT);
+
+  g_status_label = lv_label_create(topbar);
+  lv_label_set_text(g_status_label, "Connecting...");
+  lv_obj_align(g_status_label, LV_ALIGN_RIGHT_MID, -12, 0);
+  lv_obj_set_style_text_font(g_status_label, &lv_font_montserrat_24, LV_STATE_DEFAULT);
+  lv_obj_set_style_text_color(g_status_label, lv_color_hex(0xffaa00), LV_STATE_DEFAULT);
+
+  // ── Left panel — network list ─────────────────────────────────────────────
+  lv_obj_t *left = _make_panel(scr, 8, 52, 400, 420);
+  lv_obj_set_style_pad_all(left, 6, LV_STATE_DEFAULT);
+
+  _make_btn(left, "Scan", 4, 4, 100, 40, _cb_scan);
+
+  g_network_list = lv_obj_create(left);
+  lv_obj_set_pos(g_network_list, 0, 52);
+  lv_obj_set_size(g_network_list, 388, 360);
+  lv_obj_set_style_bg_color(g_network_list, lv_color_hex(0x0d0d1f), LV_STATE_DEFAULT);
+  lv_obj_set_style_border_width(g_network_list, 0, LV_STATE_DEFAULT);
+  lv_obj_set_style_pad_all(g_network_list, 4, LV_STATE_DEFAULT);
+  lv_obj_set_style_radius(g_network_list, 4, LV_STATE_DEFAULT);
+
+  // ── Right panel — credentials + keyboard ─────────────────────────────────
+  lv_obj_t *right = _make_panel(scr, 416, 52, 376, 420);
+
+  _make_label(right, "SSID", 4, 4, 0x94a3b8);
+  g_ssid_ta = _make_textarea(right, "", 4, 32, 360, 48);
+
+  _make_label(right, "Password", 4, 92, 0x94a3b8);
+  g_password_ta = _make_textarea(right, "", 4, 120, 360, 48);
+  lv_textarea_set_password_mode(g_password_ta, true);
+
+  _make_btn(right, "Kbd", 296, 178, 68, 40, _cb_keyboard_toggle);
+  _make_btn(right, "Connect", 4, 178, 160, 40, _cb_connect);
+
+  g_keyboard = lv_keyboard_create(right);
+  lv_obj_set_pos(g_keyboard, 0, 226);
+  lv_obj_set_size(g_keyboard, 368, 180);
+  lv_keyboard_set_textarea(g_keyboard, g_ssid_ta);
+  lv_obj_add_flag(g_keyboard, LV_OBJ_FLAG_HIDDEN);
+
+  // auto-scan on boot
+  wifi_scan_and_populate(g_network_list, g_ssid_ta);
 }

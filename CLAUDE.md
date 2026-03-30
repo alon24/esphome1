@@ -1,15 +1,15 @@
 # 🚀 2026 Agentic Workspace Rules
 
 ## 🛠 Tech Stack & Tooling
-- **Linter/Formatter:** Biome (Always run `biome check --write <file>` on save)
-- **Test Runner:** Playwright v1.58.2 (Use `--no-sandbox` for root execution)
-- **Package Manager:** Bun Baseline (Use `bun` for installs, `bunx` for binaries)
+<!-- - **Linter/Formatter:** Biome (Always run `biome check --write <file>` on save) -->
+<!-- - **Test Runner:** Playwright v1.58.2 (Use `--no-sandbox` for root execution) -->
+<!-- - **Package Manager:** Bun Baseline (Use `bun` for installs, `bunx` for binaries) -->
 - **Docs Provider:** Context7 (Mandatory for all 2024+ library/API queries)
 
 ## 🤖 Agent Instructions (Strict)
 1. **Context First:** ALWAYS trigger `context7` with the phrase "use context7" before writing code for external libraries.
-2. **Health Check:** On session start, run `~/.claude/skills/health-check.sh` to verify MCP and VNC status.
-3. **Visual Debugging:** If a UI task fails, use **Playwright MCP** to take a screenshot and analyze the state in the VNC window (Port 6080).
+<!-- 2. **Health Check:** On session start, run `~/.claude/skills/health-check.sh` to verify MCP and VNC status. -->
+<!-- 3. **Visual Debugging:** If a UI task fails, use **Playwright MCP** to take a screenshot and analyze the state in the VNC window (Port 6080). -->
 <!-- 4. **Final Polish:** B/byefore completing any task, run `bunx @biomejs/biome check --write .` to ensure zero linting/formatting errors. -->
 <!-- 
 ## 🧪 Testing & Debugging Workflow

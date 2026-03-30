@@ -80,7 +80,70 @@
       "Bash(git rm:*)",
       "Bash(git commit:*)",
       "Bash(git config:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(bun install:*)",
+      "Bash(bun run:*)",
+      "Bash(cat /app/esphome1/scripts/*.sh)",
+      "Bash(./scripts/flash.sh)",
+      "Bash(ping -c 3 esp32-display.local)",
+      "Bash(avahi-resolve -n esp32-display.local)",
+      "Bash(avahi-browse -t _esphomelib._tcp)",
+      "Bash(ls /dev/tty*)",
+      "Bash(dmesg)",
+      "Bash(DEVICE_IP=10.100.102.46 ./scripts/upload.sh)",
+      "Bash(/dev/null --include=\"*.json\" -l)",
+      "Read(//root/.claude/**)",
+      "Read(//root/.config/claude/**)",
+      "Read(//app/**)",
+      "Bash(ls /.mcp.json)",
+      "mcp__stitch__list_projects",
+      "mcp__stitch__list_screens",
+      "mcp__stitch__get_screen",
+      "mcp__lvgl-simulator__lvgl_set_resolution",
+      "WebFetch(domain:contribution.usercontent.google.com)",
+      "mcp__lvgl-simulator__lvgl_render_full",
+      "Read(//usr/lib/node_modules/lvgl-mcp-server/**)",
+      "Bash(jq:*)",
+      "Bash(ping -c 3 -W 2 esp32-8048s043.local)",
+      "Bash(find /app/esphome1/.esphome/build/esp32-display -name lvgl_component* -o -name lvgl_hal*)",
+      "Bash(grep -n \"show_page\\\\|lv_scr_load\\\\|add_page\" /app/esphome1/.esphome/build/esp32-display/src/esphome/components/lvgl/*.cpp)",
+      "Bash(DEVICE_IP=10.100.102.46 esphome upload device.yaml --device 10.100.102.46 2>&1)",
+      "Bash(grep -rn \"theme\\\\|shadow\" /app/esphome1/.esphome/build/esp32-display/src/esphome/components/lvgl/*.h)",
+      "Bash(head -10 grep -n \"lv_obj_set_size\\\\|hor_res\\\\|ver_res\" /app/esphome1/.esphome/build/esp32-display/.piolibdeps/esp32-display/lvgl/src/core/lv_obj.c)",
+      "Bash(ls -lh *.c)",
+      "Bash(ls -1 *.c)",
+      "Bash(netstat -tlnp)",
+      "Bash(grep -E '^3008$|^5173$|^8080$')",
+      "Bash(node node_modules/.bin/vite --port 3008)",
+      "Bash(timeout 8 node node_modules/.bin/vite --port 3008 --host 0.0.0.0)",
+      "Bash(fuser 3008/tcp)",
+      "Bash(fuser -k 3008/tcp 3009/tcp 3010/tcp)",
+      "Bash(iptables -I INPUT -p tcp --dport 3008 -j ACCEPT)",
+      "Bash(nft add:*)",
+      "Bash(grep -v \"^0$\")",
+      "Bash(ps:*)",
+      "Bash(fuser /dev/ttyUSB*)",
+      "Bash(timeout 8 cat /dev/ttyUSB0)",
+      "Bash(find /app/4.3inch_ESP32-8048S043 -name *.yaml -o -name *.yml)",
+      "Bash(find /usr/local/lib/python3.12/dist-packages/esphome/components/mipi_rgb -name *.h)"
+    ]
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "lvgl-simulator"
+  ],
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "mcp__lvgl-simulator__lvgl_render|mcp__lvgl-simulator__lvgl_render_full",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "mkdir -p /app/esphome1/mocks && src=/usr/lib/node_modules/lvgl-mcp-server/simulator/build/output/screenshot.png; [ -f \"$src\" ] && cp \"$src\" \"/app/esphome1/mocks/lvgl_$(date +%Y%m%d_%H%M%S).png\" 2>/dev/null || true",
+            "statusMessage": "Saving PNG to mocks/..."
+          }
+        ]
+      }
     ]
   }
 }
