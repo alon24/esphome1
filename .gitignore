@@ -1,4 +1,5 @@
 secrets.yaml
+.mcp.json
 
 # ESPHome build artifacts
 .esphome/
@@ -11,3 +12,5 @@ webapp/dist/
 .DS_Store
 **/__pycache__/
 .claude/
+
+.env

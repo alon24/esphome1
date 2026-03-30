@@ -8,14 +8,20 @@ esphome:
   platformio_options:
     upload_speed: 921600
   includes:
+    - custom/ui_helpers.h
     - custom/wifi_setup.h
-    - custom/screen_tests.h
-    - custom/ui.h
+    - custom/version_info.h
+    - custom/tab_home.h
+    - custom/tab_settings.h
+    - custom/tab_wifi.h
+    - custom/maindashboard.h
   on_boot:
     - priority: -200
       then:
-        - lambda: 'ui_init();'
-        - delay: 3s
+        - lambda: |-
+            maindashboard_create();
+            for (int i = 0; i < 10; i++)
+              ESP_LOGI("FW", ">>> FIRMWARE VERSION: %s <<<", FW_VERSION_STR);
 
 esp32:
   board: esp32-s3-devkitc-1
@@ -52,6 +58,7 @@ wifi:
         if (netif && esp_netif_get_ip_info(netif, &ip_info) == ESP_OK)
           snprintf(ip_str, sizeof(ip_str), IPSTR, IP2STR(&ip_info.ip));
         ui_set_connected(ip_str);
+        esp_wifi_set_mode(WIFI_MODE_APSTA);  // Keep AP active alongside STA
   on_disconnect:
     - lambda: 'ui_set_disconnected();'
 
@@ -148,7 +155,8 @@ lvgl:
   touchscreens:
     - touch_screen
   color_depth: 16
-  bg_color: 0x1a1a2e
+  byte_order: little_endian
+  bg_color: 0x0e0e0e
   default_font: MONTSERRAT_24
   full_refresh: true
   pages:
@@ -265,6 +273,29 @@ lvgl:
             x: -200
             y: -200
             text_font: MONTSERRAT_48
+
+# ─── SNTP Time ───────────────────────────────────────────────────────────────
+time:
+  - platform: sntp
+    id: sntp_time
+    timezone: "UTC"
+
+# ─── Intervals ────────────────────────────────────────────────────────────────
+interval:
+  - interval: 30s
+    then:
+      - lambda: 'ESP_LOGI("FW", ">>> FIRMWARE VERSION: %s <<<", FW_VERSION_STR);'
+
+  - interval: 1s
+    then:
+      - lambda: |-
+          auto t = id(sntp_time).now();
+          if (t.is_valid())
+            dashboard_tick(t.hour, t.minute, t.second,
+                           t.day_of_month, t.month, t.year,
+                           t.day_of_week);
+          else
+            dashboard_tick(-1, -1, -1, -1, -1, -1, -1);
 
 # ─── React SPA web server (port 80) ──────────────────────────────────────────
 external_components:

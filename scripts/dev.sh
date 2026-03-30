@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
-# Start the React dev server on port 3008.
+# Start the React dev server on port 5173 (Docker-mapped port).
 # API calls to /api/* are proxied to the device.
 # Usage:
 #   ./scripts/dev.sh
 #   DEVICE_IP=192.168.1.42 ./scripts/dev.sh
+#   VITE_PORT=5173 ./scripts/dev.sh
 
 set -euo pipefail
 
@@ -16,7 +17,7 @@ if [ ! -d "$WEBAPP_DIR/node_modules" ]; then
   cd "$WEBAPP_DIR" && bun install
 fi
 
-echo "▶  Starting dev server on http://localhost:3008"
+echo "▶  Starting dev server on http://localhost:${VITE_PORT:-5173}"
 echo "   API proxy → http://${DEVICE_IP}"
 echo ""
 cd "$WEBAPP_DIR" && bun run dev

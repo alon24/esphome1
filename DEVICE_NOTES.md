@@ -148,6 +148,23 @@ Reference implementation (ESP-IDF + LVGL 9):
 - ESPHome uses LVGL **8.4.0**
 - The reference repo (limpens) uses LVGL **9.x** — API differences apply
 
+### CRITICAL: byte_order must be little_endian for this display
+
+The ESP32-S3 RGB parallel interface transmits 16-bit pixel values atomically across D0–D15. No byte reordering occurs in hardware. ESPHome's LVGL component defaults `byte_order` to `big_endian`, which sets `LV_COLOR_16_SWAP=1`, causing LVGL to byte-swap every color before writing it to the framebuffer.
+
+**Symptom:** Dark grays (e.g. `0x1a1a1a`) appear as **pink/magenta** on screen. Anti-aliased text appears blurred with wrong-color halos.
+
+**Root cause:** With `LV_COLOR_16_SWAP=1`, `lv_color_hex(0x1a1a1a)` stores `full=0xC318` in memory. The display receives bits `1100 0011 0001 1000` on D15:D0 and interprets them as RGB565: R≈199, G≈97, B≈197 — magenta.
+
+**Fix — required in every ESPHome LVGL project on this board:**
+```yaml
+lvgl:
+  color_depth: 16
+  byte_order: little_endian   # sets LV_COLOR_16_SWAP=0 — CRITICAL
+```
+
+Without this, **all** colors are wrong. Equal-channel grays shift to magenta, other colors shift unpredictably.
+
 ### LVGL 8 keyboard auto-hide bug
 `lv_keyboard_set_textarea(kb, ta)` in LVGL 8 registers a `LV_EVENT_DEFOCUSED` handler on the textarea that **automatically hides the keyboard** when focus leaves. At startup, if no textarea is focused, the keyboard hides itself immediately.
 
@@ -222,20 +239,33 @@ lv_obj_clear_flag(lv_scr_act(), LV_OBJ_FLAG_SCROLLABLE);
 ```
 
 ### Layout used (800×480)
+
+Three-tab dashboard. Header + content area + footer nav:
+
 ```
-y=0   ┌─────────────────────────────────────────────────┐
-      │  WiFi Setup (title)           Connecting... (status) │
-y=44  ├───────────────────────┬───────────────────────────┤
-      │ Networks    [Scan]    │  SSID                     │
-      │ ┌───────────────────┐ │  [ssid textarea         ] │
-      │ │ scrollable list   │ │  Password                 │
-      │ │ of networks with  │ │  [pass textarea         ] │
-      │ │ signal bars       │ │  [⌨ Keyboard] [Connect]  │
-      │ └───────────────────┘ │                           │
-y=300 ├───────────────────────┴───────────────────────────┤
-y=304 │                                                   │
-      │         LVGL keyboard (800×176)                   │
-y=480 └─────────────────────────────────────────────────┘
+y=0    ┌────────────────────────────────────────────────────┐
+       │  CYANIDE •           v6         192.168.x.x        │  h=64
+y=64   ├────────────────────────────────────────────────────┤
+       │                                                    │
+       │         Tab content area (800×352)                 │  h=352
+       │                                                    │
+y=416  ├────────────────────────────────────────────────────┤
+       │   [ HOME ]        [ SETTINGS ]       [ WIFI ]      │  h=64
+y=480  └────────────────────────────────────────────────────┘
+```
+
+**WIFI tab inner layout (800×352):**
+```
+       ┌──────────────────────┬─────────────────────────────┐
+       │ NETWORKS    [Scan]   │  SSID                       │
+       │ ┌──────────────────┐ │  [ssid textarea           ] │
+       │ │ scrollable list  │ │  Password                   │
+       │ │ of networks with │ │  [pass textarea           ] │
+       │ │ signal bars      │ │             [Connect]       │
+       │ └──────────────────┘ │  status label               │
+       └──────────────────────┴─────────────────────────────┘
+       │    LVGL keyboard (800×200, floating, hidden)        │
+       └─────────────────────────────────────────────────────┘
 ```
 
 ### Signal strength bars
@@ -360,8 +390,19 @@ lv_obj_set_pos(img, 0, 0);
 
 ## ESPHome project location
 
-`/app/esphome1/` — working ESPHome implementation (no flickering) with:
-- `device.yaml` — main config
-- `custom/ui.h` — full LVGL UI in C++
-- `custom/wifi_setup.h` — WiFi scan + connect helpers
-- `secrets.yaml` — WiFi credentials (`freak` / `Unknown!!!1234`)
+`/app/esphome1/` — working ESPHome implementation (no flickering, correct colors, multi-tab UI) with:
+
+| File | Purpose |
+|------|---------|
+| `device.yaml` | Main config — display, touch, LVGL, SNTP, intervals |
+| `custom/ui_helpers.h` | Shared LVGL helpers (`_panel_reset`, `_lbl_bg`, `_make_panel`, etc.) |
+| `custom/maindashboard.h` | Header, footer nav, tab orchestrator, `ui_set_connected/disconnected` |
+| `custom/tab_home.h` | HOME tab — live clock, date, uptime, network status |
+| `custom/tab_settings.h` | SETTINGS tab — IP, WiFi, uptime, board/display/framework info |
+| `custom/tab_wifi.h` | WIFI tab — scan list with signal bars, SSID/password entry, connect |
+| `custom/wifi_setup.h` | WiFi scan + connect helpers (ESP-IDF API) |
+| `custom/version_info.h` | Auto-generated `FW_VERSION_STR` (bumped by `scripts/flash.sh`) |
+| `scripts/flash.sh` | Bumps version, compiles, flashes (USB or OTA), verifies |
+| `version.txt` | Current firmware version number |
+| `upload_failures.txt` | Count of detected cached-binary upload failures |
+| `secrets.yaml` | WiFi / OTA / API credentials (gitignored) |

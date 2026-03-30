@@ -6,9 +6,9 @@ ESP32-S3 display board running ESPHome firmware with a React web app served dire
 
 | Board | ESP32-S3-WROOM-1 N16R8 (16 MB flash, 8 MB PSRAM) |
 |-------|--------------------------------------------------|
-| Display | 4.3" 480×272 RGB parallel (ST7262) |
+| Display | 4.3" 800×480 RGB parallel (ST7262) |
 | Touch | GT911 capacitive (I2C) |
-| Config files | `device.yaml` (main), `device-ili9341.yaml`, `device-ili9485.yaml` |
+| Config files | `device.yaml` (main) |
 
 ---
 
@@ -19,6 +19,72 @@ ESP32-S3 display board running ESPHome firmware with a React web app served dire
 | ESPHome 2023.11+ | `pip install esphome` |
 | Bun | `curl -fsSL https://bun.sh/install \| bash` |
 | curl | pre-installed on most systems |
+
+---
+
+## Quick reference
+
+### Flash firmware to device
+
+```bash
+# Auto-detect (USB if offline, OTA if online)
+./scripts/flash.sh
+
+# Force USB (device must be connected via USB-C)
+USB=1 ./scripts/flash.sh
+
+# Force OTA to a specific IP
+DEVICE_IP=192.168.1.42 ./scripts/flash.sh
+```
+
+The script bumps the version number, compiles, flashes, and verifies the running version in device logs.
+
+---
+
+### View device logs (serial or OTA)
+
+```bash
+# USB serial (fast, always works)
+esphome logs device.yaml --device /dev/ttyUSB0
+
+# OTA over WiFi (device must be on network)
+esphome logs device.yaml --device esp32-display.local
+
+# With explicit IP
+esphome logs device.yaml --device 192.168.1.42
+```
+
+Press `Ctrl+C` to stop. Logs stream in real time at the configured log level (`INFO` by default).
+
+---
+
+### Run React UI locally
+
+```bash
+# Proxy API calls to device on mDNS
+./scripts/dev.sh
+
+# Proxy to a specific IP
+DEVICE_IP=192.168.1.42 ./scripts/dev.sh
+```
+
+Opens at **http://localhost:5173**. Hot-reload is active — edits to `webapp/src/` apply instantly. The device does not need to be connected for frontend-only work.
+
+> **Note:** Port 5173 must be the mapped/exposed Docker port. If something else is already using 5173, set `VITE_PORT=<other-mapped-port> ./scripts/dev.sh`.
+
+---
+
+### Push React app to device
+
+```bash
+# Build + gzip + upload via HTTP (device must be on WiFi)
+./scripts/upload.sh
+
+# With explicit IP
+DEVICE_IP=192.168.1.42 ./scripts/upload.sh
+```
+
+No firmware reflash needed — uploads to SPIFFS over WiFi and is served immediately at `http://esp32-display.local/`.
 
 ---
 
@@ -41,8 +107,6 @@ Connect the board via USB, then:
 
 ```bash
 ./scripts/flash.sh
-# or for a specific config:
-./scripts/flash.sh device-ili9341.yaml
 ```
 
 This compiles and uploads the ESPHome firmware. After this, all future firmware updates can be done over WiFi (OTA).
@@ -122,20 +186,26 @@ Output on success:
 ## Project layout
 
 ```
-EspHome1/
-├── device.yaml              ← ESP32-S3 4827S043 (main board)
-├── device-ili9341.yaml      ← Generic ESP32 + ILI9341 240×320
-├── device-ili9485.yaml      ← Generic ESP32 + ILI9485 320×480
+esphome1/
+├── device.yaml              ← Main config (ESP32-S3 800×480)
 ├── partitions.csv           ← 16 MB flash: dual OTA + SPIFFS
 ├── secrets.yaml             ← WiFi / OTA credentials (gitignored)
+├── version.txt              ← Current firmware version number
+├── custom/
+│   ├── ui_helpers.h         ← Shared LVGL panel/label helpers
+│   ├── maindashboard.h      ← Header, footer nav, tab orchestrator
+│   ├── tab_home.h           ← HOME tab: clock, date, uptime
+│   ├── tab_settings.h       ← SETTINGS tab: device info
+│   ├── tab_wifi.h           ← WIFI tab: scan, password, connect
+│   ├── wifi_setup.h         ← WiFi scan + connect helpers (ESP-IDF)
+│   └── version_info.h       ← Auto-generated FW_VERSION_STR (flash.sh)
 ├── components/
 │   └── react_spa/           ← ESPHome custom component
 │       ├── __init__.py      ← Component registration
 │       └── react_spa.h      ← HTTP server + SPIFFS (ESP-IDF)
-│                               or AsyncWebServer + LittleFS (Arduino)
 ├── webapp/
 │   ├── src/
-│   │   ├── App.tsx          ← Edit this to build your UI
+│   │   ├── App.tsx          ← Edit this to build your browser UI
 │   │   └── main.tsx
 │   ├── vite.config.ts       ← Dev server (port 3008) + API proxy
 │   └── package.json
@@ -143,26 +213,60 @@ EspHome1/
     ├── dev.sh               ← Start React dev server
     ├── upload.sh            ← Build + gzip + push to device
     ├── check-device.sh      ← Ping device health endpoint
-    └── flash.sh             ← Flash ESPHome firmware via USB/OTA
+    └── flash.sh             ← Bump version, compile, flash USB/OTA
 ```
 
 ---
 
 ## LVGL (on-device UI)
 
-The local display is managed by LVGL. Edit the `lvgl:` section in `device.yaml` to build the on-screen UI. The React web app and the LVGL display run independently.
+The local touchscreen UI is built with LVGL 8.4.0 via custom C++ headers included in `device.yaml`. The React web app and LVGL display run independently.
+
+### Tab layout (800×480)
+
+```
+y=0    ┌────────────────────────────────────────────────────┐
+       │  CYANIDE •           v6         192.168.x.x        │  ← Header (64px)
+y=64   ├────────────────────────────────────────────────────┤
+       │                                                    │
+       │            Tab content (800×352)                   │
+       │   HOME | SETTINGS | WIFI                           │
+       │                                                    │
+y=416  ├────────────────────────────────────────────────────┤
+       │   [ HOME ]        [ SETTINGS ]       [ WIFI ]      │  ← Footer nav (64px)
+y=480  └────────────────────────────────────────────────────┘
+```
+
+### Tab files
+
+| File | Tab | Content |
+|------|-----|---------|
+| `custom/tab_home.h` | HOME (default) | Live clock (HH:MM:SS), date, uptime, network status |
+| `custom/tab_settings.h` | SETTINGS | IP, WiFi status, uptime, board/display/framework info |
+| `custom/tab_wifi.h` | WIFI | Network scan list with signal bars, SSID/password entry, connect |
+| `custom/maindashboard.h` | Orchestrator | Header, footer nav, tab switching, public API |
+| `custom/ui_helpers.h` | Shared helpers | `_panel_reset`, `_lbl_bg`, `_make_panel`, `_make_card`, `_section_hdr` |
+
+### Critical: byte_order must be little_endian
 
 ```yaml
 lvgl:
-  pages:
-    - id: main_page
-      widgets:
-        - label:
-            text: "My Label"
-            align: CENTER
-        - button:
-            id: my_btn
-            ...
+  color_depth: 16
+  byte_order: little_endian   # REQUIRED — default big_endian causes pink/magenta colors
+```
+
+Without this, all grays appear as pink/magenta on the RGB parallel display.
+
+### Enabling font sizes
+
+ESPHome only compiles LVGL fonts referenced in YAML. Add off-screen dummy labels to force compilation:
+
+```yaml
+- label:
+    text: ""
+    x: -200
+    y: -200
+    text_font: MONTSERRAT_48
 ```
 
 ---
