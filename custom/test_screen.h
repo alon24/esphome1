@@ -1,15 +1,6 @@
 #pragma once
 #include "lvgl.h"
 
-//start ilan
-
-// Keep pointers global so you can access the data later (e.g., to read the text)
-lv_obj_t * kb;
-lv_obj_t * ta;
-lv_obj_t * ta2;
-
-///End ilan
-
 // ── Stubs for dashboard functions called from device.yaml lambdas ─────────────
 static inline void ui_set_connected(const char * = nullptr) {}
 static inline void ui_set_disconnected() {}
@@ -129,9 +120,9 @@ static void test_screen_create() {
         lv_obj_set_style_text_align(lbl, LV_TEXT_ALIGN_CENTER, LV_STATE_DEFAULT);
     }
 
-//     // ── TEXTAREA (y=50–102) — direct child of scr, always above keyboard ─────
-//     // lv_textarea has group_def=TRUE, so it auto-joins the default LVGL group.
-//     // The touchscreen indev fires LV_EVENT_FOCUSED when the user taps here.
+    // ── TEXTAREA (y=50–102) — direct child of scr, always above keyboard ─────
+    // lv_textarea has group_def=TRUE, so it auto-joins the default LVGL group.
+    // The touchscreen indev fires LV_EVENT_FOCUSED when the user taps here.
     g_test_ta = lv_textarea_create(scr);
     lv_textarea_set_one_line(g_test_ta, true);
     lv_textarea_set_placeholder_text(g_test_ta, "Tap here to type...");
@@ -177,7 +168,7 @@ static void test_screen_create() {
         lv_obj_set_pos(rl, 16, 4 + i * 36);
     }
 
-//     // ── SHOW/HIDE KEYBOARD BUTTON (y=230–280) — always visible ───────────────
+    // ── SHOW/HIDE KEYBOARD BUTTON (y=230–280) — always visible ───────────────
     lv_obj_t *btn = lv_btn_create(scr);
     lv_obj_set_pos(btn, 0, 230);
     lv_obj_set_size(btn, 800, 50);
@@ -209,7 +200,7 @@ static void test_screen_create() {
             _test_kb_hide();
     }, LV_EVENT_CLICKED, nullptr);
 
-//     // ── KEYBOARD (y=280–480) — child of scr, initially hidden ────────────────
+    // ── KEYBOARD (y=280–480) — child of scr, initially hidden ────────────────
     g_test_kb = lv_keyboard_create(scr);
     // lv_obj_set_pos(g_test_kb, 0, 280);
     lv_obj_set_size(g_test_kb, 800, 200);
