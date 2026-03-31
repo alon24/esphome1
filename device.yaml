@@ -11,17 +11,18 @@ esphome:
     - custom/ui_helpers.h
     - custom/wifi_setup.h
     - custom/version_info.h
-    - custom/test_screen.h
+    # - custom/test_screen.h
     # app pages (3-tab dashboard) — swap back to restore
-    # - custom/tab_home.h
-    # - custom/tab_settings.h
-    # - custom/tab_wifi.h
-    # - custom/maindashboard.h
+    - custom/tab_home.h
+    - custom/tab_settings.h
+    - custom/tab_wifi.h
+    - custom/maindashboard.h
   on_boot:
     - priority: -200
       then:
         - lambda: |-
-            test_screen_create();
+            //test_screen_create();
+            maindashboard_create();
             for (int i = 0; i < 10; i++)
               ESP_LOGI("FW", ">>> FIRMWARE VERSION: %s <<<", FW_VERSION_STR);
 

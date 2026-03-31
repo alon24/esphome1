@@ -359,7 +359,7 @@ static void tab_wifi_create(lv_obj_t *parent, lv_obj_t *root) {
 
     // ── Floating keyboard — child of lv_scr_act() per manufacturer example.
     g_wifi_keyboard = lv_keyboard_create(lv_scr_act());
-    lv_obj_set_pos(g_wifi_keyboard, 0, 280);
+    // lv_obj_set_pos(g_wifi_keyboard, 0, 280);
     lv_obj_set_size(g_wifi_keyboard, 800, 200);
     lv_obj_set_style_bg_color(g_wifi_keyboard, lv_color_hex(0x111111), LV_STATE_DEFAULT);
     lv_obj_set_style_bg_opa(g_wifi_keyboard, LV_OPA_COVER, LV_STATE_DEFAULT);
