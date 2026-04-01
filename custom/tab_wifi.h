@@ -26,7 +26,6 @@ static lv_obj_t *g_wifi_keyboard   = nullptr;  // floating keyboard (lv_layer_to
 static lv_obj_t *g_wifi_scan_btn   = nullptr;
 static lv_obj_t *g_wifi_scan_lbl   = nullptr;  // label inside scan btn
 static lv_obj_t *g_wifi_active_ta  = nullptr;  // currently active textarea
-static lv_obj_t *g_kb_toggle_lbl   = nullptr;  // label of toggle button (show/hide text)
 
 // ── Keyboard show/hide ────────────────────────────────────────────────────────
 
@@ -35,7 +34,6 @@ static void _wifi_kb_show(lv_obj_t *ta) {
     g_wifi_active_ta = ta;
     lv_keyboard_set_textarea(g_wifi_keyboard, ta);
     lv_obj_clear_flag(g_wifi_keyboard, LV_OBJ_FLAG_HIDDEN);
-    if (g_kb_toggle_lbl) lv_label_set_text(g_kb_toggle_lbl, "HIDE KEYBOARD");
 }
 
 static void _wifi_kb_hide() {
@@ -43,7 +41,6 @@ static void _wifi_kb_hide() {
     g_wifi_active_ta = nullptr;
     lv_keyboard_set_textarea(g_wifi_keyboard, nullptr);
     lv_obj_add_flag(g_wifi_keyboard, LV_OBJ_FLAG_HIDDEN);
-    if (g_kb_toggle_lbl) lv_label_set_text(g_kb_toggle_lbl, "SHOW KEYBOARD");
 }
 
 // ── Network list population (own version using lv_obj_create, not lv_btn) ────
@@ -331,18 +328,6 @@ static void tab_wifi_create(lv_obj_t *parent, lv_obj_t *root) {
     lv_obj_set_width(g_wifi_status_lbl, 395);
     lv_label_set_long_mode(g_wifi_status_lbl, LV_LABEL_LONG_WRAP);
 
-    // ── Keyboard toggle button — shows "SHOW KEYBOARD" / "HIDE KEYBOARD" ───────
-    lv_obj_t *kb_btn = _wifi_btn(right, "SHOW KEYBOARD", 12, 265, 395, 44, 0x2a1a3a, 0xAA77FF);
-    g_kb_toggle_lbl = lv_obj_get_child(kb_btn, 0);  // label is first child of btn
-    lv_obj_add_event_cb(kb_btn, [](lv_event_t *) {
-        if (!g_wifi_keyboard) return;
-        if (lv_obj_has_flag(g_wifi_keyboard, LV_OBJ_FLAG_HIDDEN)) {
-            _wifi_kb_show(g_wifi_pass_ta);
-        } else {
-            _wifi_kb_hide();
-        }
-    }, LV_EVENT_CLICKED, nullptr);
-
     // ── Scroll-test rows (below the 352px visible fold — swipe up to reveal) ───
     {
         const char *txts[] = { "▼  SCROLL TEST  ▼", "row 1", "row 2", "row 3", "end of page" };
@@ -378,7 +363,7 @@ static void tab_wifi_create(lv_obj_t *parent, lv_obj_t *root) {
 // Called from maindashboard when wifi tab is shown.
 // Show keyboard immediately — bypasses FOCUSED/CLICKED timing issues entirely.
 static void tab_wifi_on_show() {
-    if (g_wifi_pass_ta) _wifi_kb_show(g_wifi_pass_ta);
+    // if (g_wifi_pass_ta) _wifi_kb_show(g_wifi_pass_ta);
     if (g_wifi_status_lbl)
         lv_label_set_text(g_wifi_status_lbl, "Scan for networks to begin");
 }

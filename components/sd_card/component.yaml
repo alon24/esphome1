@@ -1,0 +1,7 @@
+dependencies:
+  - fatfs
+  - sdmmc
+  - vfs
+
+esp_idf_component:
+  path: .

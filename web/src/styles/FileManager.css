@@ -1,0 +1,69 @@
+.file-manager {
+  padding: 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.fm-container {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.fm-left {
+  display: flex;
+  flex-direction: column;
+}
+
+.fm-right {
+  display: flex;
+  flex-direction: column;
+}
+
+.fm-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.fm-toolbar h2 {
+  margin: 0;
+  font-size: 18px;
+  color: #00CED1;
+}
+
+.btn-refresh {
+  padding: 8px 16px;
+  background: #003030;
+  color: #00CED1;
+  border: 1px solid #00CED1;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+
+.btn-refresh:hover:not(:disabled) {
+  background: #005050;
+}
+
+.btn-refresh:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.error-message {
+  background: #330000;
+  color: #ff6666;
+  padding: 12px;
+  border-radius: 4px;
+  margin-bottom: 15px;
+  font-size: 14px;
+}
+
+@media (max-width: 768px) {
+  .fm-container {
+    grid-template-columns: 1fr;
+  }
+}

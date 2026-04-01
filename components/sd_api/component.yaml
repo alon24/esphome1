@@ -1,0 +1,5 @@
+dependencies:
+  - web_server_base
+
+esp_idf_component:
+  path: .

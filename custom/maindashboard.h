@@ -5,6 +5,8 @@
 #include "tab_home.h"
 #include "tab_settings.h"
 #include "tab_wifi.h"
+// #include "media_screen.h"
+// #include "slideshow.h"
 #include <cstdio>
 
 // ── MAIN DASHBOARD ORCHESTRATOR ───────────────────────────────────────────────
@@ -178,7 +180,7 @@ static void maindashboard_create(void) {
     static const int NAV_X[]    = { 0, 267, 534 };
     static const int NAV_W[]    = { 267, 267, 266 };
 
-    for (int i = 0; i < 3; i++) {
+    for (int i = 0; i < (int)(sizeof(NAV_TXT) / sizeof(NAV_TXT[0])); i++) {
         g_dash_nav[i] = lv_obj_create(footer);
         lv_obj_set_pos(g_dash_nav[i], NAV_X[i], 0);
         lv_obj_set_size(g_dash_nav[i], NAV_W[i], 64);

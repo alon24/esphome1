@@ -125,7 +125,9 @@
       "Bash(fuser /dev/ttyUSB*)",
       "Bash(timeout 8 cat /dev/ttyUSB0)",
       "Bash(find /app/4.3inch_ESP32-8048S043 -name *.yaml -o -name *.yml)",
-      "Bash(find /usr/local/lib/python3.12/dist-packages/esphome/components/mipi_rgb -name *.h)"
+      "Bash(find /usr/local/lib/python3.12/dist-packages/esphome/components/mipi_rgb -name *.h)",
+      "Bash(find /app/esphome1/.esphome/build/esp32-display/.piolibdeps/esp32-display/lvgl/src -name *posix* -o -name *stdio* -o -name lv_fs*)",
+      "Bash(grep -v \".o$\")"
     ]
   },
   "enableAllProjectMcpServers": true,
