@@ -14,3 +14,14 @@ webapp/dist/
 .claude/
 
 .env
+*.log
+
+# Virtual Environments
+*venv/
+.venv/
+esphome_venv/
+uv_venv/
+
+# Generated firmware info
+custom/version_info.h
+upload_failures.txt
