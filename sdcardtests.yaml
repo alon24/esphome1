@@ -1,0 +1,67 @@
+esphome:
+  name: sd-card-headless
+  platformio_options:
+    board_build.flash_mode: dio
+    board_build.f_flash: 40000000L
+    upload_speed: 460800
+  includes:
+    - custom/sdcardtests.h
+  on_boot:
+    - priority: 100
+      then:
+        - lambda: |-
+            // Blinking backlight (GPIO 2) to confirm boot (ESP-IDF)
+            gpio_set_direction((gpio_num_t)2, GPIO_MODE_OUTPUT);
+            for(int i=0; i<10; i++) {
+              gpio_set_level((gpio_num_t)2, i % 2);
+              esp_rom_delay_us(150000);
+            }
+            ESP_LOGI("APP", ">>> BOOT OK! RUNNING SD PROBE... <<<");
+            bool success = sd_test_run();
+            
+            if (success) {
+              // RAPID FLASH = SUCCESS
+              for(int i=0; i<40; i++) {
+                gpio_set_level((gpio_num_t)2, i % 2);
+                esp_rom_delay_us(50000);
+              }
+            } else {
+              // SOLID ON = FAILURE
+              gpio_set_level((gpio_num_t)2, 1);
+            }
+
+esp32:
+  board: esp32-s3-devkitc-1
+  variant: ESP32S3
+  flash_size: 16MB
+  framework:
+    type: esp-idf
+    sdkconfig_options:
+      CONFIG_ESP32S3_DATA_CACHE_64KB: "y"
+      CONFIG_SPIRAM_FETCH_INSTRUCTIONS: "y"
+      CONFIG_SPIRAM_RODATA: "y"
+      CONFIG_SPIRAM_USE_MALLOC: "y"
+      CONFIG_ESPTOOLPY_FLASHSIZE_16MB: "y"
+      CONFIG_VFS_SUPPORT_IO: "y"
+      CONFIG_VFS_SUPPORT_POSIX: "y"
+      CONFIG_VFS_SUPPORT_FATFS: "y"
+      CONFIG_HAVE_SDSPI: "y"
+
+psram:
+  mode: octal
+  speed: 80MHz
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+logger:
+  level: DEBUG
+  baud_rate: 115200
+  hardware_uart: UART0
+
+interval:
+  - interval: 1s
+    then:
+      - lambda: |-
+          ESP_LOGD("HEARTBEAT", "Still alive...");

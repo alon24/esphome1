@@ -25,3 +25,8 @@
 - **Lint/Format:** `bunx @biomejs/biome check --write .`
 - **Test:** `npx playwright test --no-sandbox`
 - **Debug Test:** `npx playwright test --headed --no-sandbox` -->
+
+## 📟 Hardware & ESPHome Rules
+1. **Clean Slate:** ALWAYS run `./scripts/erase.sh` BEFORE flashing if you modify `flash_mode`, `psram`, or `partitions.csv`.
+2. **Verification:** If the board is silent after `entry`, use the **GPIO 2 Blink Test** in `on_boot` to verify the CPU stage.
+3. **SD Safety:** Always pull **GPIO 38 (Touch CS)** High during SD initialization to prevent bus conflicts.

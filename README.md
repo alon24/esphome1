@@ -9,6 +9,7 @@ ESP32-S3 display board running ESPHome firmware with a React web app served dire
 | Display | 4.3" 800×480 RGB parallel (ST7262) |
 | Touch | GT911 capacitive (I2C) |
 | Config files | `device.yaml` (main) |
+| Hardware details | [DEVICE_NOTES.md](./DEVICE_NOTES.md) |
 
 ---
 
@@ -278,6 +279,37 @@ ESPHome only compiles LVGL fonts referenced in YAML. Add off-screen dummy labels
 ```
 
 ESPHome detects the device on the network and uploads over WiFi automatically.
+
+---
+
+## SD Card Diagnostics & Hardware Recovery
+
+If the board is boot-looping or the SD card is not detected, use the headless diagnostic configuration to isolate hardware issues.
+
+### 1. Wipe the device (Hardware Reset)
+If the firmware is stuck in a boot loop due to invalid NVS or Partition settings, perform a full erase:
+```bash
+# Completely clear flash (requires USB connection)
+./scripts/erase.sh
+```
+
+### 2. Run SD Card Diagnostic
+The `sdcardtests.yaml` is a minimal, headless configuration that performs a low-level bit-bang SPI probe of the SD card to verify wiring without display/UI interference.
+
+```bash
+# Compile and flash the diagnostic tool
+esphome compile sdcardtests.yaml
+esphome upload sdcardtests.yaml --device /dev/ttyUSB0
+
+# View results (look for "SD_BB >>> SUCCESS")
+esphome logs sdcardtests.yaml --device /dev/ttyUSB0
+```
+
+### 3. Return to Main Firmware
+After verifying the hardware, re-flash the main dashboard:
+```bash
+./scripts/flash.sh
+```
 
 ---
 

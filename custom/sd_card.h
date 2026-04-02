@@ -27,7 +27,7 @@
 static sdmmc_card_t *g_sd_card = nullptr;
 static bool          g_sd_ok   = false;
 
-static bool sd_card_init() {
+bool sd_card_init() {
     if (g_sd_ok) return true;
 
     esp_vfs_fat_sdmmc_mount_config_t cfg = {};
@@ -69,7 +69,7 @@ static bool sd_card_init() {
 }
 
 // Scan dir for image files (.png .gif .jpg .jpeg), sorted by name.
-static std::vector<std::string> sd_list_images(const char *dir = SD_MOUNT) {
+std::vector<std::string> sd_list_images(const char *dir = SD_MOUNT) {
     std::vector<std::string> out;
     DIR *d = opendir(dir);
     if (!d) return out;
