@@ -7,6 +7,7 @@
 #include "tab_wifi.h"
 // #include "media_screen.h"
 // #include "slideshow.h"
+#include "tab_sd.h"
 #include <cstdio>
 
 // ── MAIN DASHBOARD ORCHESTRATOR ───────────────────────────────────────────────
@@ -22,8 +23,8 @@
 // ── Globals ───────────────────────────────────────────────────────────────────
 static lv_obj_t *g_dash_ip_lbl      = nullptr;
 static lv_obj_t *g_dash_ver_lbl     = nullptr;
-static lv_obj_t *g_dash_tabs[3]     = {nullptr, nullptr, nullptr};
-static lv_obj_t *g_dash_nav[3]      = {nullptr, nullptr, nullptr};
+static lv_obj_t *g_dash_tabs[4]     = {nullptr, nullptr, nullptr, nullptr};
+static lv_obj_t *g_dash_nav[4]      = {nullptr, nullptr, nullptr, nullptr};
 static int        g_dash_active_tab = 0;
 
 // ── Tab switching ─────────────────────────────────────────────────────────────
@@ -31,16 +32,17 @@ static void _dash_show_tab(int idx) {
     if (idx == g_dash_active_tab && g_dash_tabs[idx]) {
         // Already shown, but still allow (e.g. for initial setup)
     }
+    int prev_tab = g_dash_active_tab;
     g_dash_active_tab = idx;
 
-    for (int i = 0; i < 3; i++) {
+    for (int i = 0; i < 4; i++) {
         if (!g_dash_tabs[i]) continue;
         if (i == idx) lv_obj_clear_flag(g_dash_tabs[i], LV_OBJ_FLAG_HIDDEN);
         else          lv_obj_add_flag(g_dash_tabs[i], LV_OBJ_FLAG_HIDDEN);
     }
 
     // Update nav button highlight
-    for (int i = 0; i < 3; i++) {
+    for (int i = 0; i < 4; i++) {
         if (!g_dash_nav[i]) continue;
         bool active = (i == idx);
         uint32_t bg = active ? 0x1C2828 : DASH_FTR_BG;
@@ -61,12 +63,18 @@ static void _dash_show_tab(int idx) {
     }
 
     // Side effects when switching tabs
+    if (prev_tab == 3 && idx != 3) {
+        tab_sd_on_hide();
+    }
     if (idx == 2) {
         tab_wifi_on_show();
     }
     if (idx != 2) {
         // Hide keyboard when leaving wifi tab
         _wifi_kb_hide();
+    }
+    if (idx == 3) {
+        tab_sd_on_show();
     }
 }
 
@@ -165,9 +173,14 @@ static void maindashboard_create(void) {
     g_dash_tabs[2] = _make_panel(content, 0, 0, 800, 352, DASH_BG);
     tab_wifi_create(g_dash_tabs[2], root);
 
+    // Tab 3 — SD CARD
+    g_dash_tabs[3] = _make_panel(content, 0, 0, 800, 352, DASH_BG);
+    tab_sd_create(g_dash_tabs[3]);
+
     // Start with HOME tab visible
     lv_obj_add_flag(g_dash_tabs[1], LV_OBJ_FLAG_HIDDEN);
     lv_obj_add_flag(g_dash_tabs[2], LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_flag(g_dash_tabs[3], LV_OBJ_FLAG_HIDDEN);
 
     // ── FOOTER (800×64 at y=416) ──────────────────────────────────────────────
     lv_obj_t *footer = _make_panel(root, 0, 416, 800, 64, DASH_FTR_BG);
@@ -175,10 +188,10 @@ static void maindashboard_create(void) {
     lv_obj_set_style_border_color(footer, lv_color_hex(0x2a2a2a), LV_STATE_DEFAULT);
     lv_obj_set_style_border_width(footer, 1, LV_STATE_DEFAULT);
 
-    static const char *NAV_TXT[] = { "HOME", "SETTINGS", "WIFI" };
-    // Widths: 267, 267, 266
-    static const int NAV_X[]    = { 0, 267, 534 };
-    static const int NAV_W[]    = { 267, 267, 266 };
+    static const char *NAV_TXT[] = { "HOME", "SETTINGS", "WIFI", "SD" };
+    // Widths: 4 × 200 = 800
+    static const int NAV_X[]    = { 0, 200, 400, 600 };
+    static const int NAV_W[]    = { 200, 200, 200, 200 };
 
     for (int i = 0; i < (int)(sizeof(NAV_TXT) / sizeof(NAV_TXT[0])); i++) {
         g_dash_nav[i] = lv_obj_create(footer);
@@ -224,4 +237,5 @@ static void maindashboard_create(void) {
 static void dashboard_tick(int h, int m, int s, int dom, int mon, int year, int dow) {
     tab_home_tick(h, m, s, dom, mon, year, dow);
     tab_settings_tick();
+    tab_sd_poll();
 }

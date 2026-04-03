@@ -5,11 +5,11 @@ set -euo pipefail
 
 PORT="${1:-/dev/ttyUSB0}"
 
-# Try the project's specific esphome_venv first (verified working)
-VENV_PYTHON="/root/claude-dev/projects/esphome1/esphome_venv/bin/python3"
-if [ -f "$VENV_PYTHON" ]; then
-  echo "▶  Using esptool from esphome_venv..."
-  "$VENV_PYTHON" -m esptool --port "$PORT" erase_flash
+# Try PlatformIO bundled esptool first (always present after a build)
+PIO_ESPTOOL="/root/.platformio/penv/bin/esptool"
+if [ -f "$PIO_ESPTOOL" ]; then
+  echo "▶  Using esptool from PlatformIO venv..."
+  "$PIO_ESPTOOL" --port "$PORT" erase_flash
 # Fallback to system module
 elif python3 -m esptool version &>/dev/null; then
   echo "▶  Using esptool python module..."

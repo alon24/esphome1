@@ -25,6 +25,7 @@ esphome:
     # - custom/sd_card.h
     # - custom/slideshow.h
     # - custom/media_screen.h
+    - custom/tab_sd.h
     - custom/maindashboard.h
   on_boot:
     - priority: -200
@@ -40,6 +41,7 @@ esp32:
   flash_size: 16MB
   framework:
     type: esp-idf
+    version: recommended
     sdkconfig_options:
       CONFIG_ESP32S3_DATA_CACHE_64KB: "y"
       CONFIG_SPIRAM_FETCH_INSTRUCTIONS: "y"
@@ -52,10 +54,14 @@ esp32:
       CONFIG_SPIRAM_USE_MALLOC: "y"
       CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL: "16384"
       CONFIG_VFS_SUPPORT_IO: "y"
+      CONFIG_VFS_SUPPORT_DIR: "y"
       CONFIG_VFS_SUPPORT_POSIX: "y"
       CONFIG_VFS_SUPPORT_FATFS: "y"
       CONFIG_FATFS_USE_FASTSEEK: "y"
       CONFIG_HAVE_SDSPI: "y"
+      CONFIG_ESP_CONSOLE_UART: "y"
+      CONFIG_ESP_CONSOLE_UART_NUM: "0"
+      CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG_ENABLED: "n"
   partitions: partitions.csv
 
 psram:
@@ -91,7 +97,29 @@ api:
     key: !secret api_encryption_key
 
 logger:
-  level: INFO
+  level: DEBUG
+  baud_rate: 115200
+  hardware_uart: UART0
+  logs:
+    wifi: ERROR
+    wifi_esp32: ERROR
+    api: ERROR
+    api.connection: ERROR
+    ota: ERROR
+    esphome.ota: ERROR
+    mdns: ERROR
+    safe_mode: ERROR
+    i2c.idf: ERROR
+    gt911.touchscreen: ERROR
+    lvgl: ERROR
+    display.mipi_rgb: ERROR
+    light: ERROR
+    ledc.output: ERROR
+    psram: ERROR
+    component: ERROR
+    scheduler: ERROR
+    app: ERROR
+    logger: ERROR
 
 
 # ─── Backlight ───────────────────────────────────────────────────────────────
@@ -320,7 +348,9 @@ external_components:
   - source:
       type: local
       path: components
-    components: [react_spa]
+    components: [react_spa, sd_card]
+
+sd_card:
 
 react_spa:
   port: 80
