@@ -1,97 +1,148 @@
 #pragma once
 #include <string>
+#include "esphome.h"
+#include "esphome/components/lvgl/lvgl_esphome.h"
+
+// POSIX filesystem headers
+#include <sys/dirent.h>
+#include <sys/stat.h>
+#include <unistd.h>
 #include <stdio.h>
-#include "esphome/core/log.h"
-#include "driver/gpio.h"
-#include "esp_rom_sys.h"
+#include <string.h>
 
-// Absolute earliest log via ROM printf
-struct BootLog {
-    BootLog() { esp_rom_printf("\n\n[BOOT_ROM] >>> APP STAGE 1 START <<<\n\n"); }
-} g_boot_log;
+#define SD_MOUNT "/sdcard"
 
-// Macsbug Pinned Layout
-#define TEST_SD_PIN_CLK   (gpio_num_t)12
-#define TEST_SD_PIN_MOSI  (gpio_num_t)11
-#define TEST_SD_PIN_MISO  (gpio_num_t)13
-#define TEST_SD_PIN_CS    (gpio_num_t)10
+static std::string g_current_path = SD_MOUNT;
+static lv_obj_t* g_container = nullptr;
+static lv_obj_t* g_path_label = nullptr;
+static lv_obj_t* g_touch_btn = nullptr;
+static lv_obj_t* g_touch_lbl = nullptr;
+static int g_touch_count = 0;
 
-static std::string g_sd_content = "Bit-Bang Diagnostic Running...";
+static const lv_color_t TOUCH_COLORS[] = {
+    {.full = 0x07E0},  // green
+    {.full = 0xF800},  // red
+    {.full = 0x001F},  // blue
+    {.full = 0xFFE0},  // yellow
+    {.full = 0xF81F},  // magenta
+};
+static const int TOUCH_COLOR_COUNT = 5;
 
-// Manual SPI delay for stability (10us)
-inline void bb_delay() { esp_rom_delay_us(10); }
+void ui_refresh_list();
 
-// Smallest possible bit-bang write
-inline void bb_write(uint8_t data) {
-    for (int i = 0; i < 8; i++) {
-        gpio_set_level(TEST_SD_PIN_MOSI, (data & 0x80) ? 1 : 0);
-        data <<= 1;
-        bb_delay();
-        gpio_set_level(TEST_SD_PIN_CLK, 1);
-        bb_delay();
-        gpio_set_level(TEST_SD_PIN_CLK, 0);
-    }
+static void touch_test_cb(lv_event_t * e) {
+    g_touch_count++;
+    lv_color_t c = TOUCH_COLORS[g_touch_count % TOUCH_COLOR_COUNT];
+    lv_obj_set_style_bg_color(g_touch_btn, c, 0);
+    lv_label_set_text_fmt(g_touch_lbl, "TOUCH OK  #%d", g_touch_count);
+    ESP_LOGI("EXPLORER", "Touch test fired: count=%d", g_touch_count);
 }
 
-// Smallest possible bit-bang read
-inline uint8_t bb_read() {
-    uint8_t data = 0;
-    for (int i = 0; i < 8; i++) {
-        data <<= 1;
-        gpio_set_level(TEST_SD_PIN_CLK, 1);
-        bb_delay();
-        if (gpio_get_level(TEST_SD_PIN_MISO)) data |= 0x01;
-        gpio_set_level(TEST_SD_PIN_CLK, 0);
-        bb_delay();
-    }
-    return data;
-}
-
-inline bool sd_test_run() {
-    ESP_LOGI("SD_BB", ">>> Starting Bit-Bang Hardware Probe (ESP-IDF) <<<");
-    esp_rom_delay_us(100000); // 100ms
-    
-    // Disable Touch CS (GPIO 38)
-    gpio_set_direction((gpio_num_t)38, GPIO_MODE_OUTPUT);
-    gpio_set_level((gpio_num_t)38, 1);
-    
-    gpio_set_direction(TEST_SD_PIN_CLK, GPIO_MODE_OUTPUT);
-    gpio_set_direction(TEST_SD_PIN_MOSI, GPIO_MODE_OUTPUT);
-    gpio_set_direction(TEST_SD_PIN_CS, GPIO_MODE_OUTPUT);
-    gpio_set_direction(TEST_SD_PIN_MISO, GPIO_MODE_INPUT);
-    gpio_set_pull_mode(TEST_SD_PIN_MISO, GPIO_PULLUP_ONLY);
-    
-    gpio_set_level(TEST_SD_PIN_CS, 1);
-    gpio_set_level(TEST_SD_PIN_CLK, 0);
-    esp_rom_delay_us(10000);
-    
-    // 1. Send 80+ clock cycles to wake up the card
-    ESP_LOGI("SD_BB", "Sending wake-up clocks...");
-    for (int i = 0; i < 20; i++) bb_write(0xFF);
-    
-    // 2. Send CMD0 (Reset)
-    ESP_LOGI("SD_BB", "Sending CMD0 (Reset)...");
-    gpio_set_level(TEST_SD_PIN_CS, 0);
-    bb_delay();
-    bb_write(0x40); // CMD0
-    bb_write(0x00); bb_write(0x00); bb_write(0x00); bb_write(0x00);
-    bb_write(0x95); // CRC
-    
-    uint8_t response = 0xFF;
-    for (int i = 0; i < 200; i++) {
-        response = bb_read();
-        if (response != 0xFF) break;
-    }
-    gpio_set_level(TEST_SD_PIN_CS, 1);
-    bb_write(0xFF);
-
-    if (response == 0x01) {
-        ESP_LOGI("SD_BB", ">>> SUCCESS! Card responded with IDLE state (0x01). <<<");
-        g_sd_content = "SUCCESS! Card responded (IDLE/0x01)\nHardware wiring is CORRECT!";
-        return true;
+static void file_click_event_cb(lv_event_t * e) {
+    const char * name = (const char*)lv_event_get_user_data(e);
+    if (!name) return;
+    if (strcmp(name, "..") == 0) {
+        size_t pos = g_current_path.find_last_of('/');
+        if (pos != std::string::npos && g_current_path != SD_MOUNT) {
+            g_current_path = g_current_path.substr(0, pos);
+            if (g_current_path.empty()) g_current_path = SD_MOUNT;
+            ui_refresh_list();
+        }
     } else {
-        ESP_LOGE("SD_BB", "Card response: 0x%02X (FAIL)", response);
-        g_sd_content = "FAILURE. Response: " + std::to_string(response) + "\nCheck wiring/formatting.";
-        return false;
+        std::string new_path = g_current_path;
+        if (new_path.back() != '/') new_path += "/";
+        new_path += name;
+        DIR *d = opendir(new_path.c_str());
+        if (d) {
+            closedir(d);
+            g_current_path = new_path;
+            ui_refresh_list();
+        } else {
+            ESP_LOGI("EXPLORER", "Selected file: %s", new_path.c_str());
+        }
     }
+}
+
+void ui_refresh_list() {
+    if (!g_container) return;
+    lv_obj_clean(g_container);
+    lv_obj_scroll_to_y(g_container, 0, LV_ANIM_OFF);
+    lv_label_set_text(g_path_label, g_current_path.c_str());
+
+    // Back button
+    if (g_current_path != SD_MOUNT) {
+        lv_obj_t* btn = lv_obj_create(g_container);
+        lv_obj_set_size(btn, LV_PCT(100), 48);
+        lv_obj_clear_flag(btn, LV_OBJ_FLAG_SCROLLABLE);
+        lv_obj_t* lbl = lv_label_create(btn);
+        lv_label_set_text(lbl, LV_SYMBOL_UP "  ..");
+        lv_obj_align(lbl, LV_ALIGN_LEFT_MID, 10, 0);
+        lv_obj_add_event_cb(btn, file_click_event_cb, LV_EVENT_CLICKED, (void*)"..");
+    }
+
+    DIR *d = opendir(g_current_path.c_str());
+    if (!d) {
+        lv_obj_t* lbl = lv_label_create(g_container);
+        lv_label_set_text(lbl, "SD card not mounted or read error");
+        lv_obj_center(lbl);
+        return;
+    }
+
+    struct dirent *entry;
+    while ((entry = readdir(d)) != NULL) {
+        if (entry->d_name[0] == '.') continue;
+        bool is_dir = (entry->d_type == DT_DIR);
+        lv_obj_t* btn = lv_obj_create(g_container);
+        lv_obj_set_size(btn, LV_PCT(100), 44);
+        lv_obj_clear_flag(btn, LV_OBJ_FLAG_SCROLLABLE);
+        lv_obj_t* lbl = lv_label_create(btn);
+        lv_label_set_text_fmt(lbl, "%s  %s",
+            is_dir ? LV_SYMBOL_DIRECTORY : LV_SYMBOL_FILE,
+            entry->d_name);
+        lv_obj_align(lbl, LV_ALIGN_LEFT_MID, 10, 0);
+        lv_label_set_long_mode(lbl, LV_LABEL_LONG_CLIP);
+        lv_obj_set_width(lbl, LV_PCT(90));
+        lv_obj_add_event_cb(btn, file_click_event_cb, LV_EVENT_CLICKED,
+                            (void*)strdup(entry->d_name));
+    }
+    closedir(d);
+}
+
+void ui_init_explorer() {
+    lv_obj_t* screen = lv_scr_act();
+    lv_obj_set_style_bg_color(screen, lv_palette_darken(LV_PALETTE_BLUE_GREY, 3), 0);
+
+    // Path label at top
+    g_path_label = lv_label_create(screen);
+    lv_obj_set_style_text_color(g_path_label, lv_color_white(), 0);
+    lv_label_set_text(g_path_label, g_current_path.c_str());
+    lv_label_set_long_mode(g_path_label, LV_LABEL_LONG_SCROLL_CIRCULAR);
+    lv_obj_set_width(g_path_label, 760);
+    lv_obj_align(g_path_label, LV_ALIGN_TOP_LEFT, 20, 10);
+
+    // Touch test button — fixed at bottom, always visible
+    g_touch_btn = lv_btn_create(screen);
+    lv_obj_set_size(g_touch_btn, 800, 50);
+    lv_obj_align(g_touch_btn, LV_ALIGN_BOTTOM_MID, 0, 0);
+    lv_obj_set_style_bg_color(g_touch_btn, TOUCH_COLORS[0], 0);
+    lv_obj_set_style_radius(g_touch_btn, 0, 0);
+    lv_obj_add_event_cb(g_touch_btn, touch_test_cb, LV_EVENT_CLICKED, nullptr);
+    g_touch_lbl = lv_label_create(g_touch_btn);
+    lv_label_set_text(g_touch_lbl, "TAP HERE TO TEST TOUCH");
+    lv_obj_center(g_touch_lbl);
+
+    // Scrollable container for file list
+    g_container = lv_obj_create(screen);
+    lv_obj_set_size(g_container, 760, 370);
+    lv_obj_align(g_container, LV_ALIGN_TOP_MID, 0, 42);
+
+    // Flex column so items stack vertically and scroll works
+    lv_obj_set_flex_flow(g_container, LV_FLEX_FLOW_COLUMN);
+    lv_obj_set_flex_align(g_container, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START);
+    lv_obj_set_scroll_dir(g_container, LV_DIR_VER);
+    lv_obj_set_scrollbar_mode(g_container, LV_SCROLLBAR_MODE_AUTO);
+    lv_obj_set_style_pad_row(g_container, 4, 0);
+    lv_obj_set_style_pad_all(g_container, 6, 0);
+
+    ui_refresh_list();
 }

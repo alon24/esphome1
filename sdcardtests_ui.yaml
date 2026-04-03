@@ -1,31 +1,19 @@
 esphome:
-  name: sd-explorer-diagnostic
+  name: sdcardtests-ui
+  friendly_name: SD Card UI Tests
   platformio_options:
-    upload_speed: 921600
-    build_flags:
-      - -I${sysenv.IDF_PATH}/components/vfs/include
-      - -I${sysenv.IDF_PATH}/components/sdmmc/include
-      - -I${sysenv.IDF_PATH}/components/fatfs/vfs
-      - -I${sysenv.IDF_PATH}/components/driver/include
-      - -I${sysenv.IDF_PATH}/components/spi_flash/include
     board_build.flash_mode: qio
-    board_build.f_flash: 80000000L
+    board_build.f_flash: 40000000L
   includes:
-    - custom/sd_card.h
     - custom/sdcardtests.h
   on_boot:
-    - priority: 100
-      then:
-        - lambda: |-
-            gpio_set_direction((gpio_num_t)38, GPIO_MODE_OUTPUT);
-            gpio_set_level((gpio_num_t)38, 1);
-            ESP_LOGI("APP", ">>> BOOT OK! INITIALIZING SD... <<<");
-            sd_card_init();
-        - light.turn_on: backlight
     - priority: -100
       then:
         - lambda: |-
             ui_init_explorer();
+  project:
+    name: "alon24.esphome-sunton-8048s043"
+    version: "1.0.0"
 
 esp32:
   board: esp32-s3-devkitc-1
@@ -33,40 +21,71 @@ esp32:
   flash_size: 16MB
   framework:
     type: esp-idf
+    version: recommended
     sdkconfig_options:
       CONFIG_ESP32S3_DATA_CACHE_64KB: "y"
       CONFIG_SPIRAM_FETCH_INSTRUCTIONS: "y"
       CONFIG_SPIRAM_RODATA: "y"
-      CONFIG_SPIFFS_ENABLED: "y"
-      CONFIG_SPIFFS_USE_MAGIC: "y"
-      CONFIG_SPIFFS_USE_MAGIC_LENGTH: "y"
-      CONFIG_ESP_TASK_WDT_TIMEOUT_S: "30"
-      CONFIG_LCD_RGB_RESTART_IN_VSYNC: "y"
       CONFIG_SPIRAM_USE_MALLOC: "y"
       CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL: "16384"
       CONFIG_VFS_SUPPORT_IO: "y"
+      CONFIG_VFS_SUPPORT_DIR: "y"
       CONFIG_VFS_SUPPORT_POSIX: "y"
       CONFIG_VFS_SUPPORT_FATFS: "y"
-      CONFIG_FATFS_USE_FASTSEEK: "y"
       CONFIG_HAVE_SDSPI: "y"
+      CONFIG_ESP_CONSOLE_UART: "y"
+      CONFIG_ESP_CONSOLE_UART_NUM: "0"
+      CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG_ENABLED: "n"
 
 psram:
   mode: octal
   speed: 80MHz
 
-i2c:
-  id: i2c_touch
-  sda: GPIO19
-  scl: GPIO20
-  scan: true
+external_components:
+  - source:
+      type: local
+      path: components
+    components: [sd_card]
 
-touchscreen:
-  - platform: gt911
-    id: touch_screen
-    i2c_id: i2c_touch
-    address: 0x5d
-    reset_pin: GPIO38
+sd_card:
 
+logger:
+  level: DEBUG
+  baud_rate: 115200
+  hardware_uart: UART0
+  logs:
+    # silence wifi noise entirely
+    wifi: ERROR
+    wifi_esp32: ERROR
+    # silence startup config dumps and component warnings
+    api: ERROR
+    api.connection: ERROR
+    ota: ERROR
+    esphome.ota: ERROR
+    mdns: ERROR
+    safe_mode: ERROR
+    i2c.idf: ERROR
+    gt911.touchscreen: ERROR
+    lvgl: ERROR
+    display.mipi_rgb: ERROR
+    light: ERROR
+    ledc.output: ERROR
+    psram: ERROR
+    component: ERROR
+    scheduler: ERROR
+    app: ERROR
+    logger: ERROR
+
+api:
+
+ota:
+  - platform: esphome
+
+wifi:
+  ssid: "Wokwi-GUEST"
+  password: ""
+
+# Backlight control
 output:
   - platform: ledc
     id: backlight_output
@@ -78,6 +97,7 @@ light:
     output: backlight_output
     restore_mode: ALWAYS_ON
 
+# 4.3" 800×480 RGB Parallel Display (ST7262)
 display:
   - platform: mipi_rgb
     id: main_display
@@ -104,20 +124,25 @@ display:
       green: [5, 6, 7, 15, 16, 4]
       blue: [8, 3, 46, 9, 1]
 
+# GT911 Capacitive Touch
+i2c:
+  - id: i2c_touch
+    sda: GPIO19
+    scl: GPIO20
+    frequency: 400kHz
+
+touchscreen:
+  - platform: gt911
+    id: touch_screen
+    i2c_id: i2c_touch
+    reset_pin: GPIO38
+    address: 0x5d
+
+# LVGL for UI testing
 lvgl:
   displays:
     - main_display
   touchscreens:
     - touch_screen
+  log_level: DEBUG
   color_depth: 16
-  pages:
-    - id: main_page
-      widgets:
-        - label:
-            text: "Initializing SD Browser..."
-            align: center
-
-logger:
-  level: DEBUG
-  baud_rate: 115200
-  hardware_uart: UART0

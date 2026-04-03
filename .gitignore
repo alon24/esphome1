@@ -19,9 +19,14 @@ webapp/dist/
 # Virtual Environments
 *venv/
 .venv/
-esphome_venv/
-uv_venv/
 
 # Generated firmware info
 custom/version_info.h
 upload_failures.txt
+version.txt
+
+# Junk / temp
+compile_log.txt
+esphome1
+fix_platformio.py
+scripts/reconnect.sh

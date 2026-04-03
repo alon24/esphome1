@@ -20,8 +20,9 @@ VERSION_FILE="$ROOT_DIR/version.txt"
 FAIL_FILE="$ROOT_DIR/upload_failures.txt"
 HEADER="$ROOT_DIR/custom/version_info.h"
 
-if ! command -v esphome &>/dev/null; then
-  echo "✗  esphome not found.  pip install esphome"
+ESPHOME="${ESPHOME:-$ROOT_DIR/venv/bin/esphome}"
+if ! $ESPHOME version &>/dev/null; then
+  echo "✗  esphome not found. Expected venv at $ROOT_DIR/new_venv or set ESPHOME= env var."
   exit 1
 fi
 
@@ -47,7 +48,7 @@ touch "$HEADER"
 
 # ── Compile ───────────────────────────────────────────────────────────────────
 echo "▶  Compiling $CONFIG (v$NEW_VERSION)..."
-esphome compile "$CONFIG"
+$ESPHOME compile "$CONFIG"
 
 # ── Determine upload method ───────────────────────────────────────────────────
 use_ota() {
@@ -56,7 +57,7 @@ use_ota() {
 
 upload_firmware() {
   local target="$1"
-  esphome upload "$CONFIG" --device "$target"
+  $ESPHOME upload "$CONFIG" --device "$target"
 }
 
 if [ "${USB:-0}" = "1" ]; then
@@ -87,6 +88,10 @@ echo "✔  Upload complete (${UPLOAD_METHOD})"
 # ── Version verification ──────────────────────────────────────────────────────
 if [ "${SKIP_VERIFY:-0}" = "1" ] || [ "$UPLOAD_METHOD" = "USB" ]; then
   echo "▶  Skipping version verification (USB or SKIP_VERIFY set)"
+  echo "▶  Showing logs (Ctrl+C to exit)..."
+  DEVICE="${USB_PORT:-/dev/ttyUSB0}"
+  [ "$UPLOAD_METHOD" = "OTA" ] && DEVICE="$DEVICE_IP"
+  $ESPHOME logs "$CONFIG" --device "$DEVICE"
   exit 0
 fi
 
@@ -94,7 +99,7 @@ echo "▶  Waiting 12s for device reboot..."
 sleep 12
 
 echo "▶  Collecting device logs to verify version v$NEW_VERSION..."
-LOGS=$(timeout 35 esphome logs "$CONFIG" --device "$DEVICE_IP" 2>&1 || true)
+LOGS=$(timeout 35 $ESPHOME logs "$CONFIG" --device "$DEVICE_IP" 2>&1 || true)
 
 DEVICE_VERSION=$(echo "$LOGS" | grep -oE 'FIRMWARE VERSION: v[0-9]+' | grep -oE '[0-9]+$' | tail -1)
 
@@ -117,7 +122,7 @@ elif [ "$DEVICE_VERSION" -lt "$NEW_VERSION" ]; then
   # Clean PlatformIO build cache for this project
   rm -f "$ROOT_DIR/.esphome/build/esp32-display/.pioenvs/esp32-display/src/main.cpp.o" 2>/dev/null || true
   touch "$HEADER"
-  esphome compile "$CONFIG"
+  $ESPHOME compile "$CONFIG"
   upload_firmware "$DEVICE_IP"
   echo "✔  Re-upload complete — recheck logs manually to verify v$NEW_VERSION"
 

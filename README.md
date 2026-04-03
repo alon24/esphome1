@@ -15,11 +15,14 @@ ESP32-S3 display board running ESPHome firmware with a React web app served dire
 
 ## Requirements
 
-| Tool | Install |
-|------|---------|
-| ESPHome 2023.11+ | `pip install esphome` |
-| Bun | `curl -fsSL https://bun.sh/install \| bash` |
-| curl | pre-installed on most systems |
+| Tool | Version | Notes |
+|------|---------|-------|
+| ESPHome | 2026.3.2 | Pre-installed in `venv/` — no global install needed |
+| Python | 3.12 | Required to recreate venv if needed |
+| Bun | latest | `curl -fsSL https://bun.sh/install \| bash` |
+| curl | any | Pre-installed on most systems |
+
+> **ESPHome venv**: A working Python venv is at `./venv/`. The flash and log scripts use it automatically. To recreate it: `python3 -m venv venv && venv/bin/pip install esphome`
 
 ---
 
@@ -45,17 +48,20 @@ The script bumps the version number, compiles, flashes, and verifies the running
 ### View device logs (serial or OTA)
 
 ```bash
-# USB serial (fast, always works)
-esphome logs device.yaml --device /dev/ttyUSB0
+# Auto-detect (USB or IP)
+./scripts/logs.sh
 
-# OTA over WiFi (device must be on network)
-esphome logs device.yaml --device esp32-display.local
+# Specific config
+./scripts/logs.sh sdcardtests_ui.yaml
 
-# With explicit IP
-esphome logs device.yaml --device 192.168.1.42
+# Force USB
+USB=1 ./scripts/logs.sh
+
+# Explicit IP
+DEVICE_IP=192.168.1.42 ./scripts/logs.sh
 ```
 
-Press `Ctrl+C` to stop. Logs stream in real time at the configured log level (`INFO` by default).
+Press `Ctrl+C` to stop. Logs stream in real time at the configured log level.
 
 ---
 
@@ -282,33 +288,36 @@ ESPHome detects the device on the network and uploads over WiFi automatically.
 
 ---
 
-## SD Card Diagnostics & Hardware Recovery
+## SD Card
 
-If the board is boot-looping or the SD card is not detected, use the headless diagnostic configuration to isolate hardware issues.
+The board uses **SPI** for the SD card (not SDMMC). Pins: CS=GPIO10, MOSI=11, CLK=12, MISO=13. FAT32 format required.
 
-### 1. Wipe the device (Hardware Reset)
-If the firmware is stuck in a boot loop due to invalid NVS or Partition settings, perform a full erase:
+### SD Card UI test firmware
+
+`sdcardtests_ui.yaml` is a standalone config with an LVGL file browser — useful for verifying the SD card works before integrating into the main firmware.
+
 ```bash
-# Completely clear flash (requires USB connection)
+# Flash the SD UI test
+./scripts/flash.sh sdcardtests_ui.yaml
+
+# Watch SD card logs (filtered)
+./scripts/logs.sh sdcardtests_ui.yaml
+```
+
+Look for `[sd_card]: SD card mounted OK` and a directory listing in the logs. The display will show a scrollable file browser.
+
+### SD card not mounting?
+
+See [DEVICE_NOTES.md](./DEVICE_NOTES.md) for the full list of gotchas. Quick checklist:
+1. Card formatted FAT32
+2. `board_build.flash_mode: qio` present in yaml
+3. `CONFIG_VFS_SUPPORT_IO/POSIX` set in sdkconfig_options
+4. `vfs` in component CMakeLists REQUIRES
+5. GPIO38 pulled HIGH before SD init in component setup()
+
+### Wipe device (boot-loop recovery)
+```bash
 ./scripts/erase.sh
-```
-
-### 2. Run SD Card Diagnostic
-The `sdcardtests.yaml` is a minimal, headless configuration that performs a low-level bit-bang SPI probe of the SD card to verify wiring without display/UI interference.
-
-```bash
-# Compile and flash the diagnostic tool
-esphome compile sdcardtests.yaml
-esphome upload sdcardtests.yaml --device /dev/ttyUSB0
-
-# View results (look for "SD_BB >>> SUCCESS")
-esphome logs sdcardtests.yaml --device /dev/ttyUSB0
-```
-
-### 3. Return to Main Firmware
-After verifying the hardware, re-flash the main dashboard:
-```bash
-./scripts/flash.sh
 ```
 
 ---

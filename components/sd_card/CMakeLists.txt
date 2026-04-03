@@ -1,4 +1,3 @@
-idf_component_register(
-    INCLUDE_DIRS "."
-    REQUIRES fatfs sdmmc vfs
-)
+idf_component_register(SRCS "sd_card.cpp"
+                       INCLUDE_DIRS "."
+                       REQUIRES fatfs sdmmc vfs esp_driver_sdspi esp_driver_spi driver)
