@@ -20,10 +20,18 @@ VERSION_FILE="$ROOT_DIR/version.txt"
 FAIL_FILE="$ROOT_DIR/upload_failures.txt"
 HEADER="$ROOT_DIR/custom/version_info.h"
 
-ESPHOME="${ESPHOME:-$ROOT_DIR/venv/bin/esphome}"
-if ! $ESPHOME version &>/dev/null; then
-  echo "✗  esphome not found. Expected venv at $ROOT_DIR/new_venv or set ESPHOME= env var."
-  exit 1
+# ── Find esphome executable ───────────────────────────────────────────────────
+if [ -z "${ESPHOME:-}" ]; then
+  if command -v esphome &>/dev/null; then
+    ESPHOME="esphome"
+  elif [ -x "$ROOT_DIR/venv/bin/esphome" ]; then
+    ESPHOME="$ROOT_DIR/venv/bin/esphome"
+  elif [ -x "$ROOT_DIR/new_venv/bin/esphome" ]; then
+    ESPHOME="$ROOT_DIR/new_venv/bin/esphome"
+  else
+    echo "✗  esphome not found. Ensure it is in PATH or a venv at $ROOT_DIR/venv"
+    exit 1
+  fi
 fi
 
 cd "$ROOT_DIR"
@@ -57,6 +65,7 @@ use_ota() {
 
 upload_firmware() {
   local target="$1"
+  echo "▶  Uploading v$NEW_VERSION to $target..."
   $ESPHOME upload "$CONFIG" --device "$target"
 }
 
@@ -65,15 +74,15 @@ if [ "${USB:-0}" = "1" ]; then
   fuser -k /dev/ttyUSB0 2>/dev/null || true
   upload_firmware /dev/ttyUSB0
   UPLOAD_METHOD="USB"
+elif [ -e /dev/ttyUSB0 ]; then
+  echo "▶  USB detected — flashing via serial..."
+  fuser -k /dev/ttyUSB0 2>/dev/null || true
+  upload_firmware /dev/ttyUSB0
+  UPLOAD_METHOD="USB"
 elif use_ota; then
   echo "▶  Device reachable at ${DEVICE_IP} — flashing OTA..."
   upload_firmware "$DEVICE_IP"
   UPLOAD_METHOD="OTA"
-elif [ -e /dev/ttyUSB0 ]; then
-  echo "▶  Device offline, USB found — flashing via serial..."
-  fuser -k /dev/ttyUSB0 2>/dev/null || true
-  upload_firmware /dev/ttyUSB0
-  UPLOAD_METHOD="USB"
 else
   echo "✗  Device not reachable at ${DEVICE_IP} and no USB found."
   echo "   Connect USB cable or check device is on WiFi."

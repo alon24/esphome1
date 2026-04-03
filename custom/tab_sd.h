@@ -15,6 +15,19 @@ extern void sd_card_do_unmount();
 #include <algorithm>
 #include "esp_heap_caps.h"
 #include "esp_log.h"
+#include <stdlib.h>
+
+#define STBI_ONLY_JPEG
+#define STBI_NO_STDIO
+#define STB_IMAGE_IMPLEMENTATION
+#define STBI_MALLOC(sz)           malloc(sz)
+#define STBI_REALLOC(p,sz)        realloc(p,sz)
+#define STBI_FREE(p)              free(p)
+#ifndef STBIDEF
+#define STBIDEF                   static inline
+#endif
+#include "stb_image.h"
+
 
 #define SD_TAB_MOUNT "/sdcard"
 #define TAB_SD_BG    0x0e0e0e
@@ -31,6 +44,18 @@ static uint8_t     *g_sd_raw_buf    = nullptr;  // PSRAM: raw bytes or decoded p
 static lv_img_dsc_t g_sd_img_dsc   = {};
 static bool         g_sd_tab_visible = false;
 static std::string  g_sd_cur_path   = SD_TAB_MOUNT;
+static std::vector<char*> g_sd_path_pool;
+
+static void _sd_clear_pool() {
+    for (char *p : g_sd_path_pool) free(p);
+    g_sd_path_pool.clear();
+}
+
+static char *_sd_pool_strdup(const std::string &s) {
+    char *c = strdup(s.c_str());
+    if (c) g_sd_path_pool.push_back(c);
+    return c;
+}
 
 // ── Dimension parsers ─────────────────────────────────────────────────────────
 static bool _png_dims(const uint8_t *d, size_t sz, uint32_t *w, uint32_t *h) {
@@ -84,7 +109,7 @@ static uint16_t *_bmp_to_rgb565(const uint8_t *d, size_t sz,
         for (int32_t x=0; x<w; x++) {
             uint8_t b=row[x*3],g=row[x*3+1],r=row[x*3+2];
             uint16_t px=((uint16_t)(r>>3)<<11)|((uint16_t)(g>>2)<<5)|(b>>3);
-            dst[x]=(px>>8)|(px<<8);  // big-endian swap
+            dst[x]=(px>>8)|(px<<8); // Re-enable swap if display is big-endian
         }
     }
     *out_w=(uint32_t)w; *out_h=(uint32_t)h;
@@ -131,81 +156,307 @@ static void _sd_back_cb(lv_event_t *) { _sd_show_list(); }
 static void _sd_show_list() {
     if (g_sd_raw_buf) { free(g_sd_raw_buf); g_sd_raw_buf = nullptr; }
     if (g_sd_img_obj) {
-        lv_obj_set_style_bg_img_src(g_sd_img_obj, nullptr, 0);
+        lv_img_set_src(g_sd_img_obj, (const void*)nullptr);
         lv_obj_set_size(g_sd_img_obj, 0, 0);
     }
     if (g_sd_list_view) lv_obj_clear_flag(g_sd_list_view, LV_OBJ_FLAG_HIDDEN);
     if (g_sd_viewer)    lv_obj_add_flag(g_sd_viewer,    LV_OBJ_FLAG_HIDDEN);
 }
 
+// ── tjpgd Adapter (Memory-efficient Scaling) ─────────────────────────────────
+// ── tjpgd Adapter (Memory-efficient Scaling) ─────────────────────────────────
+// Manually define JDEC to match LVGL's tjpgd (R0.03) exactly
+typedef struct JDEC JDEC;
+struct JDEC {
+    size_t dctr;
+    uint8_t* dptr;
+    uint8_t* inbuf;
+    uint8_t dbit;
+    uint8_t scale;
+    uint8_t msx, msy;
+    uint8_t qtid[3];
+    uint8_t ncomp;
+    int16_t dcv[3];
+    uint16_t nrst;
+    uint16_t width, height;  // Dimensions are at offset ~28
+    uint8_t* huffbits[2][2];
+    uint16_t* huffcode[2][2];
+    uint8_t* huffdata[2][2];
+    int32_t* qttbl[4];
+    void* workbuf;
+    void* mcubuf;
+    void* pool;
+    size_t sz_pool;
+    size_t (*infunc)(JDEC*, uint8_t*, size_t);
+    void* device;
+};
+
+typedef enum { JDR_OK = 0, JDR_INTR, JDR_INP, JDR_MEM1, JDR_MEM2, JDR_PAR, JDR_FMT1, JDR_FMT2, JDR_FMT3 } JRESULT;
+typedef struct { uint16_t left, right, top, bottom; } JRECT; // Note: right before top in this version
+
+extern "C" {
+    JRESULT jd_prepare(JDEC* jd, size_t (*infunc)(JDEC*, uint8_t*, size_t), void* pool, size_t sz_pool, void* dev);
+    JRESULT jd_decomp(JDEC* jd, int (*outfunc)(JDEC*, void*, JRECT*), uint8_t scale);
+}
+
+// Scans JPEG segments to detect Progressive encoding (SOF2 marker 0xFFC2)
+static int _get_jpeg_type(const uint8_t *data, size_t sz) {
+    if (sz < 4 || data[0] != 0xFF || data[1] != 0xD8) return -1; // Not a JPEG
+    size_t i = 2;
+    while (i + 4 < sz) {
+        if (data[i] != 0xFF) { i++; continue; }
+        uint8_t mk = data[i+1];
+        if (mk == 0xD8 || mk == 0xFF) { i++; continue; }
+        if (mk == 0xD9) return 0; // End of image (default to Baseline)
+        if (mk == 0xC2) return 2; // Progressive SOF2
+        if (mk == 0xC0) return 0; // Baseline SOF0
+        
+        uint16_t len = (data[i+2] << 8) | data[i+3];
+        if (len < 2) return 0;
+        i += 2 + len;
+    }
+    return 0;
+}
+
+struct tjpgd_context {
+    const uint8_t *data;
+    size_t sz;
+    size_t pos;
+    uint16_t *out_buf;
+    int out_w;
+};
+
+static tjpgd_context *g_tjpgd_ctx = nullptr;
+
+static size_t _tjpgd_reader(JDEC *jd, uint8_t *buf, size_t nbyte) {
+    if (!g_tjpgd_ctx) return 0;
+    if (g_tjpgd_ctx->pos + nbyte > g_tjpgd_ctx->sz) nbyte = g_tjpgd_ctx->sz - g_tjpgd_ctx->pos;
+    if (nbyte > 0) {
+        if (buf) memcpy(buf, g_tjpgd_ctx->data + g_tjpgd_ctx->pos, nbyte);
+        g_tjpgd_ctx->pos += nbyte;
+    }
+    return nbyte;
+}
+
+static int _tjpgd_writer(JDEC *jd, void *rect, JRECT *out) {
+    if (!g_tjpgd_ctx) return 0;
+    uint16_t *src = (uint16_t *)rect;
+    int w = out->right - out->left + 1;
+    int h = out->bottom - out->top + 1;
+    for (int y = 0; y < h; y++) {
+        uint16_t *dst = g_tjpgd_ctx->out_buf + (out->top + y) * g_tjpgd_ctx->out_w + out->left;
+        for (int x = 0; x < w; x++) {
+            uint16_t px = src[y * w + x];
+            *dst++ = (px >> 8) | (px << 8);
+        }
+    }
+    return 1;
+}
+
+static uint16_t *_jpg_to_rgb565_tjpgd(const uint8_t *data, size_t sz, uint32_t *out_w, uint32_t *out_h) {
+    tjpgd_context ctx = {data, sz, 0, nullptr, 0};
+    g_tjpgd_ctx = &ctx;
+
+    uint8_t *work = (uint8_t *)malloc(4096); 
+    if (!work) { g_tjpgd_ctx = nullptr; return nullptr; }
+
+    JDEC jd;
+    if (jd_prepare(&jd, _tjpgd_reader, work, 4096, nullptr) != JDR_OK) {
+        free(work);
+        g_tjpgd_ctx = nullptr;
+        return nullptr;
+    }
+
+    // Scale can be 0 (1/1), 1 (1/2), 2 (1/4), 3 (1/8)
+    uint8_t scale = 0;
+    while (scale < 3 && ((jd.width >> scale) > 1024 || (jd.height >> scale) > 1024)) {
+        scale++;
+    }
+    
+    int dw = jd.width >> scale;
+    int dh = jd.height >> scale;
+    ESP_LOGI("SD_TAB", "tjpgd: %dx%d -> %dx%d (scale 1/%d)", jd.width, jd.height, dw, dh, 1 << scale);
+
+    ctx.out_w = dw;
+    ctx.out_buf = (uint16_t *)malloc((size_t)dw * dh * 2);
+    if (!ctx.out_buf) {
+        ESP_LOGE("SD_TAB", "tjpgd: out of mem for %dx%d", dw, dh);
+        free(work);
+        g_tjpgd_ctx = nullptr;
+        return nullptr;
+    }
+
+    if (jd_decomp(&jd, _tjpgd_writer, scale) != JDR_OK) {
+        ESP_LOGE("SD_TAB", "tjpgd decomp fail (Progressive JPG?)");
+        free(ctx.out_buf);
+        free(work);
+        g_tjpgd_ctx = nullptr;
+        return nullptr;
+    }
+
+    *out_w = dw;
+    *out_h = dh;
+    free(work);
+    g_tjpgd_ctx = nullptr;
+    return ctx.out_buf;
+}
+
+
+// ── stb_image Adapter ───────────────────────────────────────────────────────
+static uint16_t *_jpg_to_rgb565_stb(const uint8_t *data, size_t sz, uint32_t *out_w, uint32_t *out_h) {
+    if (!data || sz == 0) return nullptr;
+
+    int w, h, n;
+    if (!stbi_info_from_memory(data, (int)sz, &w, &h, &n)) {
+        ESP_LOGE("SD_TAB", "stbi_info failed: %s", stbi_failure_reason());
+        return nullptr;
+    }
+    ESP_LOGE("SD_TAB", "stb_image info: %dx%d channels:%d", w, h, n);
+
+    if ((uint64_t)w * h > 1500000) {
+        ESP_LOGE("SD_TAB", "stb_image: Image too large for full decode. Try Baseline JPG.");
+        return nullptr;
+    }
+
+    unsigned char *px = stbi_load_from_memory(data, (int)sz, &w, &h, &n, 3);
+    if (!px) {
+        ESP_LOGE("SD_TAB", "stbi_load failed (%dx%d): %s", w, h, stbi_failure_reason());
+        return nullptr;
+    }
+    
+    *out_w = (uint32_t)w;
+    *out_h = (uint32_t)h;
+    
+    uint16_t *buf = (uint16_t*)malloc((size_t)w * h * 2);
+    if (buf) {
+        for (int i = 0; i < (w * h); i++) {
+            uint8_t r = px[i*3], g = px[i*3+1], b = px[i*3+2];
+            uint16_t color = ((uint16_t)(r >> 3) << 11) | ((uint16_t)(g >> 2) << 5) | (b >> 3);
+            buf[i] = (color >> 8) | (color << 8); // Swap for display
+        }
+    } else {
+        ESP_LOGE("SD_TAB", "Failed to alloc RGB565 buffer for %dx%d", w, h);
+    }
+    
+    free(px);
+    return buf;
+}
+
+
+
 static void _sd_show_image(const char *path) {
     if (!path || !g_sd_viewer || !g_sd_img_obj) return;
 
-    FILE *f = fopen(path, "rb");
-    if (!f) { ESP_LOGE("SD_TAB","open fail: %s",path); return; }
-    fseek(f, 0, SEEK_END);
-    long sz = ftell(f); rewind(f);
-    if (sz<=0 || sz>8*1024*1024) { fclose(f); return; }
+    uint32_t free_h = esp_get_free_heap_size();
+    uint32_t free_i = esp_get_free_internal_heap_size();
+    ESP_LOGE("SD_TAB", "Loading image: %s (Heap: %u, Int: %u)", path, free_h, free_i);
 
-    uint8_t *file_buf = (uint8_t*)heap_caps_malloc(sz, MALLOC_CAP_SPIRAM|MALLOC_CAP_8BIT);
-    if (!file_buf) { ESP_LOGE("SD_TAB","no mem %ld",sz); fclose(f); return; }
-    if ((long)fread(file_buf,1,sz,f)!=sz) { free(file_buf); fclose(f); return; }
-    fclose(f);
+    // Safety: stop the image widget from looking at the old buffer before we free it
+    if (g_sd_img_obj) {
+        lv_img_set_src(g_sd_img_obj, (const void*)nullptr);
+    }
+    lv_img_cache_invalidate_src(&g_sd_img_dsc);
 
-    if (g_sd_raw_buf) { free(g_sd_raw_buf); g_sd_raw_buf = nullptr; }
-
-    const char *ext = strrchr(path,'.');
-    uint32_t iw=0, ih=0;
-    bool ok = false;
-
-    if (ext && strcasecmp(ext,".bmp")==0) {
-        uint16_t *px = _bmp_to_rgb565(file_buf, sz, &iw, &ih);
-        free(file_buf);
-        if (!px) { ESP_LOGE("SD_TAB","BMP decode fail"); return; }
-        g_sd_raw_buf = (uint8_t*)px;
-        g_sd_img_dsc = {};
-        g_sd_img_dsc.header.cf = LV_IMG_CF_TRUE_COLOR;
-        g_sd_img_dsc.header.w  = iw;
-        g_sd_img_dsc.header.h  = ih;
-        g_sd_img_dsc.data      = g_sd_raw_buf;
-        g_sd_img_dsc.data_size = iw*ih*2;
-        ok = true;
-
-    } else if (ext && strcasecmp(ext,".png")==0) {
-        if (!_png_dims(file_buf,sz,&iw,&ih)) { free(file_buf); return; }
-        g_sd_raw_buf = file_buf;
-        g_sd_img_dsc = {};
-        g_sd_img_dsc.header.cf = LV_IMG_CF_RAW;
-        g_sd_img_dsc.header.w  = iw;
-        g_sd_img_dsc.header.h  = ih;
-        g_sd_img_dsc.data      = g_sd_raw_buf;
-        g_sd_img_dsc.data_size = (uint32_t)sz;
-        ok = true;
-
-    } else if (ext && (strcasecmp(ext,".jpg")==0||strcasecmp(ext,".jpeg")==0)) {
-        if (!_jpg_dims(file_buf,sz,&iw,&ih)) { free(file_buf); return; }
-        g_sd_raw_buf = file_buf;
-        g_sd_img_dsc = {};
-        g_sd_img_dsc.header.cf = LV_IMG_CF_RAW;
-        g_sd_img_dsc.header.w  = iw;
-        g_sd_img_dsc.header.h  = ih;
-        g_sd_img_dsc.data      = g_sd_raw_buf;
-        g_sd_img_dsc.data_size = (uint32_t)sz;
-        ok = true;
-    } else {
-        free(file_buf);
+    if (g_sd_raw_buf) { 
+        free(g_sd_raw_buf); 
+        g_sd_raw_buf = nullptr; 
     }
 
-    if (!ok) return;
+    const char *ext = strrchr(path, '.');
+    uint32_t iw = 0, ih = 0;
+    bool ok = false;
+    const char *err_msg = "Image loading failed";
 
+    if (ext && strcasecmp(ext, ".bmp") == 0) {
+        FILE *f = fopen(path, "rb");
+        if (f) {
+            fseek(f, 0, SEEK_END);
+            size_t sz = (size_t)ftell(f);
+            rewind(f);
+            ESP_LOGE("SD_TAB", "BMP size: %u", sz);
+            uint8_t *tmp = (uint8_t*)heap_caps_malloc(sz, MALLOC_CAP_SPIRAM);
+            if (tmp) {
+                if (fread(tmp, 1, sz, f) == sz) {
+                    uint16_t *px = _bmp_to_rgb565(tmp, sz, &iw, &ih);
+                    if (px) { g_sd_raw_buf = (uint8_t*)px; ok = true; }
+                }
+                free(tmp);
+            }
+            fclose(f);
+        }
+    } else if (ext && (strcasecmp(ext, ".jpg") == 0 || strcasecmp(ext, ".jpeg") == 0)) {
+        FILE *f = fopen(path, "rb");
+        if (f) {
+            fseek(f, 0, SEEK_END);
+            size_t sz = (size_t)ftell(f);
+            rewind(f);
+            ESP_LOGE("SD_TAB", "JPG size: %u", sz);
+            if (sz > 4) {
+                uint8_t *tmp = (uint8_t*)heap_caps_malloc(sz, MALLOC_CAP_SPIRAM);
+                if (tmp) {
+                    if (fread(tmp, 1, sz, f) == sz) {
+                        // Header check
+                        if (tmp[0] == 0xFF && tmp[1] == 0xD8) {
+                            int type = _get_jpeg_type(tmp, sz);
+                            uint16_t *px = nullptr;
+                            
+                            // 1. Try stb_image first for maximum sharpness/quality
+                            ESP_LOGI("SD_TAB", "Attempting high-quality stb_image decode...");
+                            px = _jpg_to_rgb565_stb(tmp, sz, &iw, &ih);
+
+                            // 2. Fallback to tjpgd with auto-scaling if stb_image is too memory-heavy
+                            if (!px && type != 2) {
+                                ESP_LOGI("SD_TAB", "stb_image too large for PSRAM; falling back to scaled tjpgd...");
+                                px = _jpg_to_rgb565_tjpgd(tmp, sz, &iw, &ih);
+                            }
+
+                            if (px) { 
+                                g_sd_raw_buf = (uint8_t*)px; 
+                                ok = true; 
+                            } else {
+                                if (type == 2) err_msg = "Progressive JPG too large (needs Baseline to scale)";
+                                else err_msg = "Image too large for PSRAM (even with scaling)";
+                            }
+                        } else {
+                            ESP_LOGE("SD_TAB", "Invalid JPG header: %02x %02x", tmp[0], tmp[1]);
+                        }
+                    }
+                    free(tmp);
+                }
+            }
+            fclose(f);
+        }
+    } else {
+        ESP_LOGE("SD_TAB", "skipping unsupported format: %s", ext ? ext : "none");
+    }
+
+    if (!ok) {
+        if (g_sd_status_lbl) {
+            lv_obj_clear_flag(g_sd_status_lbl, LV_OBJ_FLAG_HIDDEN);
+            lv_label_set_text(g_sd_status_lbl, err_msg);
+            lv_obj_set_style_text_color(g_sd_status_lbl, lv_color_hex(0xFF0000), 0);
+        }
+        return;
+    }
+
+    if (g_sd_status_lbl) lv_obj_add_flag(g_sd_status_lbl, LV_OBJ_FLAG_HIDDEN);
+
+    // Update image descriptor
+    g_sd_img_dsc.header.w = (lv_coord_t)iw;
+    g_sd_img_dsc.header.h = (lv_coord_t)ih;
+    g_sd_img_dsc.header.cf = LV_IMG_CF_TRUE_COLOR;
+    g_sd_img_dsc.data_size = (uint32_t)iw * ih * 2;
+    g_sd_img_dsc.data = (const uint8_t*)g_sd_raw_buf;
+
+    // Update image widget
+    lv_img_set_src(g_sd_img_obj, &g_sd_img_dsc);
     lv_obj_set_size(g_sd_img_obj, (lv_coord_t)iw, (lv_coord_t)ih);
-    lv_obj_set_style_bg_img_src(g_sd_img_obj, &g_sd_img_dsc, 0);
-    lv_obj_set_style_bg_opa(g_sd_img_obj, LV_OPA_COVER, 0);
-    lv_obj_set_pos(g_sd_img_obj, 0, 0);
-    lv_obj_scroll_to(g_sd_viewer, 0, 0, LV_ANIM_OFF);
-    lv_obj_add_flag(g_sd_list_view, LV_OBJ_FLAG_HIDDEN);
-    lv_obj_clear_flag(g_sd_viewer,  LV_OBJ_FLAG_HIDDEN);
-    ESP_LOGI("SD_TAB","Showing %s (%dx%d)",path,iw,ih);
+
+    // Show viewer after preparing data
+    lv_obj_clear_flag(g_sd_viewer, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_scroll_to(lv_obj_get_child(g_sd_viewer, 0), 0, 0, LV_ANIM_OFF); 
+
+    ESP_LOGE("SD_TAB", "Showing %s (%dx%d)", path, iw, ih);
 }
 
 // ── Make a single row in the list ─────────────────────────────────────────────
@@ -247,6 +498,7 @@ static lv_obj_t *_sd_make_row(lv_obj_t *parent, int y,
 // ── Scan current directory and rebuild list ───────────────────────────────────
 static void _sd_scan() {
     if (!g_sd_list_view) return;
+    _sd_clear_pool();
     lv_obj_clean(g_sd_list_view);
     lv_obj_scroll_to_y(g_sd_list_view, 0, LV_ANIM_OFF);
 
@@ -316,7 +568,7 @@ static void _sd_scan() {
         lv_obj_t *row = _sd_make_row(g_sd_list_view, item_y,
                                       LV_SYMBOL_DIRECTORY, 0xF0A030, name, 0x181818);
         lv_obj_add_event_cb(row, _sd_dir_click_cb, LV_EVENT_CLICKED,
-                            (void*)strdup(p.c_str()));
+                            (void*)_sd_pool_strdup(p));
         item_y += SD_ROW_H + SD_ROW_GAP;
     }
 
@@ -327,7 +579,7 @@ static void _sd_scan() {
         lv_obj_t *row = _sd_make_row(g_sd_list_view, item_y,
                                       LV_SYMBOL_IMAGE, 0x00CED1, name, 0x1a1a1a);
         lv_obj_add_event_cb(row, _sd_file_click_cb, LV_EVENT_CLICKED,
-                            (void*)strdup(p.c_str()));
+                            (void*)_sd_pool_strdup(p));
         item_y += SD_ROW_H + SD_ROW_GAP;
     }
 }
@@ -364,6 +616,12 @@ static void tab_sd_create(lv_obj_t *parent) {
     lv_obj_add_event_cb(rbtn, [](lv_event_t *) {
         g_sd_cur_path = SD_TAB_MOUNT;
         sd_card_do_unmount();
+        // -I${sysenv.IDF_PATH}/components/driver/include
+        // -I${sysenv.IDF_PATH}/components/spi_flash/include
+        // -DLV_USE_PNG=1
+        // -DLV_USE_SJPG=1
+        // -DLV_USE_BMP=1
+        // -DPNG_USE_LV_FILESYSTEM=1
         sd_card_do_mount();
         // Clear the poll-notify flag since we're handling the result directly
         esphome::sd_card::g_sd_newly_mounted = false;
@@ -396,29 +654,37 @@ static void tab_sd_create(lv_obj_t *parent) {
     lv_label_set_text(g_sd_status_lbl, "Tap " LV_SYMBOL_REFRESH " to scan SD card");
 
     // ── Full-screen image viewer ───────────────────────────────────────────────
-    g_sd_viewer = lv_obj_create(parent);
-    lv_obj_set_size(g_sd_viewer, 800, 352);
+    // We create this as a child of the root screen so it can cover everything
+    g_sd_viewer = lv_obj_create(lv_scr_act());
+    lv_obj_set_size(g_sd_viewer, 800, 480);
     lv_obj_set_pos(g_sd_viewer, 0, 0);
     lv_obj_set_style_bg_color(g_sd_viewer, lv_color_hex(0x000000), 0);
     lv_obj_set_style_bg_opa(g_sd_viewer, LV_OPA_COVER, 0);
     lv_obj_set_style_pad_all(g_sd_viewer, 0, 0);
     lv_obj_set_style_radius(g_sd_viewer, 0, 0);
     _panel_reset(g_sd_viewer);
-    lv_obj_set_scroll_dir(g_sd_viewer, LV_DIR_ALL);
-    lv_obj_set_scrollbar_mode(g_sd_viewer, LV_SCROLLBAR_MODE_AUTO);
+    lv_obj_clear_flag(g_sd_viewer, LV_OBJ_FLAG_SCROLLABLE); // fixed container
     lv_obj_add_flag(g_sd_viewer, LV_OBJ_FLAG_HIDDEN);
 
-    // Image display object (sized to image at load time)
-    g_sd_img_obj = lv_obj_create(g_sd_viewer);
-    lv_obj_set_size(g_sd_img_obj, 0, 0);
-    lv_obj_set_pos(g_sd_img_obj, 0, 0);
-    lv_obj_set_style_bg_opa(g_sd_img_obj, LV_OPA_TRANSP, 0);
-    lv_obj_set_style_border_width(g_sd_img_obj, 0, 0);
-    lv_obj_set_style_pad_all(g_sd_img_obj, 0, 0);
-    lv_obj_set_style_radius(g_sd_img_obj, 0, 0);
-    _panel_reset(g_sd_img_obj);
+    // Image scrollable content area
+    lv_obj_t *img_cont = lv_obj_create(g_sd_viewer);
+    lv_obj_set_size(img_cont, 800, 480);
+    lv_obj_set_pos(img_cont, 0, 0);
+    _panel_reset(img_cont);
+    lv_obj_set_style_bg_opa(img_cont, LV_OPA_TRANSP, 0);
+    lv_obj_set_scroll_dir(img_cont, LV_DIR_ALL);
+    lv_obj_set_scrollbar_mode(img_cont, LV_SCROLLBAR_MODE_AUTO);
 
-    // Back button (top-left overlay in viewer)
+    // Image display object (sized to image at load time)
+    g_sd_img_obj = lv_img_create(img_cont);
+    lv_obj_set_pos(g_sd_img_obj, 0, 0);
+    _panel_reset(g_sd_img_obj);
+    // Add debug border to verify widget existence and size
+    lv_obj_set_style_border_color(g_sd_img_obj, lv_color_hex(0xFF0000), 0);
+    lv_obj_set_style_border_width(g_sd_img_obj, 1, 0);
+    lv_obj_set_style_border_opa(g_sd_img_obj, LV_OPA_COVER, 0);
+
+    // Back button (child of g_sd_viewer, so it stays fixed relative to the screen)
     lv_obj_t *bbtn = lv_btn_create(g_sd_viewer);
     lv_obj_set_size(bbtn, 100, 36);
     lv_obj_set_pos(bbtn, 8, 8);

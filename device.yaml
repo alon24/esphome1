@@ -13,6 +13,10 @@ esphome:
       - -I${sysenv.IDF_PATH}/components/fatfs/vfs
       - -I${sysenv.IDF_PATH}/components/driver/include
       - -I${sysenv.IDF_PATH}/components/spi_flash/include
+      - -DLV_USE_PNG=1
+      - -DLV_USE_SJPG=1
+      - -DLV_USE_BMP=1
+      - -DCORE_DEBUG_LEVEL=3
   includes:
     - custom/ui_helpers.h
     - custom/wifi_setup.h
@@ -134,6 +138,12 @@ light:
     output: backlight_output
     restore_mode: ALWAYS_ON
     default_transition_length: 0s
+
+image:
+  - file: resources/testscreen.png
+    id: dummy_png
+    type: RGB
+    resize: 10x10
 
 # ─── 4.3" 800×480 RGB Parallel Display (ST7262) ─────────────────────────────
 display:
@@ -319,6 +329,12 @@ lvgl:
             x: -200
             y: -200
             text_font: MONTSERRAT_48
+        - image:
+            src: dummy_png
+            x: -200
+            y: -200
+            width: 1
+            height: 1
 
 # ─── SNTP Time ───────────────────────────────────────────────────────────────
 time:

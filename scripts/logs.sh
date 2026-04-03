@@ -15,19 +15,31 @@ CONFIG="${1:-device.yaml}"
 DEVICE_IP="${DEVICE_IP:-10.100.102.46}"
 TIMEOUT=4
 
-ESPHOME="${ESPHOME:-$ROOT_DIR/venv/bin/esphome}"
+# ── Find esphome executable ───────────────────────────────────────────────────
+if [ -z "${ESPHOME:-}" ]; then
+  if command -v esphome &>/dev/null; then
+    ESPHOME="esphome"
+  elif [ -x "$ROOT_DIR/venv/bin/esphome" ]; then
+    ESPHOME="$ROOT_DIR/venv/bin/esphome"
+  elif [ -x "$ROOT_DIR/new_venv/bin/esphome" ]; then
+    ESPHOME="$ROOT_DIR/new_venv/bin/esphome"
+  else
+    echo "✗  esphome not found. Ensure it is in PATH or a venv at $ROOT_DIR/venv"
+    exit 1
+  fi
+fi
 
 cd "$ROOT_DIR"
 
 if [ "${USB:-0}" = "1" ]; then
   echo "▶  Connecting via USB..."
   $ESPHOME logs "$CONFIG" --device /dev/ttyUSB0
+elif [ -e /dev/ttyUSB0 ]; then
+  echo "▶  USB detected — connecting via serial..."
+  $ESPHOME logs "$CONFIG" --device /dev/ttyUSB0
 elif ping -c 1 -W "$TIMEOUT" "$DEVICE_IP" &>/dev/null; then
   echo "▶  Connecting via IP ($DEVICE_IP)..."
   $ESPHOME logs "$CONFIG" --device "$DEVICE_IP"
-elif [ -e /dev/ttyUSB0 ]; then
-  echo "▶  IP unreachable, falling back to USB..."
-  $ESPHOME logs "$CONFIG" --device /dev/ttyUSB0
 else
   echo "✗  Device not reachable at $DEVICE_IP and no USB found."
   exit 1
