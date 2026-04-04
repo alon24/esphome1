@@ -16,11 +16,11 @@ esphome:
       - -DLV_USE_PNG=1
       - -DLV_USE_SJPG=1
       - -DLV_USE_BMP=1
-      - -DCORE_DEBUG_LEVEL=3
   includes:
     - custom/ui_helpers.h
     - custom/wifi_setup.h
     - custom/version_info.h
+    - custom/stb_image.h
     # - custom/test_screen.h
     # app pages (4-tab dashboard)
     - custom/tab_home.h
@@ -62,6 +62,14 @@ esp32:
       CONFIG_VFS_SUPPORT_POSIX: "y"
       CONFIG_VFS_SUPPORT_FATFS: "y"
       CONFIG_FATFS_USE_FASTSEEK: "y"
+      CONFIG_FATFS_LFN_NONE: "n"
+      CONFIG_FATFS_LFN_HEAP: "y"
+      CONFIG_FATFS_LFN_HEAP_INTERNAL: "n"
+      CONFIG_FATFS_MAX_LFN: "255"
+      CONFIG_FATFS_CODEPAGE_437: "y"
+      CONFIG_FATFS_SECTOR_512: "y"
+      CONFIG_FATFS_SECTOR_4096: "n"
+      CONFIG_LWIP_MAX_SOCKETS: "16"
       CONFIG_HAVE_SDSPI: "y"
       CONFIG_ESP_CONSOLE_UART: "y"
       CONFIG_ESP_CONSOLE_UART_NUM: "0"
@@ -101,10 +109,11 @@ api:
     key: !secret api_encryption_key
 
 logger:
-  level: DEBUG
+  level: VERY_VERBOSE
   baud_rate: 115200
   hardware_uart: UART0
   logs:
+    sd_card: VERY_VERBOSE
     wifi: ERROR
     wifi_esp32: ERROR
     api: ERROR
@@ -115,6 +124,7 @@ logger:
     safe_mode: ERROR
     i2c.idf: ERROR
     gt911.touchscreen: ERROR
+    touchscreen: ERROR
     lvgl: ERROR
     display.mipi_rgb: ERROR
     light: ERROR
@@ -340,7 +350,8 @@ lvgl:
 time:
   - platform: sntp
     id: sntp_time
-    timezone: "UTC"
+    timezone: "IST-2IDT,M3.4.4/26,M10.5.0"
+
 
 # ─── Intervals ────────────────────────────────────────────────────────────────
 interval:

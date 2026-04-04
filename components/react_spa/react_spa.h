@@ -16,7 +16,7 @@ namespace esphome {
 namespace react_spa {
 
 static const char *const TAG = "react_spa";
-static const char *const APP_PATH = "/app.gz";
+static const char *const APP_PATH = "/spiffs/index.html.gz";
 
 class ReactSPAComponent : public Component {
  public:
@@ -97,8 +97,11 @@ class ReactSPAComponent : public Component {
 #else
 
 #include <algorithm>
+#include <cctype>
 #include <cstdio>
 #include <cstring>
+#include <dirent.h>
+#include <sys/stat.h>
 #include "esp_http_server.h"
 #include "esp_log.h"
 #include "esp_spiffs.h"
@@ -106,11 +109,14 @@ class ReactSPAComponent : public Component {
 #include "esp_netif.h"
 
 namespace esphome {
+extern bool sd_card_is_mounted();
+
 namespace react_spa {
 
 static const char *const TAG = "react_spa";
 static const char *const APP_PATH = "/spiffs/app.gz";
 static const char *const SPIFFS_BASE = "/spiffs";
+
 
 // Extract a JSON string value — simple, no escape handling needed for SSIDs/passwords
 static bool extract_json_string(const char *json, const char *key, char *out, size_t out_len) {
@@ -141,6 +147,81 @@ static void json_escape(const char *in, char *out, size_t out_len) {
 
 class ReactSPAComponent : public Component {
  public:
+  static void url_decode(char *dst, const char *src) {
+    char a, b;
+    while (*src) {
+      if ((*src == '%') && ((a = src[1]) && (b = src[2])) && (isxdigit(a) && isxdigit(b))) {
+        if (a >= 'a') a -= 'a' - 'A';
+        if (a >= 'A') a -= ('A' - 10); else a -= '0';
+        if (b >= 'a') b -= 'a' - 'A';
+        if (b >= 'A') b -= ('A' - 10); else b -= '0';
+        *dst++ = 16 * a + b;
+        src += 3;
+      } else if (*src == '+') {
+        *dst++ = ' ';
+        src++;
+      } else {
+        *dst++ = *src++;
+      }
+    }
+    *dst++ = '\0';
+  }
+
+  static bool force_mkdir(const char *path) {
+    if (!path || strlen(path) < 1) return false;
+    char tmp[128];
+    snprintf(tmp, sizeof(tmp), "%s", path);
+    size_t len = strlen(tmp);
+
+    if (len > 0 && tmp[len - 1] == '/') tmp[len - 1] = 0;
+    if (len < 8) return false; 
+    
+    char *p = NULL;
+    for (p = tmp + 8; *p; p++) {
+        if (*p == '/') {
+            *p = 0;
+            struct stat st;
+            if (stat(tmp, &st) != 0) {
+                if (mkdir(tmp, 0777) != 0 && errno != EEXIST) {
+                    ESP_LOGE("SD_API", "mkdir failed: %s (errno %d)", tmp, errno);
+                    return false;
+                }
+            }
+            *p = '/';
+        }
+    }
+
+    struct stat st;
+    if (stat(tmp, &st) != 0) {
+        if (mkdir(tmp, 0777) != 0 && errno != EEXIST) {
+            ESP_LOGE("SD_API", "final mkdir failed: %s (errno %d)", tmp, errno);
+            return false;
+        }
+    }
+    return true;
+  }
+
+  static esp_err_t sd_diag_handler(httpd_req_t *req) {
+    char json[512];
+    bool mounted = esphome::sd_card_is_mounted();
+    struct stat st;
+    int res_root = stat("/sdcard/", &st);
+    int res_conv = stat("/sdcard/conv", &st);
+    int test_mkdir = mkdir("/sdcard/diagtest", 0777);
+    int mkdir_errno = errno;
+    if (test_mkdir == 0) rmdir("/sdcard/diagtest");
+    snprintf(json, sizeof(json),
+      "{\"mounted\":%s,\"root_stat\":%d,\"conv_stat\":%d,\"test_mkdir\":%d,\"mkdir_errno\":%d}",
+      mounted ? "true" : "false", res_root, res_conv, test_mkdir, mkdir_errno);
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_sendstr(req, json);
+    return ESP_OK;
+  }
+
+
+
+
+
   void set_port(uint16_t port) { port_ = port; }
 
   void setup() override {
@@ -163,9 +244,12 @@ class ReactSPAComponent : public Component {
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
     config.server_port = port_;
     config.uri_match_fn = httpd_uri_match_wildcard;
-    config.max_open_sockets = 7;
-    config.stack_size = 8192;
-    config.max_uri_handlers = 12;
+    config.max_open_sockets = 10;
+    config.max_uri_handlers = 20;
+    config.stack_size = 12288;
+    config.lru_purge_enable = true;
+    config.recv_wait_timeout = 10;
+    config.send_wait_timeout = 10;
 
     if (httpd_start(&server_, &config) != ESP_OK) {
       ESP_LOGE(TAG, "Failed to start HTTP server");
@@ -187,6 +271,38 @@ class ReactSPAComponent : public Component {
         .user_ctx = nullptr,
     };
     httpd_register_uri_handler(server_, &health_uri);
+
+    // GET /api/sd/list?path=DIR → {"files":[{"name":"..","size":0,"isDir":true},...]}
+    httpd_uri_t sd_list = { .uri = "/api/sd/list", .method = HTTP_GET, .handler = sd_list_handler, .user_ctx = this };
+    httpd_register_uri_handler(server_, &sd_list);
+
+    // GET /api/sd/diag → {"mounted":bool,...}
+    httpd_uri_t sd_diag = { .uri = "/api/sd/diag", .method = HTTP_GET, .handler = sd_diag_handler, .user_ctx = this };
+    httpd_register_uri_handler(server_, &sd_diag);
+
+    httpd_uri_t sd_upload_uri = {
+        .uri = "/api/sd/upload",
+        .method = HTTP_POST,
+        .handler = sd_upload_handler,
+        .user_ctx = nullptr,
+    };
+    httpd_register_uri_handler(server_, &sd_upload_uri);
+
+    httpd_uri_t sd_delete_uri = {
+        .uri = "/api/sd/delete",
+        .method = HTTP_POST,
+        .handler = sd_delete_handler,
+        .user_ctx = nullptr,
+    };
+    httpd_register_uri_handler(server_, &sd_delete_uri);
+
+    httpd_uri_t sd_file_uri = {
+        .uri = "/api/sd/file/*",
+        .method = HTTP_GET,
+        .handler = sd_file_handler,
+        .user_ctx = nullptr,
+    };
+    httpd_register_uri_handler(server_, &sd_file_uri);
 
     httpd_uri_t wifi_status_uri = {
         .uri = "/api/wifi/status",
@@ -212,6 +328,19 @@ class ReactSPAComponent : public Component {
     };
     httpd_register_uri_handler(server_, &wifi_connect_uri);
 
+    httpd_uri_t reboot_uri = {
+        .uri = "/api/reboot",
+        .method = HTTP_GET,
+        .handler = [](httpd_req_t *req) {
+          httpd_resp_sendstr(req, "{\"status\":\"rebooting\"}");
+          vTaskDelay(pdMS_TO_TICKS(500));
+          esp_restart();
+          return ESP_OK;
+        },
+        .user_ctx = nullptr,
+    };
+    httpd_register_uri_handler(server_, &reboot_uri);
+
     httpd_uri_t root_uri = {
         .uri = "/*",
         .method = HTTP_GET,
@@ -228,6 +357,175 @@ class ReactSPAComponent : public Component {
  private:
   uint16_t port_{80};
   httpd_handle_t server_{nullptr};
+
+  static esp_err_t sd_list_handler(httpd_req_t *req) {
+    char base_path[128] = "/sdcard";
+    char query[128];
+    if (httpd_req_get_url_query_str(req, query, sizeof(query)) == ESP_OK) {
+        char val[128];
+        if (httpd_query_key_value(query, "path", val, sizeof(val)) == ESP_OK) {
+            char decoded[128];
+            url_decode(decoded, val);
+            snprintf(base_path, sizeof(base_path), "/sdcard/%s", decoded);
+        }
+    }
+
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_sendstr_chunk(req, "{\"files\":[");
+    DIR *dir = opendir(base_path);
+    if (!dir) {
+      httpd_resp_sendstr_chunk(req, "]}");
+      httpd_resp_send_chunk(req, nullptr, 0);
+      return ESP_OK;
+    }
+    struct dirent *e;
+    bool first = true;
+    while ((e = readdir(dir)) != NULL) {
+        if (e->d_name[0] == '.') continue;
+        
+        char full_p[256];
+        snprintf(full_p, sizeof(full_p), "%s/%s", base_path, e->d_name);
+        struct stat st;
+        stat(full_p, &st);
+
+        if (first) {
+            first = false;
+        } else {
+            if (httpd_resp_sendstr_chunk(req, ",") != ESP_OK) { closedir(dir); return ESP_FAIL; }
+        }
+        
+        char name_esc[512];
+        json_escape(e->d_name, name_esc, sizeof(name_esc));
+        
+        char entry[600];
+        snprintf(entry, sizeof(entry), "{\"name\":\"%s\",\"size\":%lu,\"isDir\":%s}", 
+                 name_esc, (unsigned long)st.st_size, (e->d_type == DT_DIR) ? "true" : "false");
+        
+        if (httpd_resp_sendstr_chunk(req, entry) != ESP_OK) { closedir(dir); return ESP_FAIL; }
+    }
+    closedir(dir);
+    httpd_resp_sendstr_chunk(req, "]}");
+    httpd_resp_send_chunk(req, nullptr, 0);
+    return ESP_OK;
+  }
+
+  static esp_err_t sd_upload_handler(httpd_req_t *req) {
+    char path_buf[128] = "/sdcard/upload.tmp";
+    char query[128];
+    
+    // Check if SD is actually mounted via our component
+    if (!esphome::sd_card_is_mounted()) {
+        ESP_LOGE("SD_API", "Operation failed: SD Card is NOT MOUNTED! Path: %s", req->uri);
+        httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "SD Card not ready");
+        return ESP_FAIL;
+    }
+
+    if (httpd_req_get_url_query_str(req, query, sizeof(query)) == ESP_OK) {
+        char raw_val[128], val[128];
+        if (httpd_query_key_value(query, "path", raw_val, sizeof(raw_val)) == ESP_OK) {
+            url_decode(val, raw_val);
+            
+            // Basic sanitization: Trim leading/trailing whitespace which can break FatFS
+            char *trimmed = val;
+            while(isspace((unsigned char)*trimmed)) trimmed++;
+            char *end = trimmed + strlen(trimmed) - 1;
+            while(end > trimmed && isspace((unsigned char)*end)) *end-- = '\0';
+
+            // If path contains a slash, ensure the directory exists
+            char *slash = strrchr(trimmed, '/');
+            if (slash) {
+                *slash = '\0';
+                char dir_path[128];
+                snprintf(dir_path, sizeof(dir_path), "/sdcard/%s", trimmed);
+                
+                if (!force_mkdir(dir_path)) {
+                    ESP_LOGE("SD_API", "Failed to force_mkdir: %s (errno %d)", dir_path, errno);
+                }
+                *slash = '/';
+            }
+            snprintf(path_buf, sizeof(path_buf), "/sdcard/%s", trimmed);
+            ESP_LOGI("SD_API", "Committing upload to: %s", path_buf);
+
+        }
+    }
+
+    FILE *f = fopen(path_buf, "w");
+    if (!f) {
+      ESP_LOGE("SD_API", "File error: Cannot open %s, Error: %s (errno %d)", path_buf, strerror(errno), errno);
+      httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Cannot open SD file");
+      return ESP_FAIL;
+    }
+
+    char buf[2048];
+    int remaining = (int)req->content_len;
+    while (remaining > 0) {
+      int to_recv = std::min(remaining, (int)sizeof(buf));
+      int received = httpd_req_recv(req, buf, to_recv);
+      if (received <= 0) {
+        fclose(f);
+        remove(path_buf);
+        return ESP_FAIL;
+      }
+      fwrite(buf, 1, received, f);
+      remaining -= received;
+    }
+    fclose(f);
+    httpd_resp_sendstr(req, "{\"status\":\"ok\"}");
+    return ESP_OK;
+  }
+
+  static esp_err_t sd_delete_handler(httpd_req_t *req) {
+    char query[256];
+    if (httpd_req_get_url_query_str(req, query, sizeof(query)) == ESP_OK) {
+        char val_raw[256], val[256], path[256];
+        if (httpd_query_key_value(query, "path", val_raw, sizeof(val_raw)) == ESP_OK) {
+            url_decode(val, val_raw);
+            snprintf(path, sizeof(path), "/sdcard/%s", val);
+            
+            struct stat st;
+            if (stat(path, &st) == 0) {
+                if (S_ISDIR(st.st_mode)) {
+                    if (rmdir(path) == 0) ESP_LOGI("SD_API", "Deleted Dir: %s", path);
+                    else ESP_LOGE("SD_API", "Failed Delete Dir: %s (errno %d)", path, errno);
+                } else {
+                    if (remove(path) == 0) ESP_LOGI("SD_API", "Deleted File: %s", path);
+                    else ESP_LOGE("SD_API", "Failed Delete File: %s (errno %d)", path, errno);
+                }
+            }
+        }
+    }
+    httpd_resp_sendstr(req, "{\"status\":\"ok\"}");
+    return ESP_OK;
+  }
+
+  static esp_err_t sd_file_handler(httpd_req_t *req) {
+    const char *uri_part = req->uri + strlen("/api/sd/file/");
+    char filename[128], path[128];
+    url_decode(filename, uri_part);
+    snprintf(path, sizeof(path), "/sdcard/%s", filename);
+    
+    FILE *f = fopen(path, "r");
+    if (!f) {
+      httpd_resp_send_err(req, HTTPD_404_NOT_FOUND, "File not found");
+      return ESP_FAIL;
+    }
+
+    if (strstr(filename, ".jpg") || strstr(filename, ".jpeg")) httpd_resp_set_type(req, "image/jpeg");
+    else if (strstr(filename, ".png")) httpd_resp_set_type(req, "image/png");
+    else httpd_resp_set_type(req, "application/octet-stream");
+
+    char buf[4096];
+    size_t n;
+    while ((n = fread(buf, 1, sizeof(buf), f)) > 0) {
+      if (httpd_resp_send_chunk(req, buf, (ssize_t)n) != ESP_OK) {
+        fclose(f);
+        return ESP_FAIL;
+      }
+    }
+    fclose(f);
+    httpd_resp_send_chunk(req, nullptr, 0);
+    return ESP_OK;
+  }
 
   static esp_err_t root_handler(httpd_req_t *req) {
     FILE *f = fopen(APP_PATH, "r");
@@ -246,7 +544,10 @@ class ReactSPAComponent : public Component {
     char buf[1024];
     size_t n;
     while ((n = fread(buf, 1, sizeof(buf), f)) > 0) {
-      httpd_resp_send_chunk(req, buf, (ssize_t) n);
+      if (httpd_resp_send_chunk(req, buf, (ssize_t) n) != ESP_OK) {
+        fclose(f);
+        return ESP_FAIL;
+      }
     }
     fclose(f);
     httpd_resp_send_chunk(req, nullptr, 0);

@@ -6,6 +6,8 @@
 #include "driver/gpio.h"
 #include "esp_timer.h"
 #include <dirent.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 
 // Sunton 8048S043 SD card SPI pins
 #define SD_CS_GPIO    GPIO_NUM_10
@@ -62,35 +64,89 @@ bool SDCardComponent::try_mount(bool notify) {
         spi_inited_ = true;
     }
 
-    esp_vfs_fat_sdmmc_mount_config_t mount_cfg = {};
-    mount_cfg.format_if_mount_failed = false;
-    mount_cfg.max_files              = 5;
-    mount_cfg.allocation_unit_size   = 16 * 1024;
+    esp_vfs_fat_mount_config_t mount_cfg = {
+        .format_if_mount_failed = false,
+        .max_files = 5,
+        .allocation_unit_size = 0,
+        .disk_status_check_enable = false,
+    };
 
     sdmmc_host_t host = SDSPI_HOST_DEFAULT();
     host.slot = host_slot_;
+    host.max_freq_khz = 10000; // Lower to 10MHz for stability
 
     sdspi_device_config_t slot_cfg = SDSPI_DEVICE_CONFIG_DEFAULT();
     slot_cfg.gpio_cs = SD_CS_GPIO;
     slot_cfg.host_id = (spi_host_device_t)host_slot_;
 
-    sdmmc_card_t *card = nullptr;
     esp_err_t ret = esp_vfs_fat_sdspi_mount("/sdcard", &host, &slot_cfg,
-                                             &mount_cfg, &card);
+                                             &mount_cfg, &card_);
     if (ret != ESP_OK) {
-        // Leave SPI bus initialised — try again next poll
-        ESP_LOGD(TAG, "Mount failed: %s", esp_err_to_name(ret));
+        ESP_LOGE(TAG, "Mount failed: %s (Check SD card presence/format)", esp_err_to_name(ret));
         return false;
     }
 
-    card_    = card;
     mounted_ = true;
-    ESP_LOGI(TAG, "SD card mounted");
+    ESP_LOGI(TAG, "SD card mounted successfully at /sdcard");
+    ESP_LOGI(TAG, "Card Name: %s", card_->cid.name);
     sdmmc_card_print_info(stdout, card_);
 
     if (notify) {
         g_sd_newly_mounted = true;
     }
+    
+    // Safety check: is the mount point actually visible to VFS?
+    struct stat st_root;
+    if (stat("/sdcard", &st_root) != 0) {
+        ESP_LOGE(TAG, "VFS Registration FAILED: /sdcard mount point not found after success! (errno=%d)", errno);
+        mounted_ = false;
+        return false;
+    } else {
+        // Create conv directory with robust check
+        struct stat st = {0};
+        if (stat("/sdcard/conv", &st) == -1) {
+            ESP_LOGI(TAG, "Ensuring: /sdcard/conv");
+            if (mkdir("/sdcard/conv", 0777) == 0) {
+                ESP_LOGI(TAG, "Directory prepared: /sdcard/conv");
+            } else if (errno != EEXIST) {
+                ESP_LOGE(TAG, "Failed to create /conv directory! Error: %s (errno %d)", strerror(errno), errno);
+            }
+        }
+    }
+
+    ESP_LOGI(TAG, "Mounted /sdcard and verified structure");
+    
+    // --- Manual Write Test (8.3 compatible) ---
+    struct stat st_test = {0};
+    if (stat("/sdcard/a.txt", &st_test) == 0) remove("/sdcard/a.txt");
+    
+    FILE *ft = fopen("/sdcard/a.txt", "w");
+    if (ft) {
+        fprintf(ft, "8.3 write test ok");
+        fclose(ft);
+        ESP_LOGI(TAG, "SD Card Base Write Test (a.txt): SUCCESS!");
+        remove("/sdcard/a.txt");
+
+        // Short dir test
+#if defined(CONFIG_FATFS_LFN_HEAP) || defined(CONFIG_FATFS_LFN_STACK)
+        ESP_LOGI(TAG, "LFN enabled, testing short directory creation...");
+#else
+        ESP_LOGI(TAG, "LFN disabled, testing short directory creation...");
+#endif
+        if (stat("/sdcard/tst", &st_test) == 0) rmdir("/sdcard/tst");
+        if (mkdir("/sdcard/tst", 0777) == 0) {
+            ESP_LOGI(TAG, "Short directory creation SUCCESS!");
+            rmdir("/sdcard/tst");
+        } else {
+            ESP_LOGW(TAG, "Short directory FAILED (errno %d: %s)", errno, strerror(errno));
+        }
+    } else {
+        ESP_LOGE(TAG, "SD Card Base Write Test FAILED! (errno=%d, error=%s)", errno, strerror(errno));
+    }
+    // -------------------------
+
+    mounted_ = true;
+    
     return true;
 }
 
@@ -111,6 +167,11 @@ void SDCardComponent::unmount() {
 void SDCardComponent::setup() {
     g_sd_card = this;
     _touch_cs_high();
+#if defined(CONFIG_FATFS_LFN_HEAP) || defined(CONFIG_FATFS_LFN_STACK)
+    ESP_LOGI(TAG, "Standard/Long Filename (LFN) support verified in SDK.");
+#else
+    ESP_LOGE(TAG, "CRITICAL: Long Filename (LFN) support appears DISABLED in SDK!");
+#endif
     ESP_LOGI(TAG, "SD card component initialising (SPI: CLK=12 MOSI=11 MISO=13 CS=10)");
     try_mount(false);
 }
@@ -138,6 +199,8 @@ void SDCardComponent::dump_config() {
 // These avoid the include-path problem: custom .h files can't easily include
 // component headers, but they can extern-declare plain C++ functions.
 
+namespace esphome {
+
 bool sd_card_is_mounted() {
     return esphome::sd_card::g_sd_card &&
            esphome::sd_card::g_sd_card->is_mounted();
@@ -146,7 +209,13 @@ bool sd_card_do_mount() {
     return esphome::sd_card::g_sd_card &&
            esphome::sd_card::g_sd_card->try_mount(false);
 }
-void sd_card_do_unmount() {
-    if (esphome::sd_card::g_sd_card)
+bool sd_card_do_unmount() {
+    if (esphome::sd_card::g_sd_card) {
         esphome::sd_card::g_sd_card->unmount();
+        return true;
+    }
+    return false;
 }
+
+} // namespace esphome
+

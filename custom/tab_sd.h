@@ -2,13 +2,20 @@
 #include "lvgl.h"
 #include "ui_helpers.h"
 // Forward declarations from sd_card component (avoids include-path issues)
-namespace esphome { namespace sd_card { extern volatile bool g_sd_newly_mounted; } }
-extern bool sd_card_is_mounted();
-extern bool sd_card_do_mount();
-extern void sd_card_do_unmount();
+namespace esphome { 
+  namespace sd_card { extern volatile bool g_sd_newly_mounted; } 
+  extern bool sd_card_is_mounted();
+  extern bool sd_card_do_mount();
+  extern bool sd_card_do_unmount();
+} 
+
+#include <dirent.h>
+#include <sys/stat.h>
 #include <sys/dirent.h>
 #include <sys/stat.h>
 #include <stdio.h>
+#include "esp_vfs_fat.h"
+#include "sdmmc_cmd.h"
 #include <string.h>
 #include <vector>
 #include <string>
@@ -252,6 +259,9 @@ static int _tjpgd_writer(JDEC *jd, void *rect, JRECT *out) {
     }
     return 1;
 }
+
+// SD card lifecycle handled elsewhere
+extern bool sd_card_do_mount();
 
 static uint16_t *_jpg_to_rgb565_tjpgd(const uint8_t *data, size_t sz, uint32_t *out_w, uint32_t *out_h) {
     tjpgd_context ctx = {data, sz, 0, nullptr, 0};
@@ -515,7 +525,7 @@ static void _sd_scan() {
     _lbl_bg(g_sd_status_lbl, TAB_SD_BG);
     lv_label_set_text(g_sd_status_lbl, "Scanning...");
 
-    if (!sd_card_is_mounted()) {
+    if (!esphome::sd_card_is_mounted()) {
         lv_label_set_text(g_sd_status_lbl, "No SD card");
         return;
     }
@@ -615,14 +625,14 @@ static void tab_sd_create(lv_obj_t *parent) {
     lv_obj_center(rl);
     lv_obj_add_event_cb(rbtn, [](lv_event_t *) {
         g_sd_cur_path = SD_TAB_MOUNT;
-        sd_card_do_unmount();
+        esphome::sd_card_do_unmount();
         // -I${sysenv.IDF_PATH}/components/driver/include
         // -I${sysenv.IDF_PATH}/components/spi_flash/include
         // -DLV_USE_PNG=1
         // -DLV_USE_SJPG=1
         // -DLV_USE_BMP=1
         // -DPNG_USE_LV_FILESYSTEM=1
-        sd_card_do_mount();
+        esphome::sd_card_do_mount();
         // Clear the poll-notify flag since we're handling the result directly
         esphome::sd_card::g_sd_newly_mounted = false;
         _sd_scan();
