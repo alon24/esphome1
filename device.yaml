@@ -109,31 +109,9 @@ api:
     key: !secret api_encryption_key
 
 logger:
-  level: VERY_VERBOSE
+  level: DEBUG
   baud_rate: 115200
   hardware_uart: UART0
-  logs:
-    sd_card: VERY_VERBOSE
-    wifi: ERROR
-    wifi_esp32: ERROR
-    api: ERROR
-    api.connection: ERROR
-    ota: ERROR
-    esphome.ota: ERROR
-    mdns: ERROR
-    safe_mode: ERROR
-    i2c.idf: ERROR
-    gt911.touchscreen: ERROR
-    touchscreen: ERROR
-    lvgl: ERROR
-    display.mipi_rgb: ERROR
-    light: ERROR
-    ledc.output: ERROR
-    psram: ERROR
-    component: ERROR
-    scheduler: ERROR
-    app: ERROR
-    logger: ERROR
 
 
 # ─── Backlight ───────────────────────────────────────────────────────────────
