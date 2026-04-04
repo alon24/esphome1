@@ -101,11 +101,36 @@ static void ui_set_disconnected() {
     tab_settings_set_network("Disconnected");
 }
 
+#include "esphome/components/lovyan_verified/lovyan_gfx.h"
+
+// High-speed flush callback for LVGL
+static void lvgl_flush_cb(lv_disp_drv_t *drv, const lv_area_t *area, lv_color_t *color_p) {
+    auto &lcd = esphome::lovyan_gfx::v_lcd();
+    int32_t w = (area->x2 - area->x1 + 1);
+    int32_t h = (area->y2 - area->y1 + 1);
+    
+    lcd.startWrite();
+    lcd.setAddrWindow(area->x1, area->y1, w, h);
+    lcd.writePixels((uint16_t *)&color_p->full, w * h);
+    lcd.endWrite();
+
+    lv_disp_flush_ready(drv);
+}
+
 // ── Main create ───────────────────────────────────────────────────────────────
 static void maindashboard_create(void) {
 
     // Override screen background
     lv_obj_t *scr = lv_scr_act();
+    lv_obj_clean(scr);
+
+    // SPEED OPTIMIZATION: Patch the slow ESPHome flush_cb with our fast Lovyan driver
+    lv_disp_t *disp = lv_disp_get_default();
+    if (disp != nullptr && disp->driver != nullptr) {
+        disp->driver->flush_cb = lvgl_flush_cb;
+        ESP_LOGI("main", "LVGL Speed-Patch Applied: Block-flush active.");
+    }
+
     lv_obj_set_style_bg_color(scr, lv_color_hex(DASH_BG), 0);
     lv_obj_set_style_bg_opa(scr, LV_OPA_COVER, 0);
     lv_obj_set_style_pad_all(scr, 0, 0);

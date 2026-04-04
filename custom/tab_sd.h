@@ -14,8 +14,6 @@ namespace esphome {
 #include <sys/dirent.h>
 #include <sys/stat.h>
 #include <stdio.h>
-#include "esp_vfs_fat.h"
-#include "sdmmc_cmd.h"
 #include <string.h>
 #include <vector>
 #include <string>

@@ -8,36 +8,44 @@ esphome:
   platformio_options:
     upload_speed: 921600
     build_flags:
-      - -I${sysenv.IDF_PATH}/components/vfs/include
-      - -I${sysenv.IDF_PATH}/components/sdmmc/include
-      - -I${sysenv.IDF_PATH}/components/fatfs/vfs
-      - -I${sysenv.IDF_PATH}/components/driver/include
-      - -I${sysenv.IDF_PATH}/components/spi_flash/include
       - -DLV_USE_PNG=1
       - -DLV_USE_SJPG=1
       - -DLV_USE_BMP=1
+      - -DLV_FONT_MONTSERRAT_12=1
+      - -DLV_FONT_MONTSERRAT_14=1
+      - -DLV_FONT_MONTSERRAT_16=1
+      - -DLV_FONT_MONTSERRAT_18=1
+      - -DLV_FONT_MONTSERRAT_20=1
+      - -DLV_FONT_MONTSERRAT_22=1
+      - -DLV_FONT_MONTSERRAT_24=1
+      - -DLV_FONT_MONTSERRAT_26=1
+      - -DLV_FONT_MONTSERRAT_48=1
+      - -DLV_USE_TEXTAREA=1
+      - -DLV_USE_KEYBOARD=1
+      - -DLV_USE_BTNMATRIX=1
+      - -DLV_USE_LABEL=1
+      - -DLV_USE_BTN=1
+      - -DLV_USE_BAR=1
+      - -DLV_USE_IMG=1
+      - -DLV_USE_LINE=1
+  libraries:
+    - "LovyanGFX"
   includes:
     - custom/ui_helpers.h
     - custom/wifi_setup.h
     - custom/version_info.h
     - custom/stb_image.h
-    # - custom/test_screen.h
-    # app pages (4-tab dashboard)
     - custom/tab_home.h
     - custom/tab_settings.h
     - custom/tab_wifi.h
-    # - custom/sd_card.h
-    # - custom/slideshow.h
-    # - custom/media_screen.h
     - custom/tab_sd.h
     - custom/maindashboard.h
   on_boot:
     - priority: -200
       then:
         - lambda: |-
-            maindashboard_create();
-            for (int i = 0; i < 10; i++)
-              ESP_LOGI("FW", ">>> FIRMWARE VERSION: %s <<<", FW_VERSION_STR);
+            maindashboard_create(); 
+            ESP_LOGI("main", "Dashboard Started");
 
 esp32:
   board: esp32-s3-devkitc-1
@@ -81,20 +89,16 @@ psram:
   speed: 80MHz
 
 wifi:
-  ssid: !secret wifi_ssid
-  password: !secret wifi_password
+  networks:
+    - ssid: !secret wifi_ssid
+      password: !secret wifi_password
   ap:
-    ssid: "ESP32-Display-AP"
-    password: "esp32display"
+    ssid: "ESP32-S3 Display AP"
+    password: "password"
+  reboot_timeout: 0s # No reboot on wifi failure for test
   on_connect:
     - lambda: |-
-        esp_netif_ip_info_t ip_info;
-        esp_netif_t *netif = esp_netif_get_handle_from_ifkey("WIFI_STA_DEF");
-        char ip_str[16] = "";
-        if (netif && esp_netif_get_ip_info(netif, &ip_info) == ESP_OK)
-          snprintf(ip_str, sizeof(ip_str), IPSTR, IP2STR(&ip_info.ip));
-        ui_set_connected(ip_str);
-        esp_wifi_set_mode(WIFI_MODE_APSTA);  // Keep AP active alongside STA
+        ui_set_connected(id(wifi_ip).state.c_str());
   on_disconnect:
     - lambda: 'ui_set_disconnected();'
 
@@ -109,7 +113,7 @@ api:
     key: !secret api_encryption_key
 
 logger:
-  level: DEBUG
+  level: INFO
   baud_rate: 115200
   hardware_uart: UART0
 
@@ -133,198 +137,103 @@ image:
     type: RGB
     resize: 10x10
 
-# ─── 4.3" 800×480 RGB Parallel Display (ST7262) ─────────────────────────────
+# ─── LovyanGFX Display (Custom Component) ───────────────────────────────────
 display:
-  - platform: mipi_rgb
-    model: RPI
+  - platform: lovyan_verified
     id: main_display
-    auto_clear_enabled: false
-    color_order: RGB
-    pclk_frequency: 18MHz
-    pclk_inverted: true
-    dimensions:
-      width: 800
-      height: 480
-    de_pin:
-      number: GPIO40
-    hsync_pin:
-      number: GPIO39
-    vsync_pin:
-      number: GPIO41
-    pclk_pin: GPIO42
-    hsync_back_porch: 8
-    hsync_front_porch: 8
-    hsync_pulse_width: 4
-    vsync_back_porch: 8
-    vsync_front_porch: 8
-    vsync_pulse_width: 4
-    data_pins:
-      red:
-        - 45   # R0 LSB
-        - 48   # R1
-        - 47   # R2
-        - 21   # R3
-        - 14   # R4 MSB
-      green:
-        - 5    # G0 LSB
-        - 6    # G1
-        - 7    # G2
-        - 15   # G3
-        - 16   # G4
-        - 4    # G5 MSB
-      blue:
-        - 8    # B0 LSB
-        - 3    # B1
-        - 46   # B2
-        - 9    # B3
-        - 1    # B4 MSB
+    width: 800
+    height: 480
+    swap_bytes: false
+    update_interval: 0ms
 
-# ─── GT911 Capacitive Touch ──────────────────────────────────────────────────
 i2c:
-  - id: i2c_touch
-    sda: GPIO19
-    scl: GPIO20
+  - id: i2c_bus
+    sda: 19
+    scl: 20
     frequency: 400kHz
+    scan: true
 
 touchscreen:
   - platform: gt911
-    id: touch_screen
-    i2c_id: i2c_touch
+    id: main_touch
+    display: main_display
+    address: 0x5D
     reset_pin: GPIO38
+    # interrupt_pin: GPIO18 (Stick to polling for now as it was confirmed working)
+    update_interval: 16ms
+    on_touch:
+      - lambda: |-
+          ESP_LOGI("gt911_touch", "TOUCH Point: x=%d, y=%d", (int)touch.x, (int)touch.y);
+
+# ─── System & Environmental Sensors ──────────────────────────────────────────
+sensor:
+  - platform: adc
+    pin: GPIO1
+    name: "Illuminance"
+    id: illuminance
+    update_interval: 2s
+    unit_of_measurement: "%"
+    filters:
+      - calibrate_linear:
+          method: least_squares
+          datapoints:
+            - 0.0 -> 100.0
+            - 3.1 -> 0.0
+      - sliding_window_moving_average:
+          window_size: 10
+          send_every: 1
+    device_class: voltage
+    state_class: measurement
+    accuracy_decimals: 2
+
+  - platform: wifi_signal
+    name: "WiFi Signal"
+    id: wifi_sig
+    update_interval: 30s
+    entity_category: "diagnostic"
+
+  - platform: uptime
+    name: "Uptime"
+    id: sys_uptime
+    update_interval: 60s
+    entity_category: "diagnostic"
+
+  - platform: internal_temperature
+    name: "Internal Temperature"
+    id: internal_temp
+    update_interval: 60s
+
+# ─── Text Sensors ─────────────────────────────────────────────────────────────
+text_sensor:
+  - platform: wifi_info
+    ip_address:
+      name: "IP Address"
+      id: wifi_ip
 
 # ─── LVGL UI ─────────────────────────────────────────────────────────────────
 lvgl:
   displays:
     - main_display
   touchscreens:
-    - touch_screen
+    - main_touch
   color_depth: 16
-  byte_order: big_endian
+  update_interval: 0ms
+  buffer_size: 25%
+  byte_order: little_endian
   bg_color: 0x0e0e0e
   default_font: MONTSERRAT_24
-  full_refresh: true
+  full_refresh: false
+  log_level: WARN
   pages:
-    - id: main_page
-      widgets:
-        # Off-screen dummies — force ESPHome to compile label/textarea/keyboard/btn modules
-        - label:
-            text: ""
-            x: -200
-            y: -200
-        - button:
-            x: -200
-            y: -200
-            width: 1
-            height: 1
-            widgets:
-              - label:
-                  text: ""
-        - textarea:
-            id: _dummy_ta
-            x: -200
-            y: -200
-            width: 1
-            height: 1
-        - keyboard:
-            id: _dummy_kb
-            x: -200
-            y: -200
-            width: 1
-            height: 1
-            textarea: _dummy_ta
-        - label:
-            text: ""
-            x: -200
-            y: -200
-            text_font: MONTSERRAT_8
-        - label:
-            text: ""
-            x: -200
-            y: -200
-            text_font: MONTSERRAT_10
-        - label:
-            text: ""
-            x: -200
-            y: -200
-            text_font: MONTSERRAT_12
-        - label:
-            text: ""
-            x: -200
-            y: -200
-            text_font: MONTSERRAT_14
-        - label:
-            text: ""
-            x: -200
-            y: -200
-            text_font: MONTSERRAT_16
-        - label:
-            text: ""
-            x: -200
-            y: -200
-            text_font: MONTSERRAT_18
-        - label:
-            text: ""
-            x: -200
-            y: -200
-            text_font: MONTSERRAT_20
-        - label:
-            text: ""
-            x: -200
-            y: -200
-            text_font: MONTSERRAT_22
-        - label:
-            text: ""
-            x: -200
-            y: -200
-            text_font: MONTSERRAT_26
-        - label:
-            text: ""
-            x: -200
-            y: -200
-            text_font: MONTSERRAT_28
-        - label:
-            text: ""
-            x: -200
-            y: -200
-            text_font: MONTSERRAT_30
-        - label:
-            text: ""
-            x: -200
-            y: -200
-            text_font: MONTSERRAT_32
-        - label:
-            text: ""
-            x: -200
-            y: -200
-            text_font: MONTSERRAT_34
-        - label:
-            text: ""
-            x: -200
-            y: -200
-            text_font: MONTSERRAT_36
-        - label:
-            text: ""
-            x: -200
-            y: -200
-            text_font: MONTSERRAT_38
-        - label:
-            text: ""
-            x: -200
-            y: -200
-            text_font: MONTSERRAT_40
-        - label:
-            text: ""
-            x: -200
-            y: -200
-            text_font: MONTSERRAT_48
-        - image:
-            src: dummy_png
-            x: -200
-            y: -200
-            width: 1
-            height: 1
+    - id: dashboard_page
+      on_boot:
+        - lambda: |-
+            maindashboard_create();
+            ESP_LOGI("main", "Dashboard Started");
+#        - label:
+#            text: ""
+#            ... (all old widgets commented out)
 
-# ─── SNTP Time ───────────────────────────────────────────────────────────────
 time:
   - platform: sntp
     id: sntp_time
@@ -333,20 +242,15 @@ time:
 
 # ─── Intervals ────────────────────────────────────────────────────────────────
 interval:
-  - interval: 30s
-    then:
-      - lambda: 'ESP_LOGI("FW", ">>> FIRMWARE VERSION: %s <<<", FW_VERSION_STR);'
-
   - interval: 1s
     then:
       - lambda: |-
-          auto t = id(sntp_time).now();
-          if (t.is_valid())
-            dashboard_tick(t.hour, t.minute, t.second,
-                           t.day_of_month, t.month, t.year,
-                           t.day_of_week);
-          else
+          auto now = id(sntp_time).now();
+          if (now.is_valid()) {
+            dashboard_tick(now.hour, now.minute, now.second, now.day_of_month, now.month, now.year, now.day_of_week);
+          } else {
             dashboard_tick(-1, -1, -1, -1, -1, -1, -1);
+          }
 
 # ─── React SPA web server (port 80) ──────────────────────────────────────────
 external_components:
@@ -354,8 +258,12 @@ external_components:
       type: local
       path: components
     components: [react_spa, sd_card]
+  - source:
+      type: local
+      path: external_components
+    components: [lovyan_verified]
 
 sd_card:
-
+  
 react_spa:
   port: 80

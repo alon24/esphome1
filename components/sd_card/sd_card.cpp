@@ -166,7 +166,7 @@ void SDCardComponent::unmount() {
 
 void SDCardComponent::setup() {
     g_sd_card = this;
-    _touch_cs_high();
+    // _touch_cs_high(); // Potentially conflicts with GT911 Reset/INT on GPIO 38
 #if defined(CONFIG_FATFS_LFN_HEAP) || defined(CONFIG_FATFS_LFN_STACK)
     ESP_LOGI(TAG, "Standard/Long Filename (LFN) support verified in SDK.");
 #else
