@@ -122,7 +122,7 @@ static uint16_t *_bmp_to_rgb565(const uint8_t *d, size_t sz,
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-static bool _sd_is_image(const char *name) {
+bool _sd_is_image(const char *name) {
     const char *ext = strrchr(name, '.');
     if (!ext) return false;
     return strcasecmp(ext,".bmp")==0 || strcasecmp(ext,".png")==0 ||
@@ -157,8 +157,39 @@ static void _sd_up_click_cb(lv_event_t *) {
 
 static void _sd_back_cb(lv_event_t *) { _sd_show_list(); }
 
+static void _sd_delete_item(const char *path) {
+    if (!path) return;
+    ESP_LOGI("SD_TAB", "Deleting: %s", path);
+    if (unlink(path) == 0) {
+        ESP_LOGI("SD_TAB", "Delete success");
+        _sd_show_list();
+        _sd_scan();
+    } else {
+        ESP_LOGE("SD_TAB", "Delete failed: %s", path);
+    }
+}
+
+static void _sd_delete_cb(lv_event_t *e) {
+    const char *path = (const char *)lv_event_get_user_data(e);
+    if (!path) return;
+
+    static const char * btns[] ={"Delete", "Cancel", ""};
+    lv_obj_t * mbox1 = lv_msgbox_create(NULL, "Delete Image?", "Are you sure you want to permanently delete this image?", btns, true);
+    lv_obj_set_user_data(mbox1, (void*)path);
+    lv_obj_add_event_cb(mbox1, [](lv_event_t *e) {
+        lv_obj_t * obj = lv_event_get_current_target(e);
+        const char * btn_txt = lv_msgbox_get_active_btn_text(obj);
+        const char * path = (const char *)lv_obj_get_user_data(obj);
+        if (strcmp(btn_txt, "Delete") == 0) {
+            _sd_delete_item(path);
+        }
+        lv_msgbox_close(obj);
+    }, LV_EVENT_VALUE_CHANGED, NULL);
+    lv_obj_center(mbox1);
+}
+
 // ── View switching ────────────────────────────────────────────────────────────
-static void _sd_show_list() {
+void _sd_show_list() {
     if (g_sd_raw_buf) { free(g_sd_raw_buf); g_sd_raw_buf = nullptr; }
     if (g_sd_img_obj) {
         lv_img_set_src(g_sd_img_obj, (const void*)nullptr);
@@ -352,7 +383,7 @@ static uint16_t *_jpg_to_rgb565_stb(const uint8_t *data, size_t sz, uint32_t *ou
 
 
 
-static void _sd_show_image(const char *path) {
+void _sd_show_image(const char *path) {
     if (!path || !g_sd_viewer || !g_sd_img_obj) return;
 
     uint32_t free_h = esp_get_free_heap_size();
@@ -465,6 +496,10 @@ static void _sd_show_image(const char *path) {
     lv_obj_scroll_to(lv_obj_get_child(g_sd_viewer, 0), 0, 0, LV_ANIM_OFF); 
 
     ESP_LOGE("SD_TAB", "Showing %s (%dx%d)", path, iw, ih);
+
+    // Store current path on delete button
+    lv_obj_t *dbtn = lv_obj_get_child(g_sd_viewer, 2); // Third child should be delete btn
+    if (dbtn) lv_obj_set_user_data(dbtn, (void*)_sd_pool_strdup(path));
 }
 
 // ── Make a single row in the list ─────────────────────────────────────────────
@@ -709,6 +744,24 @@ static void tab_sd_create(lv_obj_t *parent) {
     lv_obj_set_style_text_font(bl, &lv_font_montserrat_16, 0);
     lv_obj_center(bl);
     lv_obj_add_event_cb(bbtn, _sd_back_cb, LV_EVENT_CLICKED, nullptr);
+
+    // Delete button — top right
+    lv_obj_t *dbtn = lv_btn_create(g_sd_viewer);
+    lv_obj_set_size(dbtn, 100, 36);
+    lv_obj_set_pos(dbtn, 692, 8);
+    lv_obj_set_style_bg_color(dbtn, lv_color_hex(0x281C1C), LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_color(dbtn, lv_color_hex(0xD10000), LV_STATE_PRESSED);
+    lv_obj_set_style_bg_opa(dbtn, LV_OPA_COVER, LV_STATE_DEFAULT);
+    lv_obj_set_style_radius(dbtn, 6, 0);
+    lv_obj_set_style_border_width(dbtn, 1, 0);
+    lv_obj_set_style_border_color(dbtn, lv_color_hex(0xD10000), 0);
+    lv_obj_set_style_shadow_width(dbtn, 0, 0);
+    lv_obj_t *dl = lv_label_create(dbtn);
+    lv_label_set_text(dl, LV_SYMBOL_TRASH "  DEL");
+    lv_obj_set_style_text_color(dl, lv_color_hex(0xD10000), 0);
+    lv_obj_set_style_text_font(dl, &lv_font_montserrat_16, 0);
+    lv_obj_center(dl);
+    lv_obj_add_event_cb(dbtn, _sd_delete_cb, LV_EVENT_CLICKED, nullptr);
 }
 
 // Called when the SD tab becomes active — scan every time

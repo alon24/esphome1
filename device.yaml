@@ -28,6 +28,10 @@ esphome:
       - -DLV_USE_BAR=1
       - -DLV_USE_IMG=1
       - -DLV_USE_LINE=1
+      - -DLV_USE_MSGBOX=1
+      - -DLV_USE_FLEX=1
+      - -DLV_USE_SLIDER=1
+      - -DLV_USE_CHECKBOX=1
   libraries:
     - "LovyanGFX"
   includes:
@@ -40,6 +44,7 @@ esphome:
     - custom/tab_wifi.h
     - custom/tab_sd.h
     - custom/maindashboard.h
+    - custom/screensaver.h
   on_boot:
     - priority: -200
       then:
@@ -163,6 +168,7 @@ touchscreen:
     update_interval: 16ms
     on_touch:
       - lambda: |-
+          screensaver_refresh_activity();
           ESP_LOGI("gt911_touch", "TOUCH Point: x=%d, y=%d", (int)touch.x, (int)touch.y);
 
 # ─── System & Environmental Sensors ──────────────────────────────────────────
@@ -245,6 +251,7 @@ interval:
   - interval: 1s
     then:
       - lambda: |-
+          screensaver_tick(); 
           auto now = id(sntp_time).now();
           if (now.is_valid()) {
             dashboard_tick(now.hour, now.minute, now.second, now.day_of_month, now.month, now.year, now.day_of_week);

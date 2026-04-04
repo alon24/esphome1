@@ -2,6 +2,7 @@
 #include "lvgl.h"
 #include "ui_helpers.h"
 #include "version_info.h"
+#include "screensaver.h"
 #include <cstdio>
 #include <esp_timer.h>
 #include <esp_wifi.h>
@@ -138,6 +139,86 @@ static void tab_settings_create(lv_obj_t *parent) {
     lv_obj_set_style_text_line_space(fwinfo, 6, LV_STATE_DEFAULT);
     _lbl_bg(fwinfo, TAB_SETTINGS_CARD);
     lv_obj_set_pos(fwinfo, 0, 28);
+
+    // ── SCREENSAVER SECTION (Scrollable addition) ────────────────────────────
+    lv_obj_t *card4 = _make_card(parent, 16, 358, 768, 220, TAB_SETTINGS_CARD);
+    _section_hdr(card4, "SCREENSAVER CONTROLS", 0, 0, TAB_SETTINGS_CARD);
+    _settings_sep(card4, 22, 0x333333);
+
+    // Auto-Enable Checkbox
+    lv_obj_t *cb = lv_checkbox_create(card4);
+    lv_checkbox_set_text(cb, "Enable Automatic Slideshow (Idle Only)");
+    lv_obj_add_state(cb, g_ss_enabled ? LV_STATE_CHECKED : 0);
+    lv_obj_set_pos(cb, 20, 34);
+    lv_obj_set_style_text_color(cb, lv_color_hex(0xdddddd), 0);
+    lv_obj_set_style_text_font(cb, &lv_font_montserrat_18, 0);
+    lv_obj_add_event_cb(cb, [](lv_event_t *e){
+        lv_obj_t *obj = lv_event_get_target(e);
+        g_ss_enabled = (lv_obj_get_state(obj) & LV_STATE_CHECKED);
+    }, LV_EVENT_VALUE_CHANGED, nullptr);
+
+    // Launch Button
+    lv_obj_t *ss_btn = lv_btn_create(card4);
+    lv_obj_set_size(ss_btn, 200, 40);
+    lv_obj_set_pos(ss_btn, 20, 74);
+    lv_obj_t *ss_lbl = lv_label_create(ss_btn);
+    lv_label_set_text(ss_lbl, "LAUNCH NOW");
+    lv_obj_center(ss_lbl);
+    lv_obj_add_event_cb(ss_btn, [](lv_event_t *){
+        static const char * btns[] ={"Start", ""};
+        lv_obj_t * mbox = lv_msgbox_create(NULL, "Sreensaver", "Starting digital photo frame slideshow now...", btns, true);
+        lv_obj_add_event_cb(mbox, [](lv_event_t *e){
+            lv_msgbox_close(lv_event_get_current_target(e));
+            screensaver_start();
+        }, LV_EVENT_VALUE_CHANGED, NULL);
+        lv_obj_center(mbox);
+    }, LV_EVENT_CLICKED, nullptr);
+
+    // Timeout Slider
+    lv_obj_t *t_label = lv_label_create(card4);
+    lv_label_set_text(t_label, "Inactivity Timeout (sec)");
+    lv_obj_set_pos(t_label, 250, 34);
+    lv_obj_set_style_text_color(t_label, lv_color_hex(0x888888), 0);
+
+    lv_obj_t *t_slider = lv_slider_create(card4);
+    lv_obj_set_size(t_slider, 480, 10);
+    lv_obj_set_pos(t_slider, 250, 59);
+    lv_slider_set_range(t_slider, 5, 120);
+    lv_slider_set_value(t_slider, g_ss_timeout_ms / 1000, LV_ANIM_OFF);
+    lv_obj_add_event_cb(t_slider, [](lv_event_t *e){
+        lv_obj_t *slider = lv_event_get_target(e);
+        g_ss_timeout_ms = lv_slider_get_value(slider) * 1000;
+        screensaver_refresh_activity();
+    }, LV_EVENT_VALUE_CHANGED, nullptr);
+
+    // Interval Slider
+    lv_obj_t *i_label = lv_label_create(card4);
+    lv_label_set_text(i_label, "Rotation Speed (sec)");
+    lv_obj_set_pos(i_label, 250, 89);
+    lv_obj_set_style_text_color(i_label, lv_color_hex(0x888888), 0);
+
+    lv_obj_t *i_slider = lv_slider_create(card4);
+    lv_obj_set_size(i_slider, 480, 10);
+    lv_obj_set_pos(i_slider, 250, 114);
+    lv_slider_set_range(i_slider, 2, 30);
+    lv_slider_set_value(i_slider, g_ss_interval_ms / 1000, LV_ANIM_OFF);
+    lv_obj_add_event_cb(i_slider, [](lv_event_t *e){
+        lv_obj_t *slider = lv_event_get_target(e);
+        g_ss_interval_ms = lv_slider_get_value(slider) * 1000;
+    }, LV_EVENT_VALUE_CHANGED, nullptr);
+
+    // Enable scrolling on parent
+    lv_obj_add_flag(parent, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_scrollbar_mode(parent, LV_SCROLLBAR_MODE_ON); // Always show it
+    lv_obj_set_scroll_dir(parent, LV_DIR_VER);
+    
+    // Style the scrollbar to be prominent (Cyan)
+    lv_obj_set_style_anim_time(parent, 200, 0);
+    lv_obj_set_style_width(parent, 6, LV_PART_SCROLLBAR);
+    lv_obj_set_style_bg_color(parent, lv_color_hex(0x00CED1), LV_PART_SCROLLBAR);
+    lv_obj_set_style_bg_opa(parent, LV_OPA_COVER, LV_PART_SCROLLBAR);
+    
+    lv_obj_set_size(parent, 800, 352); 
 }
 
 // ── Tick: called every second ─────────────────────────────────────────────────
