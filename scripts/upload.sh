@@ -15,19 +15,22 @@ echo "▶  Building React app..."
 cd "$WEBAPP_DIR"
 bun run build
 
+TIMESTAMP=$(date +%s)
+FILENAME="app-v80-${TIMESTAMP}.gz"
+
 echo "▶  Gzipping dist/index.html..."
-gzip -9 -c "$DIST/index.html" > "$DIST/app.gz"
+gzip -9 -c "$DIST/index.html" > "$DIST/$FILENAME"
 
-SIZE=$(du -sh "$DIST/app.gz" | cut -f1)
-echo "   Bundle size: $SIZE"
+SIZE=$(du -sh "$DIST/$FILENAME" | cut -f1)
+echo "   Bundle size: $SIZE ($FILENAME)"
 
-echo "▶  Uploading to http://${DEVICE_IP}/upload..."
+echo "▶  Uploading to http://${DEVICE_IP}/upload?name=${FILENAME}..."
 HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
   -X POST \
   -H "Content-Type: application/gzip" \
-  --data-binary "@$DIST/app.gz" \
+  --data-binary "@$DIST/$FILENAME" \
   --progress-bar \
-  "http://${DEVICE_IP}/upload")
+  "http://${DEVICE_IP}/upload?name=${FILENAME}")
 
 echo ""
 if [ "$HTTP_CODE" = "200" ]; then

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, useRef, useMemo } from "react";
+import React, { useCallback, useEffect, useState, useRef, useMemo, Component, ErrorInfo, ReactNode } from "react";
 
 type WifiStatus = {
   connected: boolean;
@@ -37,14 +37,69 @@ type GridItem = {
   w: number;
   h: number;
   scale: number;
+  innerX: number;
+  innerY: number;
   color: number;
   textColor: number;
   action: string;
 };
 
-export default function App() {
+type AppInfo = { file: string } | null;
+
+const BUILD_ID = "v80-NUCLEAR-SYNC";
+
+interface ErrorBoundaryProps { children: ReactNode; }
+interface ErrorBoundaryState { hasError: boolean; error: Error | null; }
+
+class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  constructor(props: ErrorBoundaryProps) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+  static getDerivedStateFromError(error: Error) { return { hasError: true, error }; }
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) { console.error("ErrorBoundary caught:", error, errorInfo); }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{ padding: "40px", background: "#700", color: "#fff", fontFamily: "monospace", minHeight: "100vh" }}>
+          <h1>☢️ CORE RENDER CRASH</h1>
+          <p>The React application failed to mount. This is likely due to a data inconsistency or a missing browser feature.</p>
+          <pre style={{ background: "#200", padding: "20px", borderRadius: "8px", overflow: "auto" }}>
+            {this.state.error?.toString()}
+            {"\n\nStack Trace:\n"}
+            {this.state.error?.stack}
+          </pre>
+          <button onClick={() => window.location.reload()} style={{ padding: "12px 24px", background: "#fff", color: "#000", border: "none", borderRadius: "4px", fontWeight: "bold" }}>Reload Page</button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+const safeHex = (num: any, fallback = "000000") => {
+  if (num === null || num === undefined || isNaN(num)) return fallback;
+  return num.toString(16).padStart(6, '0');
+};
+
+export default function SafeApp() {
+  return (
+    <ErrorBoundary>
+      <App />
+    </ErrorBoundary>
+  );
+}
+
+function App() {
   const [activeTab, setActiveTab] = useState<"wifi" | "sd" | "settings" | "grid">("grid");
   const [status, setStatus] = useState<WifiStatus>(null);
+  const [appInfo, setAppInfo] = useState<AppInfo>(null);
+  useEffect(() => {
+    fetch('/api/spa/info')
+      .then(r => r.json())
+      .then(data => setAppInfo(data))
+      .catch(e => console.error("SPA info fetch failed:", e));
+  }, []);
 
   const fetchStatus = useCallback(() => {
     fetch("/api/wifi/status")
@@ -75,7 +130,7 @@ export default function App() {
       </header>
 
       <main style={s.main}>
-        {activeTab === "grid" ? <GridTab /> : 
+        {activeTab === "grid" ? <GridTab appInfo={appInfo} /> : 
          activeTab === "wifi" ? <WifiTab status={status} onFetchStatus={fetchStatus} /> : 
          activeTab === "sd" ? <SDTab /> : 
          <SettingsTab />}
@@ -427,10 +482,14 @@ function WifiStatusBadge({ status }: { status: WifiStatus }) {
   return <div style={{ fontSize: "0.85rem", color: status?.connected?"#4ade80":"#f87171" }}>● {status?.connected ? `System Online (${status.ip})` : "System Offline"}</div>;
 }
 
-function GridTab() {
+function GridTab({ appInfo }: { appInfo: AppInfo }) {
   const [items, setItems] = useState<GridItem[]>([]);
+  const canvasHeight = Array.isArray(items) && items.length > 0 
+    ? Math.max(480, ...items.map(i => ((i.y || 0) + (i.h || 1)) * 80 + 100))
+    : 480;
   const [gridBg, setGridBg] = useState(0x0e0e0e);
   const [selected, setSelected] = useState<number | null>(null);
+  const [editingInner, setEditingInner] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState<string>("");
   const [time, setTime] = useState(new Date().toLocaleTimeString());
@@ -469,7 +528,7 @@ function GridTab() {
   };
 
   const addItem = () => {
-      setItems([...items, { name: "New Btn", type: "btn", x: 0, y: 0, w: 2, h: 2, scale: 100, color: 0x1c2828, textColor: 0xFFFFFF, action: "" }]);
+      setItems([...items, { name: "New Btn", type: "btn", x: 0, y: 0, w: 2, h: 2, scale: 100, innerX: 50, innerY: 50, color: 0x1c2828, textColor: 0xFFFFFF, action: "" }]);
       setSelected(items.length);
   };
 
@@ -480,8 +539,10 @@ function GridTab() {
 
   const onMouseDown = (e: React.MouseEvent, idx: number, mode: 'move' | 'resize') => {
     e.preventDefault();
-    e.stopPropagation();
-    setSelected(idx);
+    if (editingInner === idx && mode === 'move') {
+       setDragInfo({ idx, startX: e.clientX, startY: e.clientY, initialX: items[idx].innerX, initialY: items[idx].innerY, initialW: 0, initialH: 0, mode: 'move' });
+       return;
+    }
     setDragInfo({ 
         idx, 
         startX: e.clientX, 
@@ -502,14 +563,23 @@ function GridTab() {
       
       const next = [...items];
       if (dragInfo.mode === 'move') {
-        next[dragInfo.idx].x = Math.max(0, Math.min(8 - dragInfo.initialW, dragInfo.initialX + dx));
-        next[dragInfo.idx].y = Math.max(0, dragInfo.initialY + dy);
+          if (editingInner === dragInfo.idx) {
+             const blockW = items[dragInfo.idx].w * 80;
+             const blockH = items[dragInfo.idx].h * 80;
+             const dxP = ((e.clientX - dragInfo.startX) / blockW) * 100;
+             const dyP = ((e.clientY - dragInfo.startY) / blockH) * 100;
+             
+             next[dragInfo.idx].innerX = Math.max(0, Math.min(100, dragInfo.initialX + dxP));
+             next[dragInfo.idx].innerY = Math.max(0, Math.min(100, dragInfo.initialY + dyP));
+          } else {
+             next[dragInfo.idx].x = Math.max(0, Math.min(8 - dragInfo.initialW, dragInfo.initialX + dx));
+             next[dragInfo.idx].y = Math.max(0, dragInfo.initialY + dy);
+          }
       } else {
         next[dragInfo.idx].w = Math.max(1, Math.min(8 - items[dragInfo.idx].x, dragInfo.initialW + dx));
         next[dragInfo.idx].h = Math.max(1, dragInfo.initialH + dy);
       }
       setItems(next);
-      // Small debounce simulation for drag smoothness
     };
     const onUp = () => setDragInfo(null);
     if (dragInfo) {
@@ -520,48 +590,72 @@ function GridTab() {
       window.removeEventListener('mousemove', onMove);
       window.removeEventListener('mouseup', onUp);
     };
-  }, [dragInfo, items]);
+  }, [dragInfo, items, editingInner]);
 
   return (
     <div style={s.layout}>
       <div style={s.card}>
         <div style={s.browserHeader}>
           <div style={{display:"flex", alignItems:"center", gap:"15px"}}>
-              <span style={s.cardTitle}>GRID BLUEPRINT (640x416)</span>
-              {status && <span style={s.pushStatus}>{status}</span>}
+              <span style={s.cardTitle}>GRID BLUEPRINT (640x{canvasHeight})</span>
+              <span style={{ marginLeft: "10px", fontSize: "0.6rem", background: "rgba(167, 139, 250, 0.2)", color: "#a78bfa", padding: "2px 8px", borderRadius: "100px", fontWeight: 800 }}>
+                {appInfo?.file ? `ACTIVE: ${appInfo.file.split('/').pop()}` : "v77-INFINITE-SCROLL"}
+              </span>
           </div>
           <button onClick={addItem} style={s.stageBtn}>Add Block</button>
         </div>
-        <div style={{...s.gridContainer, backgroundColor: `#${gridBg.toString(16).padStart(6,'0')}`}}>
-           {/* Grid Visualizer */}
-           <div style={s.gridV}>
+        <div style={{...s.gridContainer, backgroundColor: `#${safeHex(gridBg, '0e0e0e')}`, height: '550px', overflowY: 'auto'}}>
+           <div style={{...s.gridV, height: canvasHeight}} onMouseDown={() => { setSelected(null); setEditingInner(null); }}>
               {Array.from({length: 8}).map((_, i) => (
                 <div key={i} style={{...s.gridLineV, left: (i+1)*80}} />
               ))}
-              {Array.from({length: 5}).map((_, i) => (
+              {Array.from({length: Math.ceil(canvasHeight/80)}).map((_, i) => (
                 <div key={i} style={{...s.gridLineH, top: (i+1)*80}} />
               ))}
               {items.map((it, i) => (
                 <div 
                   key={i} 
-                  onMouseDown={(e) => onMouseDown(e, i, 'move')}
+                  onDoubleClick={(e) => { e.stopPropagation(); setEditingInner(i); }}
+                  onMouseDown={(e) => {
+                    if ((e.target as any).dataset?.handle) return; 
+                    setSelected(i);
+                    onMouseDown(e, i, 'move');
+
+                    e.stopPropagation();
+                  }}
                   style={{
                     ...s.gridItem, 
                     left: it.x * 80, top: it.y * 80,
                     width: it.w * 80, height: it.h * 80,
-                    backgroundColor: `#${it.color.toString(16).padStart(6, '0')}`,
-                    border: selected === i ? "4px solid #a78bfa" : "1px solid rgba(255,255,255,0.1)",
-                    boxShadow: selected === i ? "0 0 15px #a78bfa" : "none",
-                    zIndex: selected === i ? 10 : 1,
+                    backgroundColor: `#${safeHex(it.color, '333333')}`,
+                    border: editingInner === i ? "6px solid #c084fc" : (selected === i ? "4px solid #a78bfa" : "1px solid rgba(255,255,255,0.1)"),
+                    boxShadow: editingInner === i ? "0 0 30px 10px rgba(192, 132, 252, 0.5)" : (selected === i ? "0 0 15px #a78bfa" : "none"),
+                    zIndex: editingInner === i ? 20 : (selected === i ? 10 : 1),
+                    cursor: editingInner === i ? "crosshair" : "move"
                   }}>
-                    <div style={{display:"flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "5px", width: "100%", height: "100%", padding: "5px", pointerEvents: "none"}}>
-                        <span style={{...s.gridLabel, color: `#${it.textColor.toString(16).padStart(6,'0')}`, fontSize: `${(0.8 * it.scale / 100)}rem` }}>{it.name}</span>
-                        {it.type === "switch" && <div style={{width: 30 * it.scale/100, height: 16 * it.scale/100, borderRadius: 8, background: "rgba(255,255,255,0.2)", position: "relative"}}><div style={{width: 12 * it.scale/100, height: 12 * it.scale/100, borderRadius: 6, background: "#fff", position: "absolute", right: 2, top: 2}} /></div>}
-                        {it.type === "slider" && <div style={{width: (it.scale > 100 ? 95 : it.scale) + "%", height: 4, borderRadius: 2, background: "rgba(255,255,255,0.2)", position: "relative"}}><div style={{width: "60%", height: "100%", background: "#fff", borderRadius: 2}} /></div>}
-                        {it.type === "clock" && <span style={{fontSize: `${(1.2 * it.scale / 100)}rem`, fontWeight: 800}}>{time}</span>}
+                    <div style={{display:"flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "5px", width: "100%", height: "100%", padding: "5px", pointerEvents: "none", userSelect: "none", position: "relative"}}>
+                        <div style={{
+                            position: "absolute",
+                            left: `${it.innerX}%`,
+                            top: `${it.innerY}%`,
+                            transform: "translate(-50%, -50%)",
+                            display: "flex",
+                            flexDirection: "column",
+                            alignItems: "center",
+                            width: "100%"
+                        }}>
+                             <span style={{...s.gridLabel, color: `#${safeHex(it.textColor, 'ffffff')}`, fontSize: `${(0.8 * (it.scale || 100) / 100)}rem` }}>{it.name}</span>
+                             {it.type === "switch" && <div style={{width: 30 * it.scale/100, height: 16 * it.scale/100, borderRadius: 8, background: "rgba(255,255,255,0.2)", position: "relative"}}><div style={{width: 12 * it.scale/100, height: 12 * it.scale/100, borderRadius: 6, background: "#fff", position: "absolute", right: 2, top: 2}} /></div>}
+                             {it.type === "slider" && <div style={{width: (it.scale > 100 ? 95 : it.scale) + "%", height: 4, borderRadius: 2, background: "rgba(255,255,255,0.2)", position: "relative"}}><div style={{width: "60%", height: "100%", background: "#fff", borderRadius: 2}} /></div>}
+                             {it.type === "clock" && <span style={{fontSize: `${(1.2 * it.scale / 100)}rem`, fontWeight: 800}}>{time}</span>}
+                        </div>
                     </div>
                     {selected === i && (
-                        <div onMouseDown={(e) => onMouseDown(e, i, 'resize')} style={s.resizeHandle} />
+                        <div 
+                          data-handle="resize"
+                          onMouseDown={(e) => { e.stopPropagation(); onMouseDown(e, i, 'resize'); }} 
+                          style={s.resizeHandle} 
+                        />
                     )}
                 </div>
               ))}
@@ -591,6 +685,16 @@ function GridTab() {
               <div style={s.formGroup}>
                   <label style={s.formLabel}>WIDGET INNER SCALE ({items[selected].scale}%)</label>
                   <input type="range" min="10" max="200" style={{accentColor: "#a78bfa"}} value={items[selected].scale} onChange={e => updateItem(selected, {scale: parseInt(e.target.value)})} />
+              </div>
+              <div style={{display:"grid", gridTemplateColumns: "1fr 1fr", gap: "10px"}}>
+                <div style={s.formGroup}>
+                  <label style={s.formLabel}>INNER X ({items[selected].innerX}%)</label>
+                  <input type="range" min="0" max="100" style={{accentColor: "#a78bfa"}} value={items[selected].innerX} onChange={e => updateItem(selected, {innerX: parseInt(e.target.value)})} />
+                </div>
+                <div style={s.formGroup}>
+                  <label style={s.formLabel}>INNER Y ({items[selected].innerY}%)</label>
+                  <input type="range" min="0" max="100" style={{accentColor: "#a78bfa"}} value={items[selected].innerY} onChange={e => updateItem(selected, {innerY: parseInt(e.target.value)})} />
+                </div>
               </div>
               <div style={{display:"grid", gridTemplateColumns: "1fr 1fr", gap: "10px"}}>
                 <div style={s.formGroup}>
@@ -651,10 +755,10 @@ function GridTab() {
                <div style={s.formGroup}>
                   <label style={s.formLabel}>DASHBOARD BACKGROUND</label>
                   <div style={{display:"flex", gap:"10px", alignItems: "center"}}>
-                     <div style={{position:"relative", width: 48, height: 48, borderRadius: 10, overflow: "hidden", border: "1px solid #4b5563"}}>
-                        <input type="color" style={s.colorInput} value={`#${gridBg.toString(16).padStart(6,'0')}`} onChange={e => setGridBg(parseInt(e.target.value.replace('#',''), 16) || 0)} />
-                     </div>
-                     <input style={{...s.input, marginBottom: 0, flex: 1}} value={gridBg.toString(16).padStart(6,'0')} onChange={e => setGridBg(parseInt(e.target.value.replace('#',''), 16) || 0)} />
+                   <div style={{...s.colorPreview, background: `#${safeHex(gridBg, '0e0e0e')}`}}>
+                      <input type="color" style={s.colorInput} value={`#${safeHex(gridBg, '0e0e0e')}`} onChange={e => setGridBg(parseInt(e.target.value.replace('#',''), 16) || 0)} />
+                   </div>
+                   <input style={{...s.input, marginBottom: 0, flex: 1}} value={safeHex(gridBg, '0e0e0e')} onChange={e => setGridBg(parseInt(e.target.value.replace('#',''), 16) || 0)} />
                   </div>
                </div>
                <p style={{color: "#64748b", textAlign:"center", fontSize: "0.75rem", marginTop: "12px"}}>Select any block on the left to edit its unique properties.</p>
@@ -723,6 +827,7 @@ const s: Record<string, React.CSSProperties> = {
   formGroup: { display: "flex", flexDirection: "column", gap: "6px" },
   formLabel: { fontSize: "0.6rem", fontWeight: 900, color: "#4b5563", letterSpacing: "0.1em" },
   colorInput: { position: "absolute", top: "-5px", left: "-5px", width: "150%", height: "150%", cursor: "pointer", border: "none", background: "none", padding: 0 } as any,
+  colorPreview: { position: "relative", width: 48, height: 48, borderRadius: 10, overflow: "hidden", border: "1px solid #4b5563" },
   pushStatus: { color: "#a78bfa", fontSize: "0.75rem", fontWeight: 800, textTransform: "uppercase" },
   resizeHandle: { position: "absolute", right: 0, bottom: 0, width: "30px", height: "30px", cursor: "nwse-resize", background: "linear-gradient(135deg, transparent 50%, #a78bfa 50%)", borderBottomRightRadius: "8px", opacity: 0.8 },
 };

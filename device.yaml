@@ -31,6 +31,7 @@ esphome:
       - -DLV_USE_SLIDER=1
       - -DLV_USE_SWITCH=1
       - -DLV_USE_CHECKBOX=1
+      - -DLV_USE_CHART=1
   libraries:
     - "LovyanGFX"
     - "ArduinoJson@7.3.0"
