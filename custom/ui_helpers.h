@@ -1,6 +1,11 @@
 #pragma once
 #include "lvgl.h"
 
+// Forward declarations for global UI state (defined in maindashboard.h)
+void ui_set_connected(const char *ip);
+void ui_set_disconnected();
+void ui_set_connecting();
+
 // Remove all theme-applied decorations from a container
 static inline void _panel_reset(lv_obj_t *p) {
     lv_obj_set_style_shadow_width(p, 0, 0);

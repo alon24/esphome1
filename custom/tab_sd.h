@@ -518,7 +518,7 @@ static lv_obj_t *_sd_make_row(lv_obj_t *parent, int y,
                                const char *label_text, uint32_t bg) {
     lv_obj_t *row = lv_obj_create(parent);
     lv_obj_set_pos(row, 0, y);
-    lv_obj_set_size(row, 720, SD_ROW_H);
+    lv_obj_set_size(row, 580, SD_ROW_H);
     lv_obj_clear_flag(row, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_style_bg_color(row, lv_color_hex(bg), LV_STATE_DEFAULT);
     lv_obj_set_style_bg_color(row, lv_color_hex(0x1C2828), LV_STATE_PRESSED);
@@ -542,7 +542,7 @@ static lv_obj_t *_sd_make_row(lv_obj_t *parent, int y,
     lv_obj_set_style_text_font(lbl, &lv_font_montserrat_18, 0);
     _lbl_bg(lbl, bg);
     lv_label_set_long_mode(lbl, LV_LABEL_LONG_CLIP);
-    lv_obj_set_size(lbl, 670, 30);
+    lv_obj_set_size(lbl, 530, 30);
     lv_obj_set_pos(lbl, 50, 11);
 
     return row;
@@ -647,13 +647,13 @@ static void tab_sd_create(lv_obj_t *parent) {
     lv_obj_set_style_text_font(g_sd_path_lbl, &lv_font_montserrat_14, 0);
     _lbl_bg(g_sd_path_lbl, TAB_SD_BG);
     lv_label_set_long_mode(g_sd_path_lbl, LV_LABEL_LONG_SCROLL_CIRCULAR);
-    lv_obj_set_size(g_sd_path_lbl, 680, 24);
+    lv_obj_set_size(g_sd_path_lbl, 500, 24);
     lv_obj_set_pos(g_sd_path_lbl, 20, 14);
 
     // Refresh button — top right, compact
     lv_obj_t *rbtn = lv_btn_create(parent);
     lv_obj_set_size(rbtn, 90, 30);
-    lv_obj_set_pos(rbtn, 700, 10);
+    lv_obj_set_pos(rbtn, 530, 10);
     lv_obj_set_style_bg_color(rbtn, lv_color_hex(0x1C2828), LV_STATE_DEFAULT);
     lv_obj_set_style_bg_color(rbtn, lv_color_hex(0x00CED1), LV_STATE_PRESSED);
     lv_obj_set_style_bg_opa(rbtn, LV_OPA_COVER, LV_STATE_DEFAULT);
@@ -683,7 +683,7 @@ static void tab_sd_create(lv_obj_t *parent) {
 
     // Scrollable file/dir list (occupies most of the tab)
     g_sd_list_view = lv_obj_create(parent);
-    lv_obj_set_size(g_sd_list_view, 760, 304);
+    lv_obj_set_size(g_sd_list_view, 600, 304);
     lv_obj_set_pos(g_sd_list_view, 20, 46);
     lv_obj_set_scroll_dir(g_sd_list_view, LV_DIR_VER);
     lv_obj_set_scrollbar_mode(g_sd_list_view, LV_SCROLLBAR_MODE_AUTO);
@@ -732,10 +732,7 @@ static void tab_sd_create(lv_obj_t *parent) {
     g_sd_img_obj = lv_img_create(img_cont);
     lv_obj_set_pos(g_sd_img_obj, 0, 0);
     _panel_reset(g_sd_img_obj);
-    // Add debug border to verify widget existence and size
-    lv_obj_set_style_border_color(g_sd_img_obj, lv_color_hex(0xFF0000), 0);
-    lv_obj_set_style_border_width(g_sd_img_obj, 1, 0);
-    lv_obj_set_style_border_opa(g_sd_img_obj, LV_OPA_COVER, 0);
+    lv_obj_set_style_border_width(g_sd_img_obj, 0, 0);
 
     // Back button (child of g_sd_viewer, so it stays fixed relative to the screen)
     lv_obj_t *bbtn = lv_btn_create(g_sd_viewer);

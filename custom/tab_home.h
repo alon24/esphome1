@@ -29,7 +29,7 @@ static void tab_home_create(lv_obj_t *parent) {
     lv_obj_set_style_text_font(title, &lv_font_montserrat_16, LV_STATE_DEFAULT);
     lv_obj_set_style_text_letter_space(title, 3, LV_STATE_DEFAULT);
     _lbl_bg(title, TAB_HOME_BG);
-    lv_obj_set_width(title, 800);
+    lv_obj_set_width(title, 640);
     lv_obj_set_style_text_align(title, LV_TEXT_ALIGN_CENTER, LV_STATE_DEFAULT);
     lv_obj_set_pos(title, 0, 22);
 
@@ -39,7 +39,7 @@ static void tab_home_create(lv_obj_t *parent) {
     lv_obj_set_style_text_color(g_home_time_lbl, lv_color_hex(0xffffff), LV_STATE_DEFAULT);
     lv_obj_set_style_text_font(g_home_time_lbl, &lv_font_montserrat_48, LV_STATE_DEFAULT);
     _lbl_bg(g_home_time_lbl, TAB_HOME_BG);
-    lv_obj_set_width(g_home_time_lbl, 800);
+    lv_obj_set_width(g_home_time_lbl, 640);
     lv_obj_set_style_text_align(g_home_time_lbl, LV_TEXT_ALIGN_CENTER, LV_STATE_DEFAULT);
     lv_obj_set_pos(g_home_time_lbl, 0, 60);
 
@@ -49,14 +49,14 @@ static void tab_home_create(lv_obj_t *parent) {
     lv_obj_set_style_text_color(g_home_date_lbl, lv_color_hex(0xadaaaa), LV_STATE_DEFAULT);
     lv_obj_set_style_text_font(g_home_date_lbl, &lv_font_montserrat_22, LV_STATE_DEFAULT);
     _lbl_bg(g_home_date_lbl, TAB_HOME_BG);
-    lv_obj_set_width(g_home_date_lbl, 800);
+    lv_obj_set_width(g_home_date_lbl, 640);
     lv_obj_set_style_text_align(g_home_date_lbl, LV_TEXT_ALIGN_CENTER, LV_STATE_DEFAULT);
     lv_obj_set_pos(g_home_date_lbl, 0, 138);
 
     // ── Separator ────────────────────────────────────────────────────────────
     lv_obj_t *sep = lv_obj_create(parent);
-    lv_obj_set_pos(sep, 40, 178);
-    lv_obj_set_size(sep, 720, 1);
+    lv_obj_set_pos(sep, 20, 178);
+    lv_obj_set_size(sep, 600, 1);
     lv_obj_set_style_bg_color(sep, lv_color_hex(0x2a2a2a), LV_STATE_DEFAULT);
     lv_obj_set_style_bg_opa(sep, LV_OPA_COVER, LV_STATE_DEFAULT);
     _panel_reset(sep);
@@ -67,7 +67,7 @@ static void tab_home_create(lv_obj_t *parent) {
     lv_obj_set_style_text_color(g_home_uptime_lbl, lv_color_hex(0x666666), LV_STATE_DEFAULT);
     lv_obj_set_style_text_font(g_home_uptime_lbl, &lv_font_montserrat_16, LV_STATE_DEFAULT);
     _lbl_bg(g_home_uptime_lbl, TAB_HOME_BG);
-    lv_obj_set_width(g_home_uptime_lbl, 800);
+    lv_obj_set_width(g_home_uptime_lbl, 640);
     lv_obj_set_style_text_align(g_home_uptime_lbl, LV_TEXT_ALIGN_CENTER, LV_STATE_DEFAULT);
     lv_obj_set_pos(g_home_uptime_lbl, 0, 200);
 
@@ -77,7 +77,7 @@ static void tab_home_create(lv_obj_t *parent) {
     lv_obj_set_style_text_color(g_home_status_lbl, lv_color_hex(0x666666), LV_STATE_DEFAULT);
     lv_obj_set_style_text_font(g_home_status_lbl, &lv_font_montserrat_16, LV_STATE_DEFAULT);
     _lbl_bg(g_home_status_lbl, TAB_HOME_BG);
-    lv_obj_set_width(g_home_status_lbl, 800);
+    lv_obj_set_width(g_home_status_lbl, 640);
     lv_obj_set_style_text_align(g_home_status_lbl, LV_TEXT_ALIGN_CENTER, LV_STATE_DEFAULT);
     lv_obj_set_pos(g_home_status_lbl, 0, 224);
 }

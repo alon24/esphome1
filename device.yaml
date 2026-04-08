@@ -164,6 +164,10 @@ interval:
           auto now = id(sntp_time).now();
           dashboard_tick(now.hour, now.minute, now.second, now.day_of_month, now.month, now.year, now.day_of_week);
           if (now.second % 5 == 0) ESP_LOGI("main", "--- LIVE HEARTBEAT ---");
+          // Sync header WiFi status automatically
+          if (!id(wifi_module).is_connected()) {
+            ui_set_disconnected();
+          }
 
 external_components:
   - source:

@@ -177,7 +177,7 @@ static lv_obj_t *_wifi_btn(lv_obj_t *parent, const char *text,
 static void tab_wifi_create(lv_obj_t *parent, lv_obj_t *root) {
 
     // ── Left: network list ────────────────────────────────────────────────────
-    lv_obj_t *left = _make_panel(parent, 0, 0, 380, 352, TAB_WIFI_LIST_BG);
+    lv_obj_t *left = _make_panel(parent, 0, 0, 260, 352, TAB_WIFI_LIST_BG);
 
     // List header
     lv_obj_t *list_hdr = lv_label_create(left);
@@ -190,8 +190,8 @@ static void tab_wifi_create(lv_obj_t *parent, lv_obj_t *root) {
 
     // Scrollable list area
     g_wifi_list = lv_obj_create(left);
-    lv_obj_set_pos(g_wifi_list, 12, 32);
-    lv_obj_set_size(g_wifi_list, 356, 308);
+    lv_obj_set_pos(g_wifi_list, 10, 32);
+    lv_obj_set_size(g_wifi_list, 240, 308);
     lv_obj_set_style_bg_color(g_wifi_list, lv_color_hex(TAB_WIFI_LIST_BG), LV_STATE_DEFAULT);
     lv_obj_set_style_bg_opa(g_wifi_list, LV_OPA_COVER, LV_STATE_DEFAULT);
     lv_obj_set_style_pad_all(g_wifi_list, 4, LV_STATE_DEFAULT);
@@ -214,14 +214,14 @@ static void tab_wifi_create(lv_obj_t *parent, lv_obj_t *root) {
     lv_obj_set_scroll_dir(parent, LV_DIR_VER);
 
     lv_obj_t *div = lv_obj_create(parent);
-    lv_obj_set_pos(div, 380, 0);
+    lv_obj_set_pos(div, 260, 0);
     lv_obj_set_size(div, 1, 520);
     lv_obj_set_style_bg_color(div, lv_color_hex(0x252525), LV_STATE_DEFAULT);
     lv_obj_set_style_bg_opa(div, LV_OPA_COVER, LV_STATE_DEFAULT);
     _panel_reset(div);
 
     // ── Right: connect panel (tall — parent handles scroll) ───────────────────
-    lv_obj_t *right = _make_panel(parent, 381, 0, 419, 520, TAB_WIFI_BG);
+    lv_obj_t *right = _make_panel(parent, 261, 0, 379, 520, TAB_WIFI_BG);
 
     // SSID section
     lv_obj_t *ssid_hdr = lv_label_create(right);
@@ -234,10 +234,10 @@ static void tab_wifi_create(lv_obj_t *parent, lv_obj_t *root) {
     // SSID textarea (read-only display + tap to edit)
     g_wifi_ssid_ta = lv_textarea_create(right);
     lv_textarea_set_text(g_wifi_ssid_ta, "");
-    lv_textarea_set_placeholder_text(g_wifi_ssid_ta, "Select from list or type...");
+    lv_textarea_set_placeholder_text(g_wifi_ssid_ta, "Select...");
     lv_textarea_set_one_line(g_wifi_ssid_ta, true);
-    lv_obj_set_pos(g_wifi_ssid_ta, 12, 28);
-    lv_obj_set_size(g_wifi_ssid_ta, 395, 44);
+    lv_obj_set_pos(g_wifi_ssid_ta, 10, 28);
+    lv_obj_set_size(g_wifi_ssid_ta, 330, 44);
     lv_obj_set_style_bg_color(g_wifi_ssid_ta, lv_color_hex(0x222222), LV_STATE_DEFAULT);
     lv_obj_set_style_bg_opa(g_wifi_ssid_ta, LV_OPA_COVER, LV_STATE_DEFAULT);
     lv_obj_set_style_text_color(g_wifi_ssid_ta, lv_color_hex(0xffffff), LV_STATE_DEFAULT);
@@ -268,11 +268,11 @@ static void tab_wifi_create(lv_obj_t *parent, lv_obj_t *root) {
 
     g_wifi_pass_ta = lv_textarea_create(right);
     lv_textarea_set_text(g_wifi_pass_ta, "");
-    lv_textarea_set_placeholder_text(g_wifi_pass_ta, "Password...");
+    lv_textarea_set_placeholder_text(g_wifi_pass_ta, "Pass...");
     lv_textarea_set_one_line(g_wifi_pass_ta, true);
     lv_textarea_set_password_mode(g_wifi_pass_ta, true);
-    lv_obj_set_pos(g_wifi_pass_ta, 12, 104);
-    lv_obj_set_size(g_wifi_pass_ta, 395, 44);
+    lv_obj_set_pos(g_wifi_pass_ta, 10, 104);
+    lv_obj_set_size(g_wifi_pass_ta, 330, 44);
     lv_obj_set_style_bg_color(g_wifi_pass_ta, lv_color_hex(0x222222), LV_STATE_DEFAULT);
     lv_obj_set_style_bg_opa(g_wifi_pass_ta, LV_OPA_COVER, LV_STATE_DEFAULT);
     lv_obj_set_style_text_color(g_wifi_pass_ta, lv_color_hex(0xffffff), LV_STATE_DEFAULT);
@@ -291,7 +291,7 @@ static void tab_wifi_create(lv_obj_t *parent, lv_obj_t *root) {
     // Show/Hide Password Button
     lv_obj_t *eye_btn = lv_btn_create(right);
     lv_obj_set_size(eye_btn, 40, 40);
-    lv_obj_set_pos(eye_btn, 362, 106);
+    lv_obj_set_pos(eye_btn, 302, 106);
     lv_obj_set_style_bg_color(eye_btn, lv_color_hex(0x333333), 0);
     lv_obj_set_style_radius(eye_btn, 4, 0);
     lv_obj_t *eye_lbl = lv_label_create(eye_btn);
@@ -314,8 +314,8 @@ static void tab_wifi_create(lv_obj_t *parent, lv_obj_t *root) {
     }, LV_EVENT_CLICKED, nullptr);
 
     // ── Buttons row ───────────────────────────────────────────────────────────
-    g_wifi_scan_btn = _wifi_btn(right, "SCAN",    12, 165, 190, 44, 0x1a3a1a, 0x00CC44);
-    lv_obj_t *conn_btn = _wifi_btn(right, "CONNECT", 213, 165, 194, 44, 0x003050, 0x47EAED);
+    g_wifi_scan_btn = _wifi_btn(right, "SCAN",    10, 165, 170, 44, 0x1a3a1a, 0x00CC44);
+    lv_obj_t *conn_btn = _wifi_btn(right, "CONN", 185, 165, 165, 44, 0x003050, 0x47EAED);
 
     // Keep a pointer to scan button's label to change text during scan
     g_wifi_scan_lbl = lv_obj_get_child(g_wifi_scan_btn, 0);
@@ -340,6 +340,7 @@ static void tab_wifi_create(lv_obj_t *parent, lv_obj_t *root) {
         }
         lv_label_set_text(g_wifi_status_lbl, "Connecting...");
         lv_refr_now(NULL);
+        ui_set_connecting(); 
         wifi_connect_from_ui(g_wifi_ssid_ta, g_wifi_pass_ta);
         lv_label_set_text(g_wifi_status_lbl, "Connect requested - check header for IP");
     }, LV_EVENT_CLICKED, nullptr);
