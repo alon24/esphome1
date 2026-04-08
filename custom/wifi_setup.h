@@ -117,12 +117,31 @@ static void wifi_connect_from_ui(lv_obj_t *ssid_ta, lv_obj_t *pass_ta) {
   const char *pass = lv_textarea_get_text(pass_ta);
   if (!ssid || ssid[0] == '\0') return;
 
-  wifi_config_t cfg = {};
+  printf("\n--- WIFI CONNECT START ---\n");
+  printf("Target SSID: [%s]\n", ssid);
+  printf("Pass length: %d\n", pass ? (int)strlen(pass) : 0);
+  
+  wifi_config_t cfg;
+  memset(&cfg, 0, sizeof(cfg));
   strncpy((char *)cfg.sta.ssid, ssid, sizeof(cfg.sta.ssid) - 1);
   if (pass) strncpy((char *)cfg.sta.password, pass, sizeof(cfg.sta.password) - 1);
   cfg.sta.threshold.authmode = WIFI_AUTH_WPA2_PSK;
 
   esp_wifi_disconnect();
-  esp_wifi_set_config(WIFI_IF_STA, &cfg);
-  esp_wifi_connect();
+  vTaskDelay(pdMS_TO_TICKS(100));
+  
+  esp_wifi_set_storage(WIFI_STORAGE_FLASH); // Persistence
+  
+  esp_err_t err = esp_wifi_set_config(WIFI_IF_STA, &cfg);
+  if (err != ESP_OK) {
+      printf("ERR: esp_wifi_set_config failed: %d\n", err);
+  }
+  
+  err = esp_wifi_connect();
+  if (err != ESP_OK) {
+      printf("ERR: esp_wifi_connect failed: %d\n", err);
+  } else {
+      printf("SUCCESS: esp_wifi_connect command issued.\n");
+  }
+  printf("--- WIFI CONNECT PKT SENT ---\n");
 }

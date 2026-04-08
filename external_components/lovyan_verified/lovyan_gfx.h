@@ -2,6 +2,7 @@
 
 #define LGFX_USE_V1
 #include <lgfx_user/LGFX_ESP32S3_RGB_ESP32-8048S043.h>
+#include <sys/stat.h>
 #include "esphome/core/component.h"
 #include "esphome/components/display/display_buffer.h"
 
@@ -34,9 +35,26 @@ class VerifiedLovyanDisplay : public display::DisplayBuffer {
     if (!v_lcd().init()) {
       ESP_LOGE("lovyan_gfx", "FAILED to initialize display!");
     } else {
-      v_lcd().setSwapBytes(true); // Fix for Red/Blue swap and bit-shift
+      v_lcd().setSwapBytes(true);
       v_lcd().setRotation(0);
       ESP_LOGI("lovyan_gfx", "LovyanGFX Display initialized with SwapBytes=ON.");
+    }
+  }
+
+  // Draw a JPEG from SD card with scaling (1, 2, 4, 8)
+  void draw_sd_image(const char* path, int x, int y, int scale) {
+    ESP_LOGI("lovyan_gfx", "Drawing image: %s (Scale: 1/%d)", path, scale);
+    
+    // Check if file exists (using standard C stat)
+    struct stat st;
+    if (stat(path, &st) != 0) {
+      ESP_LOGE("lovyan_gfx", "File not found: %s", path);
+      return;
+    }
+
+    float scale_f = 1.0f / (float)scale;
+    if (!v_lcd().drawJpgFile(path, x, y, 0, 0, 0, 0, scale_f)) {
+       ESP_LOGE("lovyan_gfx", "Failed to draw JPEG: %s", path);
     }
   }
 

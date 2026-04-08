@@ -7,9 +7,10 @@
 #include <random>
 
 // ── Configuration (Dynamic) ───────────────────────────────────────────────────
-static uint32_t g_ss_timeout_ms  = 15000;   // Default 15s
-static uint32_t g_ss_interval_ms = 5000;    // Default 5s
-static bool     g_ss_enabled     = false;   // Default OFF
+// ── Configuration (Links to globals in device.yaml) ───────────────────────────
+#define g_ss_timeout_ms  (id(pref_ss_timeout))
+#define g_ss_interval_ms (id(pref_ss_interval))
+#define g_ss_enabled     (id(pref_ss_enabled))
 
 // ── State ─────────────────────────────────────────────────────────────────────
 static uint32_t g_ss_last_activity = 0;
@@ -91,6 +92,12 @@ static void screensaver_tick() {
 
     // Check for start
     if (!g_ss_active) {
+        // Don't start screensaver if user is explicitly viewing an image in the SD tab
+        if (g_sd_viewer && !lv_obj_has_flag(g_sd_viewer, LV_OBJ_FLAG_HIDDEN)) {
+            g_ss_last_activity = now;
+            return;
+        }
+
         if (g_ss_enabled && (now - g_ss_last_activity > g_ss_timeout_ms)) {
             screensaver_start();
         }

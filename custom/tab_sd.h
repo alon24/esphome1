@@ -192,7 +192,7 @@ static void _sd_delete_cb(lv_event_t *e) {
 void _sd_show_list() {
     if (g_sd_raw_buf) { free(g_sd_raw_buf); g_sd_raw_buf = nullptr; }
     if (g_sd_img_obj) {
-        lv_img_set_src(g_sd_img_obj, (const void*)nullptr);
+        lv_obj_add_flag(g_sd_img_obj, LV_OBJ_FLAG_HIDDEN);
         lv_obj_set_size(g_sd_img_obj, 0, 0);
     }
     if (g_sd_list_view) lv_obj_clear_flag(g_sd_list_view, LV_OBJ_FLAG_HIDDEN);
@@ -390,15 +390,24 @@ void _sd_show_image(const char *path) {
     uint32_t free_i = esp_get_free_internal_heap_size();
     ESP_LOGE("SD_TAB", "Loading image: %s (Heap: %u, Int: %u)", path, free_h, free_i);
 
-    // Safety: stop the image widget from looking at the old buffer before we free it
+    // Safety: Hide the image widget and clear cache while we work on the new buffer
     if (g_sd_img_obj) {
-        lv_img_set_src(g_sd_img_obj, (const void*)nullptr);
+        lv_obj_add_flag(g_sd_img_obj, LV_OBJ_FLAG_HIDDEN);
     }
+    if (g_sd_status_lbl) {
+        lv_obj_clear_flag(g_sd_status_lbl, LV_OBJ_FLAG_HIDDEN);
+        lv_label_set_text(g_sd_status_lbl, "Decoding image...");
+        lv_obj_set_style_text_color(g_sd_status_lbl, lv_color_hex(0x888888), 0);
+        lv_obj_update_layout(g_sd_viewer); // Force layout update to show "Decoding"
+        lv_refr_now(NULL);                 // Force immediate screen refresh
+    }
+
     lv_img_cache_invalidate_src(&g_sd_img_dsc);
 
     if (g_sd_raw_buf) { 
         free(g_sd_raw_buf); 
         g_sd_raw_buf = nullptr; 
+        g_sd_img_dsc.data = nullptr;
     }
 
     const char *ext = strrchr(path, '.');
@@ -487,9 +496,10 @@ void _sd_show_image(const char *path) {
     g_sd_img_dsc.data_size = (uint32_t)iw * ih * 2;
     g_sd_img_dsc.data = (const uint8_t*)g_sd_raw_buf;
 
-    // Update image widget
+    // Update image widget and reveal it
     lv_img_set_src(g_sd_img_obj, &g_sd_img_dsc);
     lv_obj_set_size(g_sd_img_obj, (lv_coord_t)iw, (lv_coord_t)ih);
+    lv_obj_clear_flag(g_sd_img_obj, LV_OBJ_FLAG_HIDDEN);
 
     // Show viewer after preparing data
     lv_obj_clear_flag(g_sd_viewer, LV_OBJ_FLAG_HIDDEN);

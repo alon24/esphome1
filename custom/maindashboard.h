@@ -21,8 +21,9 @@
 #define DASH_FTR_BG  0x131313
 
 // ── Globals ───────────────────────────────────────────────────────────────────
-static lv_obj_t *g_dash_ip_lbl      = nullptr;
-static lv_obj_t *g_dash_ver_lbl     = nullptr;
+static lv_obj_t *g_dash_time_lbl    = nullptr;
+static lv_obj_t *g_dash_ap_btn      = nullptr;
+static lv_obj_t *g_dash_ip_btn      = nullptr;
 static lv_obj_t *g_dash_tabs[4]     = {nullptr, nullptr, nullptr, nullptr};
 static lv_obj_t *g_dash_nav[4]      = {nullptr, nullptr, nullptr, nullptr};
 static int        g_dash_active_tab = 0;
@@ -84,18 +85,30 @@ static void ui_set_connected(const char *ip = nullptr) {
     if (ip && ip[0]) snprintf(buf, sizeof(buf), "%s", ip);
     else             snprintf(buf, sizeof(buf), "Connected");
 
-    if (g_dash_ip_lbl) lv_label_set_text(g_dash_ip_lbl, buf);
+    if (g_dash_ip_btn) {
+        lv_obj_t *lbl = lv_obj_get_child(g_dash_ip_btn, 0);
+        if (lbl) {
+            lv_label_set_text(lbl, buf);
+            lv_obj_set_style_text_color(lbl, lv_color_hex(0x00CED1), LV_STATE_DEFAULT);
+        }
+    }
 
     char net_str[48];
     snprintf(net_str, sizeof(net_str), "Connected  %s", buf);
     tab_home_set_network(net_str);
     tab_settings_set_ip(ip && ip[0] ? ip : "");
     tab_settings_set_network("Connected");
-    tab_wifi_set_status("Connected — check header for IP");
+    tab_wifi_set_status("Connected - check header for IP");
 }
 
 static void ui_set_disconnected() {
-    if (g_dash_ip_lbl) lv_label_set_text(g_dash_ip_lbl, "No network");
+    if (g_dash_ip_btn) {
+        lv_obj_t *lbl = lv_obj_get_child(g_dash_ip_btn, 0);
+        if (lbl) {
+            lv_label_set_text(lbl, "Disconnected");
+            lv_obj_set_style_text_color(lbl, lv_color_hex(0xff4444), LV_STATE_DEFAULT);
+        }
+    }
     tab_home_set_network("Not connected");
     tab_settings_set_ip("---");
     tab_settings_set_network("Disconnected");
@@ -150,38 +163,68 @@ static void maindashboard_create(void) {
     // ── HEADER (800×64 at y=0) ────────────────────────────────────────────────
     lv_obj_t *header = _make_panel(root, 0, 0, 800, 64, DASH_HDR_BG);
 
-    // Logo / title
+    // App Name (Top-Left)
     lv_obj_t *title = lv_label_create(header);
-    lv_label_set_text(title, "CYANIDE");
+    lv_label_set_text(title, APP_NAME);
     lv_obj_set_style_text_color(title, lv_color_hex(0x00CED1), LV_STATE_DEFAULT);
     lv_obj_set_style_text_font(title, &lv_font_montserrat_26, LV_STATE_DEFAULT);
     _lbl_bg(title, DASH_HDR_BG);
-    lv_obj_set_pos(title, 48, 20);
+    lv_obj_set_pos(title, 20, 18);
 
-    // Status dot
-    lv_obj_t *dot = lv_obj_create(header);
-    lv_obj_set_size(dot, 10, 10);
-    lv_obj_set_style_bg_color(dot, lv_color_hex(0x47EAED), LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_opa(dot, LV_OPA_COVER, LV_STATE_DEFAULT);
-    lv_obj_set_style_radius(dot, LV_RADIUS_CIRCLE, LV_STATE_DEFAULT);
-    _panel_reset(dot);
-    lv_obj_set_pos(dot, 172, 27);
+    // Time (Next to App Name)
+    g_dash_time_lbl = lv_label_create(header);
+    lv_label_set_text(g_dash_time_lbl, "--:--");
+    lv_obj_set_style_text_color(g_dash_time_lbl, lv_color_hex(0xffffff), LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(g_dash_time_lbl, &lv_font_montserrat_20, LV_STATE_DEFAULT);
+    _lbl_bg(g_dash_time_lbl, DASH_HDR_BG);
+    lv_obj_set_pos(g_dash_time_lbl, 190, 22);
 
-    // Version label
-    g_dash_ver_lbl = lv_label_create(header);
-    lv_label_set_text(g_dash_ver_lbl, FW_VERSION_STR);
-    lv_obj_set_style_text_color(g_dash_ver_lbl, lv_color_hex(0x555555), LV_STATE_DEFAULT);
-    lv_obj_set_style_text_font(g_dash_ver_lbl, &lv_font_montserrat_16, LV_STATE_DEFAULT);
-    _lbl_bg(g_dash_ver_lbl, DASH_HDR_BG);
-    lv_obj_set_pos(g_dash_ver_lbl, 498, 26);
+    // IP / Connectivity (Top-Right, clickable)
+    g_dash_ip_btn = lv_obj_create(header);
+    lv_obj_set_size(g_dash_ip_btn, 220, 50);
+    lv_obj_align(g_dash_ip_btn, LV_ALIGN_RIGHT_MID, -10, 0);
+    lv_obj_set_style_bg_color(g_dash_ip_btn, lv_color_hex(0x1a1a1a), LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_opa(g_dash_ip_btn, LV_OPA_COVER, LV_STATE_DEFAULT);
+    lv_obj_set_style_radius(g_dash_ip_btn, 6, LV_STATE_DEFAULT);
+    _panel_reset(g_dash_ip_btn);
+    lv_obj_add_event_cb(g_dash_ip_btn, [](lv_event_t *) { _dash_show_tab(2); }, LV_EVENT_CLICKED, nullptr);
 
-    // IP label
-    g_dash_ip_lbl = lv_label_create(header);
-    lv_label_set_text(g_dash_ip_lbl, "Connecting...");
-    lv_obj_set_style_text_color(g_dash_ip_lbl, lv_color_hex(0xadaaaa), LV_STATE_DEFAULT);
-    lv_obj_set_style_text_font(g_dash_ip_lbl, &lv_font_montserrat_18, LV_STATE_DEFAULT);
-    _lbl_bg(g_dash_ip_lbl, DASH_HDR_BG);
-    lv_obj_set_pos(g_dash_ip_lbl, 542, 24);
+    lv_obj_t *ip_lbl = lv_label_create(g_dash_ip_btn);
+    lv_label_set_text(ip_lbl, "Disconnected");
+    lv_obj_set_style_text_color(ip_lbl, lv_color_hex(0xff4444), LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(ip_lbl, &lv_font_montserrat_18, LV_STATE_DEFAULT);
+    lv_obj_align(ip_lbl, LV_ALIGN_CENTER, 0, 0);
+    _lbl_bg(ip_lbl, 0x1a1a1a);
+
+    // AP Icon (Left of IP, clickable)
+    g_dash_ap_btn = lv_obj_create(header);
+    lv_obj_set_size(g_dash_ap_btn, 50, 50);
+    lv_obj_align(g_dash_ap_btn, LV_ALIGN_RIGHT_MID, -240, 0);
+    lv_obj_set_style_bg_color(g_dash_ap_btn, lv_color_hex(0x1a1a1a), LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_opa(g_dash_ap_btn, LV_OPA_COVER, LV_STATE_DEFAULT);
+    lv_obj_set_style_radius(g_dash_ap_btn, 25, LV_STATE_DEFAULT); // Circle
+    _panel_reset(g_dash_ap_btn);
+    lv_obj_add_event_cb(g_dash_ap_btn, [](lv_event_t *) {
+        wifi_mode_t mode;
+        esp_wifi_get_mode(&mode);
+        if (mode == WIFI_MODE_STA) esp_wifi_set_mode(WIFI_MODE_APSTA);
+        else if (mode == WIFI_MODE_APSTA) esp_wifi_set_mode(WIFI_MODE_STA);
+    }, LV_EVENT_CLICKED, nullptr);
+
+    lv_obj_t *ap_ico = lv_label_create(g_dash_ap_btn);
+    lv_label_set_text(ap_ico, LV_SYMBOL_WIFI);
+    lv_obj_set_style_text_color(ap_ico, lv_color_hex(0x888888), LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(ap_ico, &lv_font_montserrat_20, LV_STATE_DEFAULT);
+    lv_obj_align(ap_ico, LV_ALIGN_CENTER, 0, 0);
+    _lbl_bg(ap_ico, 0x1a1a1a);
+
+    // Version label (Left of AP icon)
+    lv_obj_t *ver_lbl = lv_label_create(header);
+    lv_label_set_text(ver_lbl, FW_VERSION_STR);
+    lv_obj_set_style_text_color(ver_lbl, lv_color_hex(0xffffff), LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(ver_lbl, &lv_font_montserrat_16, LV_STATE_DEFAULT);
+    _lbl_bg(ver_lbl, DASH_HDR_BG);
+    lv_obj_align_to(ver_lbl, g_dash_ap_btn, LV_ALIGN_OUT_LEFT_MID, -10, 0);
 
     // ── CONTENT AREA (800×352 at y=64) ───────────────────────────────────────
     lv_obj_t *content = _make_panel(root, 0, 64, 800, 352, DASH_BG);
@@ -260,7 +303,30 @@ static void maindashboard_create(void) {
 // ── Tick: called every second from device.yaml interval ───────────────────────
 // h=-1 signals SNTP not yet synced
 static void dashboard_tick(int h, int m, int s, int dom, int mon, int year, int dow) {
+    // Update Header Time
+    if (g_dash_time_lbl) {
+        if (h == -1) {
+            lv_label_set_text(g_dash_time_lbl, "--:--");
+        } else {
+            char tbuf[16];
+            snprintf(tbuf, sizeof(tbuf), "%02d:%02d:%02d", h, m, s);
+            lv_label_set_text(g_dash_time_lbl, tbuf);
+        }
+    }
+
+    // Update AP Icon Color
+    if (g_dash_ap_btn) {
+        wifi_mode_t mode;
+        esp_wifi_get_mode(&mode);
+        bool ap_on = (mode == WIFI_MODE_AP || mode == WIFI_MODE_APSTA);
+        lv_obj_t *ico = lv_obj_get_child(g_dash_ap_btn, 0);
+        if (ico) {
+            lv_obj_set_style_text_color(ico, lv_color_hex(ap_on ? 0x00FF00 : 0x888888), LV_STATE_DEFAULT);
+        }
+    }
+
     tab_home_tick(h, m, s, dom, mon, year, dow);
     tab_settings_tick();
+    tab_wifi_tick();
     tab_sd_poll();
 }

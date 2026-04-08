@@ -34,6 +34,7 @@ static void _wifi_kb_show(lv_obj_t *ta) {
     g_wifi_active_ta = ta;
     lv_keyboard_set_textarea(g_wifi_keyboard, ta);
     lv_obj_clear_flag(g_wifi_keyboard, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_move_foreground(g_wifi_keyboard); // Ensure it's on top
 }
 
 static void _wifi_kb_hide() {
@@ -133,7 +134,7 @@ static void _wifi_populate_list(lv_obj_t *list, lv_obj_t *ssid_ta) {
             lv_textarea_set_text(ta, lv_label_get_text(sl));
             // update status
             if (g_wifi_status_lbl)
-                lv_label_set_text(g_wifi_status_lbl, "SSID selected — enter password");
+                lv_label_set_text(g_wifi_status_lbl, "SSID selected - enter password");
         }, LV_EVENT_CLICKED, nullptr);
 
         y += ROW_H + GAP;
@@ -253,7 +254,7 @@ static void tab_wifi_create(lv_obj_t *parent, lv_obj_t *root) {
     // auto-hide — so we have full control over keyboard visibility.
     lv_obj_add_event_cb(g_wifi_ssid_ta, [](lv_event_t *e) {
         lv_event_code_t code = lv_event_get_code(e);
-        if (code == LV_EVENT_FOCUSED)   _wifi_kb_show(g_wifi_ssid_ta);
+        if (code == LV_EVENT_FOCUSED || code == LV_EVENT_CLICKED) _wifi_kb_show(g_wifi_ssid_ta);
         else if (code == LV_EVENT_DEFOCUSED) _wifi_kb_hide();
     }, LV_EVENT_ALL, nullptr);
 
@@ -283,9 +284,34 @@ static void tab_wifi_create(lv_obj_t *parent, lv_obj_t *root) {
     lv_obj_set_style_radius(g_wifi_pass_ta, 6, LV_STATE_DEFAULT);
     lv_obj_add_event_cb(g_wifi_pass_ta, [](lv_event_t *e) {
         lv_event_code_t code = lv_event_get_code(e);
-        if (code == LV_EVENT_FOCUSED)   _wifi_kb_show(g_wifi_pass_ta);
+        if (code == LV_EVENT_FOCUSED || code == LV_EVENT_CLICKED) _wifi_kb_show(g_wifi_pass_ta);
         else if (code == LV_EVENT_DEFOCUSED) _wifi_kb_hide();
     }, LV_EVENT_ALL, nullptr);
+
+    // Show/Hide Password Button
+    lv_obj_t *eye_btn = lv_btn_create(right);
+    lv_obj_set_size(eye_btn, 40, 40);
+    lv_obj_set_pos(eye_btn, 362, 106);
+    lv_obj_set_style_bg_color(eye_btn, lv_color_hex(0x333333), 0);
+    lv_obj_set_style_radius(eye_btn, 4, 0);
+    lv_obj_t *eye_lbl = lv_label_create(eye_btn);
+    lv_label_set_text(eye_lbl, LV_SYMBOL_EYE_OPEN);
+    lv_obj_center(eye_lbl);
+
+    lv_obj_add_event_cb(eye_btn, [](lv_event_t * e) {
+        if (lv_event_get_code(e) == LV_EVENT_CLICKED) {
+            lv_obj_t * btn = lv_event_get_target(e);
+            lv_obj_t * lbl = lv_obj_get_child(btn, 0);
+            bool is_pass = lv_textarea_get_password_mode(g_wifi_pass_ta);
+            if (is_pass) {
+                lv_textarea_set_password_mode(g_wifi_pass_ta, false);
+                lv_label_set_text(lbl, LV_SYMBOL_EYE_CLOSE);
+            } else {
+                lv_textarea_set_password_mode(g_wifi_pass_ta, true);
+                lv_label_set_text(lbl, LV_SYMBOL_EYE_OPEN);
+            }
+        }
+    }, LV_EVENT_CLICKED, nullptr);
 
     // ── Buttons row ───────────────────────────────────────────────────────────
     g_wifi_scan_btn = _wifi_btn(right, "SCAN",    12, 165, 190, 44, 0x1a3a1a, 0x00CC44);
@@ -315,7 +341,7 @@ static void tab_wifi_create(lv_obj_t *parent, lv_obj_t *root) {
         lv_label_set_text(g_wifi_status_lbl, "Connecting...");
         lv_refr_now(NULL);
         wifi_connect_from_ui(g_wifi_ssid_ta, g_wifi_pass_ta);
-        lv_label_set_text(g_wifi_status_lbl, "Connect requested — check header for IP");
+        lv_label_set_text(g_wifi_status_lbl, "Connect requested - check header for IP");
     }, LV_EVENT_CLICKED, nullptr);
 
     // ── Status label ──────────────────────────────────────────────────────────
@@ -361,14 +387,28 @@ static void tab_wifi_create(lv_obj_t *parent, lv_obj_t *root) {
 }
 
 // Called from maindashboard when wifi tab is shown.
-// Show keyboard immediately — bypasses FOCUSED/CLICKED timing issues entirely.
 static void tab_wifi_on_show() {
-    // if (g_wifi_pass_ta) _wifi_kb_show(g_wifi_pass_ta);
     if (g_wifi_status_lbl)
-        lv_label_set_text(g_wifi_status_lbl, "Scan for networks to begin");
+        lv_label_set_text(g_wifi_status_lbl, "Reading saved credentials...");
+    
+    // Auto-populate from NVS/esp-idf
+    wifi_config_t conf;
+    if (esp_wifi_get_config(WIFI_IF_STA, &conf) == ESP_OK) {
+        if (conf.sta.ssid[0] != '\0') {
+            printf("[WIFI] Pre-populating SSID: %s\n", (char*)conf.sta.ssid);
+            if (g_wifi_ssid_ta) lv_textarea_set_text(g_wifi_ssid_ta, (char*)conf.sta.ssid);
+            if (g_wifi_pass_ta) lv_textarea_set_text(g_wifi_pass_ta, (char*)conf.sta.password);
+            if (g_wifi_status_lbl) lv_label_set_text(g_wifi_status_lbl, "Saved credentials loaded - ready.");
+        }
+    }
 }
 
-// Called by maindashboard when connection state changes
+// Called every second from maindashboard
+static void tab_wifi_tick() {
+    // Automatic background scanning disabled to prevent UI lag.
+    // Use the manual SCAN button to refresh networks.
+}
+
 static void tab_wifi_set_status(const char *msg) {
     if (g_wifi_status_lbl)
         lv_label_set_text(g_wifi_status_lbl, msg);
