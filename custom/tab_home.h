@@ -42,40 +42,100 @@ static void tab_home_create(lv_obj_t *parent) {
 
 static void _home_render_grid() {
     if (!g_home_grid_cont) return;
+    
+    // Save scroll position
+    lv_coord_t scroll_y = lv_obj_get_scroll_y(g_home_grid_cont);
+    
     lv_obj_clean(g_home_grid_cont);
 
     for (const auto &item : g_grid_items) {
-        lv_obj_t *btn = lv_btn_create(g_home_grid_cont);
-        lv_obj_set_size(btn, item.w * GRID_CELL_W - 4, item.h * GRID_CELL_H - 4);
-        lv_obj_set_pos(btn, item.x * GRID_CELL_W + 2, item.y * GRID_CELL_H + 2);
+        // Create base container/button for the block
+        lv_obj_t *obj = nullptr;
         
-        lv_obj_set_style_bg_color(btn, lv_color_hex(item.color), 0);
-        lv_obj_set_style_bg_opa(btn, LV_OPA_COVER, 0);
-        lv_obj_set_style_radius(btn, 8, 0);
-        lv_obj_set_style_shadow_width(btn, 0, 0);
-        lv_obj_set_style_border_width(btn, 1, 0);
-        lv_obj_set_style_border_color(btn, lv_color_hex(0xFFFFFF), 0);
-        lv_obj_set_style_border_opa(btn, 20, 0);
+        if (item.type == "btn" || item.type == "switch" || item.type == "slider") {
+            obj = lv_btn_create(g_home_grid_cont);
+        } else {
+            obj = lv_obj_create(g_home_grid_cont);
+            _panel_reset(obj);
+        }
 
-        lv_obj_t *lbl = lv_label_create(btn);
-        lv_label_set_text(lbl, item.name.c_str());
-        lv_obj_set_style_text_color(lbl, lv_color_hex(item.textColor), 0);
-        lv_obj_set_style_text_font(lbl, &lv_font_montserrat_18, 0);
-        lv_obj_center(lbl);
+        lv_obj_set_size(obj, item.w * GRID_CELL_W - 4, item.h * GRID_CELL_H - 4);
+        lv_obj_set_pos(obj, item.x * GRID_CELL_W + 2, item.y * GRID_CELL_H + 2);
+        
+        lv_obj_set_style_bg_color(obj, lv_color_hex(item.color), 0);
+        lv_obj_set_style_bg_opa(obj, LV_OPA_COVER, 0);
+        lv_obj_set_style_radius(obj, 12, 0);
+        lv_obj_set_style_shadow_width(obj, 0, 0);
+        lv_obj_set_style_border_width(obj, 1, 0);
+        lv_obj_set_style_border_color(obj, lv_color_hex(0xFFFFFF), 0);
+        lv_obj_set_style_border_opa(obj, 25, 0);
+        lv_obj_set_style_clip_corner(obj, true, 0);
 
-        // Grid Click Handler
-        lv_obj_add_event_cb(btn, [](lv_event_t *e) {
-            lv_obj_t * target = lv_event_get_target(e);
-            lv_obj_t * label = lv_obj_get_child(target, 0);
-            if (label) {
-                printf("[GRID] Click: %s\n", lv_label_get_text(label));
+        if (item.type == "btn") {
+            lv_obj_t *lbl = lv_label_create(obj);
+            lv_label_set_text(lbl, item.name.c_str());
+            lv_obj_set_style_text_color(lbl, lv_color_hex(item.textColor), 0);
+            lv_obj_set_style_text_font(lbl, &lv_font_montserrat_18, 0);
+            lv_obj_center(lbl);
+        } 
+        else if (item.type == "switch") {
+            lv_obj_t *sw = lv_switch_create(obj);
+            lv_obj_set_size(sw, 50 * item.scale / 100, 25 * item.scale / 100);
+            lv_obj_center(sw);
+            
+            lv_obj_t *lbl = lv_label_create(obj);
+            lv_label_set_text(lbl, item.name.c_str());
+            lv_obj_set_style_text_color(lbl, lv_color_hex(item.textColor), 0);
+            lv_obj_set_style_text_font(lbl, &lv_font_montserrat_14, 0);
+            lv_obj_align(lbl, LV_ALIGN_TOP_MID, 0, 5);
+        }
+        else if (item.type == "slider") {
+            lv_obj_t *slider = lv_slider_create(obj);
+            lv_obj_set_width(slider, lv_pct(item.scale > 100 ? 95 : item.scale));
+            lv_obj_center(slider);
+            
+            lv_obj_t *lbl = lv_label_create(obj);
+            lv_label_set_text(lbl, item.name.c_str());
+            lv_obj_set_style_text_color(lbl, lv_color_hex(item.textColor), 0);
+            lv_obj_set_style_text_font(lbl, &lv_font_montserrat_14, 0);
+            lv_obj_align(lbl, LV_ALIGN_TOP_MID, 0, 5);
+        }
+        else if (item.type == "label" || item.type == "clock") {
+            lv_obj_t *lbl = lv_label_create(obj);
+            lv_label_set_text(lbl, item.name.c_str());
+            lv_obj_set_style_text_color(lbl, lv_color_hex(item.textColor), 0);
+            
+            // Adjust font size based on scale (cheap approximation)
+            if (item.scale < 80) lv_obj_set_style_text_font(lbl, &lv_font_montserrat_12, 0);
+            else if (item.scale > 150) lv_obj_set_style_text_font(lbl, &lv_font_montserrat_24, 0);
+            else lv_obj_set_style_text_font(lbl, &lv_font_montserrat_18, 0);
+
+            lv_obj_center(lbl);
+            if (item.type == "clock") {
+                lv_obj_set_user_data(lbl, (void*)"clock"); // Tag it
             }
-        }, LV_EVENT_CLICKED, nullptr);
+        }
     }
+    // Restore scroll position
+    lv_obj_scroll_to_y(g_home_grid_cont, scroll_y, LV_ANIM_OFF);
 }
 
 static void tab_home_tick(int h, int m, int s, int dom, int mon, int year, int dow) {
-    // Future: Update clock block if present in grid items
+    if (!g_home_grid_cont) return;
+
+    // Search for clock labels and update them
+    for (uint32_t i = 0; i < lv_obj_get_child_cnt(g_home_grid_cont); i++) {
+        lv_obj_t * block = lv_obj_get_child(g_home_grid_cont, i);
+        if (!block) continue;
+        for (uint32_t j = 0; j < lv_obj_get_child_cnt(block); j++) {
+            lv_obj_t * child = lv_obj_get_child(block, j);
+            if (lv_obj_get_user_data(child) == (void*)"clock") {
+                char time_buf[16];
+                sprintf(time_buf, "%02d:%02d:%02d", h, m, s);
+                lv_label_set_text(child, time_buf);
+            }
+        }
+    }
 }
 
 static void tab_home_set_network(const char *text) {

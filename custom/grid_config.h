@@ -11,7 +11,9 @@
 
 struct GridItem {
     std::string name;
+    std::string type; // "btn", "switch", "slider", "label", "clock"
     int x, y, w, h;
+    int scale; // 10-200 (percent)
     uint32_t color;
     uint32_t textColor;
     std::string action; // e.g. "mqtt:light/on" or "toggle:gpio/2"
@@ -30,8 +32,8 @@ void grid_config_load() {
         ESP_LOGW("GRID", "No config file found, using defaults");
         // Default demo layout
         g_grid_items.clear();
-        g_grid_items.push_back({"Clock", 0, 0, 4, 2, 0x1C2828, 0xFFFFFF, ""});
-        g_grid_items.push_back({"Stats", 4, 0, 4, 2, 0x281C1C, 0xFFFFFF, ""});
+        g_grid_items.push_back({"Clock", "clock", 0, 0, 4, 1, 0x1C2828, 0xFFFFFF, 100, ""});
+        g_grid_items.push_back({"Stats", "btn", 4, 0, 4, 2, 0x281C1C, 0xFFFFFF, 100, ""});
         return;
     }
 
@@ -53,10 +55,12 @@ void grid_config_load() {
             for (JsonObject v : array) {
                 GridItem it;
                 it.name   = v["name"]   | "Item";
+                it.type   = v["type"]   | "btn";
                 it.x      = v["x"]      | 0;
                 it.y      = v["y"]      | 0;
                 it.w      = v["w"]      | 1;
                 it.h      = v["h"]      | 1;
+                it.scale  = v["scale"]  | 100;
                 it.color  = v["color"]  | 0x333333;
                 it.textColor = v["textColor"] | 0xFFFFFF;
                 it.action = v["action"] | "";
@@ -78,10 +82,12 @@ void grid_config_get_json(char* out, size_t max_len) {
     for (const auto &it : g_grid_items) {
         JsonObject v = array.add<JsonObject>();
         v["name"]  = it.name;
+        v["type"]  = it.type;
         v["x"]     = it.x;
         v["y"]     = it.y;
         v["w"]     = it.w;
         v["h"]     = it.h;
+        v["scale"] = it.scale;
         v["color"] = it.color;
         v["textColor"] = it.textColor;
         v["action"]= it.action;

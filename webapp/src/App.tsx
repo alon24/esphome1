@@ -31,10 +31,12 @@ type ImageInfo = {
 
 type GridItem = {
   name: string;
+  type: "btn" | "switch" | "slider" | "label" | "clock";
   x: number;
   y: number;
   w: number;
   h: number;
+  scale: number;
   color: number;
   textColor: number;
   action: string;
@@ -431,6 +433,12 @@ function GridTab() {
   const [selected, setSelected] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState<string>("");
+  const [time, setTime] = useState(new Date().toLocaleTimeString());
+
+  useEffect(() => {
+    const timer = setInterval(() => setTime(new Date().toLocaleTimeString()), 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   const [dragInfo, setDragInfo] = useState<{ idx: number, startX: number, startY: number, initialX: number, initialY: number, initialW: number, initialH: number, mode: 'move' | 'resize' } | null>(null);
 
@@ -461,7 +469,7 @@ function GridTab() {
   };
 
   const addItem = () => {
-      setItems([...items, { name: "New Btn", x: 0, y: 0, w: 2, h: 2, color: 0x1c2828, textColor: 0xFFFFFF, action: "" }]);
+      setItems([...items, { name: "New Btn", type: "btn", x: 0, y: 0, w: 2, h: 2, scale: 100, color: 0x1c2828, textColor: 0xFFFFFF, action: "" }]);
       setSelected(items.length);
   };
 
@@ -546,7 +554,12 @@ function GridTab() {
                     boxShadow: selected === i ? "0 0 15px #a78bfa" : "none",
                     zIndex: selected === i ? 10 : 1,
                   }}>
-                    <span style={{...s.gridLabel, color: `#${it.textColor.toString(16).padStart(6,'0')}`}}>{it.name}</span>
+                    <div style={{display:"flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "5px", width: "100%", height: "100%", padding: "5px", pointerEvents: "none"}}>
+                        <span style={{...s.gridLabel, color: `#${it.textColor.toString(16).padStart(6,'0')}`, fontSize: `${(0.8 * it.scale / 100)}rem` }}>{it.name}</span>
+                        {it.type === "switch" && <div style={{width: 30 * it.scale/100, height: 16 * it.scale/100, borderRadius: 8, background: "rgba(255,255,255,0.2)", position: "relative"}}><div style={{width: 12 * it.scale/100, height: 12 * it.scale/100, borderRadius: 6, background: "#fff", position: "absolute", right: 2, top: 2}} /></div>}
+                        {it.type === "slider" && <div style={{width: (it.scale > 100 ? 95 : it.scale) + "%", height: 4, borderRadius: 2, background: "rgba(255,255,255,0.2)", position: "relative"}}><div style={{width: "60%", height: "100%", background: "#fff", borderRadius: 2}} /></div>}
+                        {it.type === "clock" && <span style={{fontSize: `${(1.2 * it.scale / 100)}rem`, fontWeight: 800}}>{time}</span>}
+                    </div>
                     {selected === i && (
                         <div onMouseDown={(e) => onMouseDown(e, i, 'resize')} style={s.resizeHandle} />
                     )}
@@ -564,6 +577,30 @@ function GridTab() {
               <div style={s.formGroup}>
                 <label style={s.formLabel}>BLOCK NAME</label>
                 <input style={s.input} value={items[selected].name} onChange={e => updateItem(selected, {name: e.target.value})} />
+              </div>
+              <div style={s.formGroup}>
+                <label style={s.formLabel}>WIDGET TYPE</label>
+                <select style={s.input as any} value={items[selected].type} onChange={e => updateItem(selected, {type: e.target.value as any})}>
+                  <option value="btn">Action Button</option>
+                  <option value="switch">Switch (Toggle)</option>
+                  <option value="slider">Slider (Range)</option>
+                  <option value="label">Status Label</option>
+                  <option value="clock">Clock Widget</option>
+                </select>
+              </div>
+              <div style={s.formGroup}>
+                  <label style={s.formLabel}>WIDGET INNER SCALE ({items[selected].scale}%)</label>
+                  <input type="range" min="10" max="200" style={{accentColor: "#a78bfa"}} value={items[selected].scale} onChange={e => updateItem(selected, {scale: parseInt(e.target.value)})} />
+              </div>
+              <div style={{display:"grid", gridTemplateColumns: "1fr 1fr", gap: "10px"}}>
+                <div style={s.formGroup}>
+                  <label style={s.formLabel}>WIDTH (COL)</label>
+                  <input type="number" min="1" max="8" style={s.input} value={items[selected].w} onChange={e => updateItem(selected, {w: Math.max(1, Math.min(8-items[selected].x, parseInt(e.target.value) || 1))})} />
+                </div>
+                <div style={s.formGroup}>
+                  <label style={s.formLabel}>HEIGHT (ROW)</label>
+                  <input type="number" min="1" max="10" style={s.input} value={items[selected].h} onChange={e => updateItem(selected, {h: Math.max(1, parseInt(e.target.value) || 1)})} />
+                </div>
               </div>
               <div style={{display:"grid", gridTemplateColumns: "1fr 1fr", gap: "10px"}}>
                 <div style={s.formGroup}>
@@ -687,7 +724,7 @@ const s: Record<string, React.CSSProperties> = {
   formLabel: { fontSize: "0.6rem", fontWeight: 900, color: "#4b5563", letterSpacing: "0.1em" },
   colorInput: { position: "absolute", top: "-5px", left: "-5px", width: "150%", height: "150%", cursor: "pointer", border: "none", background: "none", padding: 0 } as any,
   pushStatus: { color: "#a78bfa", fontSize: "0.75rem", fontWeight: 800, textTransform: "uppercase" },
-  resizeHandle: { position: "absolute", right: 0, bottom: 0, width: "20px", height: "20px", cursor: "nwse-resize", background: "linear-gradient(135deg, transparent 50%, #a78bfa 50%)", borderBottomRightRadius: "8px" },
+  resizeHandle: { position: "absolute", right: 0, bottom: 0, width: "30px", height: "30px", cursor: "nwse-resize", background: "linear-gradient(135deg, transparent 50%, #a78bfa 50%)", borderBottomRightRadius: "8px", opacity: 0.8 },
 };
 
 async function optimizeImage(blob: Blob): Promise<Blob> {
