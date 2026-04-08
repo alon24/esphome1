@@ -29,8 +29,19 @@ type ImageInfo = {
   isLocal: boolean;
 };
 
+type GridItem = {
+  name: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  color: number;
+  textColor: number;
+  action: string;
+};
+
 export default function App() {
-  const [activeTab, setActiveTab] = useState<"wifi" | "sd" | "settings">("sd");
+  const [activeTab, setActiveTab] = useState<"wifi" | "sd" | "settings" | "grid">("grid");
   const [status, setStatus] = useState<WifiStatus>(null);
 
   const fetchStatus = useCallback(() => {
@@ -52,6 +63,7 @@ export default function App() {
         <div style={s.headerLeft}>
           <span style={s.headerTitle}>MEDIA STATION</span>
           <nav style={s.nav}>
+            <button onClick={() => setActiveTab("grid")} style={{ ...s.navBtn, color: activeTab === "grid" ? "#a78bfa" : "#64748b" }}>DASHBOARD</button>
             <button onClick={() => setActiveTab("sd")} style={{ ...s.navBtn, color: activeTab === "sd" ? "#a78bfa" : "#64748b" }}>DIRECTOR</button>
             <button onClick={() => setActiveTab("wifi")} style={{ ...s.navBtn, color: activeTab === "wifi" ? "#a78bfa" : "#64748b" }}>WIFI</button>
             <button onClick={() => setActiveTab("settings")} style={{ ...s.navBtn, color: activeTab === "settings" ? "#a78bfa" : "#64748b" }}>SETTINGS</button>
@@ -61,7 +73,8 @@ export default function App() {
       </header>
 
       <main style={s.main}>
-        {activeTab === "wifi" ? <WifiTab status={status} onFetchStatus={fetchStatus} /> : 
+        {activeTab === "grid" ? <GridTab /> : 
+         activeTab === "wifi" ? <WifiTab status={status} onFetchStatus={fetchStatus} /> : 
          activeTab === "sd" ? <SDTab /> : 
          <SettingsTab />}
       </main>
@@ -412,6 +425,213 @@ function WifiStatusBadge({ status }: { status: WifiStatus }) {
   return <div style={{ fontSize: "0.85rem", color: status?.connected?"#4ade80":"#f87171" }}>● {status?.connected ? `System Online (${status.ip})` : "System Offline"}</div>;
 }
 
+function GridTab() {
+  const [items, setItems] = useState<GridItem[]>([]);
+  const [gridBg, setGridBg] = useState(0x0e0e0e);
+  const [selected, setSelected] = useState<number | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [status, setStatus] = useState<string>("");
+
+  const [dragInfo, setDragInfo] = useState<{ idx: number, startX: number, startY: number, initialX: number, initialY: number, initialW: number, initialH: number, mode: 'move' | 'resize' } | null>(null);
+
+  useEffect(() => {
+    fetch("/api/grid/config").then(r => r.json()).then(d => {
+      setItems(d.items || []);
+      if (d.bg !== undefined) setGridBg(d.bg);
+    }).catch(e => console.error("Failed to load grid", e));
+  }, []);
+
+  const save = () => {
+    setSaving(true);
+    setStatus("Syncing...");
+    fetch("/api/grid/config", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ items, bg: gridBg })
+    }).then(() => {
+        setStatus("Pushed");
+        setTimeout(() => setStatus(""), 3000);
+    }).finally(() => setSaving(false));
+  };
+
+  const updateItem = (idx: number, patch: Partial<GridItem>) => {
+    const next = [...items];
+    next[idx] = { ...next[idx], ...patch };
+    setItems(next);
+  };
+
+  const addItem = () => {
+      setItems([...items, { name: "New Btn", x: 0, y: 0, w: 2, h: 2, color: 0x1c2828, textColor: 0xFFFFFF, action: "" }]);
+      setSelected(items.length);
+  };
+
+  const removeItem = (idx: number) => {
+      setItems(items.filter((_, i) => i !== idx));
+      setSelected(null);
+  };
+
+  const onMouseDown = (e: React.MouseEvent, idx: number, mode: 'move' | 'resize') => {
+    e.preventDefault();
+    e.stopPropagation();
+    setSelected(idx);
+    setDragInfo({ 
+        idx, 
+        startX: e.clientX, 
+        startY: e.clientY, 
+        initialX: items[idx].x, 
+        initialY: items[idx].y,
+        initialW: items[idx].w,
+        initialH: items[idx].h,
+        mode 
+    });
+  };
+
+  useEffect(() => {
+    const onMove = (e: MouseEvent) => {
+      if (!dragInfo) return;
+      const dx = Math.round((e.clientX - dragInfo.startX) / 80);
+      const dy = Math.round((e.clientY - dragInfo.startY) / 80);
+      
+      const next = [...items];
+      if (dragInfo.mode === 'move') {
+        next[dragInfo.idx].x = Math.max(0, Math.min(8 - dragInfo.initialW, dragInfo.initialX + dx));
+        next[dragInfo.idx].y = Math.max(0, dragInfo.initialY + dy);
+      } else {
+        next[dragInfo.idx].w = Math.max(1, Math.min(8 - items[dragInfo.idx].x, dragInfo.initialW + dx));
+        next[dragInfo.idx].h = Math.max(1, dragInfo.initialH + dy);
+      }
+      setItems(next);
+      // Small debounce simulation for drag smoothness
+    };
+    const onUp = () => setDragInfo(null);
+    if (dragInfo) {
+      window.addEventListener('mousemove', onMove);
+      window.addEventListener('mouseup', onUp);
+    }
+    return () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+  }, [dragInfo, items]);
+
+  return (
+    <div style={s.layout}>
+      <div style={s.card}>
+        <div style={s.browserHeader}>
+          <div style={{display:"flex", alignItems:"center", gap:"15px"}}>
+              <span style={s.cardTitle}>GRID BLUEPRINT (640x416)</span>
+              {status && <span style={s.pushStatus}>{status}</span>}
+          </div>
+          <button onClick={addItem} style={s.stageBtn}>Add Block</button>
+        </div>
+        <div style={{...s.gridContainer, backgroundColor: `#${gridBg.toString(16).padStart(6,'0')}`}}>
+           {/* Grid Visualizer */}
+           <div style={s.gridV}>
+              {Array.from({length: 8}).map((_, i) => (
+                <div key={i} style={{...s.gridLineV, left: (i+1)*80}} />
+              ))}
+              {Array.from({length: 5}).map((_, i) => (
+                <div key={i} style={{...s.gridLineH, top: (i+1)*80}} />
+              ))}
+              {items.map((it, i) => (
+                <div 
+                  key={i} 
+                  onMouseDown={(e) => onMouseDown(e, i, 'move')}
+                  style={{
+                    ...s.gridItem, 
+                    left: it.x * 80, top: it.y * 80,
+                    width: it.w * 80, height: it.h * 80,
+                    backgroundColor: `#${it.color.toString(16).padStart(6, '0')}`,
+                    border: selected === i ? "4px solid #a78bfa" : "1px solid rgba(255,255,255,0.1)",
+                    boxShadow: selected === i ? "0 0 15px #a78bfa" : "none",
+                    zIndex: selected === i ? 10 : 1,
+                  }}>
+                    <span style={{...s.gridLabel, color: `#${it.textColor.toString(16).padStart(6,'0')}`}}>{it.name}</span>
+                    {selected === i && (
+                        <div onMouseDown={(e) => onMouseDown(e, i, 'resize')} style={s.resizeHandle} />
+                    )}
+                </div>
+              ))}
+           </div>
+        </div>
+      </div>
+
+      <div style={s.inspector}>
+        <div style={s.card}>
+          <span style={s.cardTitle}>Configuration</span>
+          {selected !== null ? (
+            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+              <div style={s.formGroup}>
+                <label style={s.formLabel}>BLOCK NAME</label>
+                <input style={s.input} value={items[selected].name} onChange={e => updateItem(selected, {name: e.target.value})} />
+              </div>
+              <div style={{display:"grid", gridTemplateColumns: "1fr 1fr", gap: "10px"}}>
+                <div style={s.formGroup}>
+                  <label style={s.formLabel}>X (Col)</label>
+                  <input style={s.input} type="number" value={items[selected].x} onChange={e => updateItem(selected, {x: parseInt(e.target.value)})} />
+                </div>
+                <div style={s.formGroup}>
+                  <label style={s.formLabel}>Y (Row)</label>
+                  <input style={s.input} type="number" value={items[selected].y} onChange={e => updateItem(selected, {y: parseInt(e.target.value)})} />
+                </div>
+              </div>
+              <div style={{display:"grid", gridTemplateColumns: "1fr 1fr", gap: "10px"}}>
+                <div style={s.formGroup}>
+                  <label style={s.formLabel}>W (Cols)</label>
+                  <input style={s.input} type="number" value={items[selected].w} onChange={e => updateItem(selected, {w: parseInt(e.target.value)})} />
+                </div>
+                <div style={s.formGroup}>
+                  <label style={s.formLabel}>H (Rows)</label>
+                  <input style={s.input} type="number" value={items[selected].h} onChange={e => updateItem(selected, {h: parseInt(e.target.value)})} />
+                </div>
+              </div>
+              <div style={s.formGroup}>
+                <label style={s.formLabel}>BLOCK COLOR</label>
+                <div style={{display:"flex", gap:"10px", alignItems: "center"}}>
+                   <div style={{position:"relative", width: 48, height: 48, borderRadius: 10, overflow: "hidden", border: "1px solid #4b5563"}}>
+                      <input type="color" style={s.colorInput} value={`#${items[selected].color.toString(16).padStart(6,'0')}`} onChange={e => updateItem(selected, {color: parseInt(e.target.value.replace('#',''), 16) || 0})} />
+                   </div>
+                   <input style={{...s.input, marginBottom: 0, flex: 1}} value={items[selected].color.toString(16).padStart(6,'0')} onChange={e => updateItem(selected, {color: parseInt(e.target.value.replace('#',''), 16) || 0})} />
+                </div>
+              </div>
+              <div style={s.formGroup}>
+                <label style={s.formLabel}>TEXT COLOR</label>
+                <div style={{display:"flex", gap:"10px", alignItems: "center"}}>
+                   <div style={{position:"relative", width: 48, height: 48, borderRadius: 10, overflow: "hidden", border: "1px solid #4b5563"}}>
+                      <input type="color" style={s.colorInput} value={`#${items[selected].textColor.toString(16).padStart(6,'0')}`} onChange={e => updateItem(selected, {textColor: parseInt(e.target.value.replace('#',''), 16) || 0})} />
+                   </div>
+                   <input style={{...s.input, marginBottom: 0, flex: 1}} value={items[selected].textColor.toString(16).padStart(6,'0')} onChange={e => updateItem(selected, {textColor: parseInt(e.target.value.replace('#',''), 16) || 0})} />
+                </div>
+              </div>
+              <div style={s.formGroup}>
+                <label style={s.formLabel}>MQTT ACTION</label>
+                <input style={s.input} placeholder="mqtt:light/toggle" value={items[selected].action} onChange={e => updateItem(selected, {action: e.target.value})} />
+              </div>
+              <button onClick={() => removeItem(selected)} style={{...s.rawBtn, color: "#f87171", marginTop: "20px"}}>Remove Block</button>
+            </div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+               <div style={s.formGroup}>
+                  <label style={s.formLabel}>DASHBOARD BACKGROUND</label>
+                  <div style={{display:"flex", gap:"10px", alignItems: "center"}}>
+                     <div style={{position:"relative", width: 48, height: 48, borderRadius: 10, overflow: "hidden", border: "1px solid #4b5563"}}>
+                        <input type="color" style={s.colorInput} value={`#${gridBg.toString(16).padStart(6,'0')}`} onChange={e => setGridBg(parseInt(e.target.value.replace('#',''), 16) || 0)} />
+                     </div>
+                     <input style={{...s.input, marginBottom: 0, flex: 1}} value={gridBg.toString(16).padStart(6,'0')} onChange={e => setGridBg(parseInt(e.target.value.replace('#',''), 16) || 0)} />
+                  </div>
+               </div>
+               <p style={{color: "#64748b", textAlign:"center", fontSize: "0.75rem", marginTop: "12px"}}>Select any block on the left to edit its unique properties.</p>
+            </div>
+          )}
+
+          <hr style={{margin: "24px 0", opacity: 0.1}}/>
+          <button onClick={save} disabled={saving} style={s.convBtn}>{saving ? "Saving..." : "Push to Device"}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 const s: Record<string, React.CSSProperties> = {
   app: { minHeight: "100vh", background: "#0a0a14", color: "#e2e8f0", fontFamily: "Outfit, sans-serif" },
   header: { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 24px", background: "#121226", borderBottom: "1px solid #1e1e3b" },
@@ -457,6 +677,17 @@ const s: Record<string, React.CSSProperties> = {
   centreCol: { maxWidth: "500px", margin: "0 auto", display: "flex", flexDirection: "column", gap: "24px" },
   floatingMenu: { position: "fixed", background: "rgba(30, 30, 59, 0.95)", backdropFilter: "blur(10px)", border: "1px solid #4f46e5", borderRadius: "12px", padding: "8px", boxShadow: "0 10px 25px rgba(0,0,0,0.5)", zIndex: 9999, display: "flex", flexDirection: "column", gap: "4px", minWidth: "160px" },
   menuItem: { background: "none", border: "none", color: "#e2e8f0", padding: "10px 16px", textAlign: "left", borderRadius: "8px", cursor: "pointer", fontSize: "0.85rem", fontWeight: 600, transition: "background 0.2s" } as any,
+  gridContainer: { background: "#000", border: "1px solid #111", width: "640px", height: "416px", position: "relative", alignSelf: "center", borderRadius: "8px", overflow: "hidden" },
+  gridV: { width: "100%", height: "100%", position: "relative" },
+  gridLineV: { position: "absolute", top: 0, bottom: 0, width: "1px", background: "rgba(255,255,255,0.05)" },
+  gridLineH: { position: "absolute", left: 0, right: 0, height: "1px", background: "rgba(255,255,255,0.05)" },
+  gridItem: { position: "absolute", borderRadius: "10px", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", transition: "all 0.1s" },
+  gridLabel: { fontWeight: 800, fontSize: "0.8rem", color: "#fff", textShadow: "0 1px 4px rgba(0,0,0,0.5)" },
+  formGroup: { display: "flex", flexDirection: "column", gap: "6px" },
+  formLabel: { fontSize: "0.6rem", fontWeight: 900, color: "#4b5563", letterSpacing: "0.1em" },
+  colorInput: { position: "absolute", top: "-5px", left: "-5px", width: "150%", height: "150%", cursor: "pointer", border: "none", background: "none", padding: 0 } as any,
+  pushStatus: { color: "#a78bfa", fontSize: "0.75rem", fontWeight: 800, textTransform: "uppercase" },
+  resizeHandle: { position: "absolute", right: 0, bottom: 0, width: "20px", height: "20px", cursor: "nwse-resize", background: "linear-gradient(135deg, transparent 50%, #a78bfa 50%)", borderBottomRightRadius: "8px" },
 };
 
 async function optimizeImage(blob: Blob): Promise<Blob> {

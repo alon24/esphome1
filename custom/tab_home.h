@@ -1,122 +1,83 @@
 #pragma once
 #include "lvgl.h"
 #include "ui_helpers.h"
-#include <cstdio>
-#include <esp_timer.h>
+#include "grid_config.h"
 
-// ── HOME TAB ──────────────────────────────────────────────────────────────────
-// Content area: 800×352 (parent is the home content container)
-// Shows live clock, date, uptime.
+// ── DYNAMIC GRID HOME TAB ─────────────────────────────────────────────────────
+// Layout: 640x416
+// Grid: 8 columns (80px each), 80px rows.
+// ──────────────────────────────────────────────────────────────────────────────
 
-static lv_obj_t *g_home_time_lbl    = nullptr;
-static lv_obj_t *g_home_date_lbl    = nullptr;
-static lv_obj_t *g_home_uptime_lbl  = nullptr;
-static lv_obj_t *g_home_status_lbl  = nullptr;
+#define GRID_COLS    8
+#define GRID_CELL_W  80
+#define GRID_CELL_H  80
+#define TAB_HOME_BG  0x0e0e0e
 
-static const char *HOME_DAYS[]   = { "Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday" };
-static const char *HOME_MONTHS[] = { "","January","February","March","April","May",
-                                     "June","July","August","September","October","November","December" };
+static lv_obj_t *g_home_grid_cont = nullptr;
 
-#define TAB_HOME_BG 0x0e0e0e
+static void _home_render_grid();
+
+void ui_refresh_grid() {
+    _home_render_grid();
+}
 
 static void tab_home_create(lv_obj_t *parent) {
-    // parent is already a plain dark 800×352 panel created by maindashboard
+    // Parent is 640x416 panel
+    g_home_grid_cont = lv_obj_create(parent);
+    lv_obj_set_size(g_home_grid_cont, 640, 416);
+    lv_obj_set_pos(g_home_grid_cont, 0, 0);
+    _panel_reset(g_home_grid_cont);
+    lv_obj_set_style_bg_color(g_home_grid_cont, lv_color_hex(g_grid_bg), 0);
+    lv_obj_set_style_bg_opa(g_home_grid_cont, LV_OPA_COVER, 0);
+    
+    // Enable vertical scrolling
+    lv_obj_set_scroll_dir(g_home_grid_cont, LV_DIR_VER);
+    lv_obj_set_scrollbar_mode(g_home_grid_cont, LV_SCROLLBAR_MODE_AUTO);
+    lv_obj_set_style_pad_all(g_home_grid_cont, 0, 0);
 
-    // ── Section title ────────────────────────────────────────────────────────
-    lv_obj_t *title = lv_label_create(parent);
-    lv_label_set_text(title, "SYSTEM TIME");
-    lv_obj_set_style_text_color(title, lv_color_hex(0x00CED1), LV_STATE_DEFAULT);
-    lv_obj_set_style_text_font(title, &lv_font_montserrat_16, LV_STATE_DEFAULT);
-    lv_obj_set_style_text_letter_space(title, 3, LV_STATE_DEFAULT);
-    _lbl_bg(title, TAB_HOME_BG);
-    lv_obj_set_width(title, 640);
-    lv_obj_set_style_text_align(title, LV_TEXT_ALIGN_CENTER, LV_STATE_DEFAULT);
-    lv_obj_set_pos(title, 0, 22);
-
-    // ── Large clock ──────────────────────────────────────────────────────────
-    g_home_time_lbl = lv_label_create(parent);
-    lv_label_set_text(g_home_time_lbl, "--:--:--");
-    lv_obj_set_style_text_color(g_home_time_lbl, lv_color_hex(0xffffff), LV_STATE_DEFAULT);
-    lv_obj_set_style_text_font(g_home_time_lbl, &lv_font_montserrat_48, LV_STATE_DEFAULT);
-    _lbl_bg(g_home_time_lbl, TAB_HOME_BG);
-    lv_obj_set_width(g_home_time_lbl, 640);
-    lv_obj_set_style_text_align(g_home_time_lbl, LV_TEXT_ALIGN_CENTER, LV_STATE_DEFAULT);
-    lv_obj_set_pos(g_home_time_lbl, 0, 60);
-
-    // ── Date string ──────────────────────────────────────────────────────────
-    g_home_date_lbl = lv_label_create(parent);
-    lv_label_set_text(g_home_date_lbl, "Syncing...");
-    lv_obj_set_style_text_color(g_home_date_lbl, lv_color_hex(0xadaaaa), LV_STATE_DEFAULT);
-    lv_obj_set_style_text_font(g_home_date_lbl, &lv_font_montserrat_22, LV_STATE_DEFAULT);
-    _lbl_bg(g_home_date_lbl, TAB_HOME_BG);
-    lv_obj_set_width(g_home_date_lbl, 640);
-    lv_obj_set_style_text_align(g_home_date_lbl, LV_TEXT_ALIGN_CENTER, LV_STATE_DEFAULT);
-    lv_obj_set_pos(g_home_date_lbl, 0, 138);
-
-    // ── Separator ────────────────────────────────────────────────────────────
-    lv_obj_t *sep = lv_obj_create(parent);
-    lv_obj_set_pos(sep, 20, 178);
-    lv_obj_set_size(sep, 600, 1);
-    lv_obj_set_style_bg_color(sep, lv_color_hex(0x2a2a2a), LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_opa(sep, LV_OPA_COVER, LV_STATE_DEFAULT);
-    _panel_reset(sep);
-
-    // ── Uptime ───────────────────────────────────────────────────────────────
-    g_home_uptime_lbl = lv_label_create(parent);
-    lv_label_set_text(g_home_uptime_lbl, "Uptime  --");
-    lv_obj_set_style_text_color(g_home_uptime_lbl, lv_color_hex(0x666666), LV_STATE_DEFAULT);
-    lv_obj_set_style_text_font(g_home_uptime_lbl, &lv_font_montserrat_16, LV_STATE_DEFAULT);
-    _lbl_bg(g_home_uptime_lbl, TAB_HOME_BG);
-    lv_obj_set_width(g_home_uptime_lbl, 640);
-    lv_obj_set_style_text_align(g_home_uptime_lbl, LV_TEXT_ALIGN_CENTER, LV_STATE_DEFAULT);
-    lv_obj_set_pos(g_home_uptime_lbl, 0, 200);
-
-    // ── Network status (updated from maindashboard) ──────────────────────────
-    g_home_status_lbl = lv_label_create(parent);
-    lv_label_set_text(g_home_status_lbl, "Network  --");
-    lv_obj_set_style_text_color(g_home_status_lbl, lv_color_hex(0x666666), LV_STATE_DEFAULT);
-    lv_obj_set_style_text_font(g_home_status_lbl, &lv_font_montserrat_16, LV_STATE_DEFAULT);
-    _lbl_bg(g_home_status_lbl, TAB_HOME_BG);
-    lv_obj_set_width(g_home_status_lbl, 640);
-    lv_obj_set_style_text_align(g_home_status_lbl, LV_TEXT_ALIGN_CENTER, LV_STATE_DEFAULT);
-    lv_obj_set_pos(g_home_status_lbl, 0, 224);
+    // Load configuration from flash
+    ::grid_config_load();
+    _home_render_grid();
 }
 
-// Called every second from device.yaml interval
-// dow: 1=Sunday … 7=Saturday (ESPHome convention); pass -1 when SNTP not yet valid
-static void tab_home_tick(int h, int m, int s, int dom, int mon, int year, int dow) {
-    if (!g_home_time_lbl) return;
+static void _home_render_grid() {
+    if (!g_home_grid_cont) return;
+    lv_obj_clean(g_home_grid_cont);
 
-    char buf[64];
+    for (const auto &item : g_grid_items) {
+        lv_obj_t *btn = lv_btn_create(g_home_grid_cont);
+        lv_obj_set_size(btn, item.w * GRID_CELL_W - 4, item.h * GRID_CELL_H - 4);
+        lv_obj_set_pos(btn, item.x * GRID_CELL_W + 2, item.y * GRID_CELL_H + 2);
+        
+        lv_obj_set_style_bg_color(btn, lv_color_hex(item.color), 0);
+        lv_obj_set_style_bg_opa(btn, LV_OPA_COVER, 0);
+        lv_obj_set_style_radius(btn, 8, 0);
+        lv_obj_set_style_shadow_width(btn, 0, 0);
+        lv_obj_set_style_border_width(btn, 1, 0);
+        lv_obj_set_style_border_color(btn, lv_color_hex(0xFFFFFF), 0);
+        lv_obj_set_style_border_opa(btn, 20, 0);
 
-    // Clock
-    if (h >= 0) {
-        snprintf(buf, sizeof(buf), "%02d:%02d:%02d", h, m, s);
-        lv_label_set_text(g_home_time_lbl, buf);
+        lv_obj_t *lbl = lv_label_create(btn);
+        lv_label_set_text(lbl, item.name.c_str());
+        lv_obj_set_style_text_color(lbl, lv_color_hex(item.textColor), 0);
+        lv_obj_set_style_text_font(lbl, &lv_font_montserrat_18, 0);
+        lv_obj_center(lbl);
 
-        if (dow >= 1 && dow <= 7 && mon >= 1 && mon <= 12)
-            snprintf(buf, sizeof(buf), "%s, %d %s %d",
-                     HOME_DAYS[dow - 1], dom, HOME_MONTHS[mon], year);
-        else
-            snprintf(buf, sizeof(buf), "--");
-        lv_label_set_text(g_home_date_lbl, buf);
-    } else {
-        lv_label_set_text(g_home_time_lbl, "--:--:--");
-        lv_label_set_text(g_home_date_lbl, "Syncing time...");
+        // Grid Click Handler
+        lv_obj_add_event_cb(btn, [](lv_event_t *e) {
+            lv_obj_t * target = lv_event_get_target(e);
+            lv_obj_t * label = lv_obj_get_child(target, 0);
+            if (label) {
+                printf("[GRID] Click: %s\n", lv_label_get_text(label));
+            }
+        }, LV_EVENT_CLICKED, nullptr);
     }
-
-    // Uptime from ESP timer (avoids drift from missed ticks)
-    uint64_t us   = esp_timer_get_time();
-    uint32_t tot  = (uint32_t)(us / 1000000ULL);
-    uint32_t uh   = tot / 3600;
-    uint32_t um   = (tot % 3600) / 60;
-    uint32_t usec = tot % 60;
-    snprintf(buf, sizeof(buf), "Uptime  %uh %02um %02us", uh, um, usec);
-    lv_label_set_text(g_home_uptime_lbl, buf);
 }
 
-// Called by maindashboard when IP / connection state changes
+static void tab_home_tick(int h, int m, int s, int dom, int mon, int year, int dow) {
+    // Future: Update clock block if present in grid items
+}
+
 static void tab_home_set_network(const char *text) {
-    if (g_home_status_lbl)
-        lv_label_set_text(g_home_status_lbl, text);
+    // Future: Update network block if present
 }

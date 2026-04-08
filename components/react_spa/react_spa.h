@@ -108,10 +108,16 @@ class ReactSPAComponent : public Component {
 #include "esp_wifi.h"
 #include "esp_netif.h"
 
+// Forward declarations for grid configuration (defined in custom/grid_config.h)
+void grid_config_save(const char* json_str);
+void grid_config_load();
+void grid_config_get_json(char* out, size_t max_len);
+
 namespace esphome {
 extern bool sd_card_is_mounted();
 
 namespace react_spa {
+static const char* GRID_CONFIG_PATH = "/spiffs/grid.json";
 
 static const char *const TAG = "react_spa";
 static const char *const APP_PATH = "/spiffs/app.gz";
@@ -340,6 +346,22 @@ class ReactSPAComponent : public Component {
         .user_ctx = nullptr,
     };
     httpd_register_uri_handler(server_, &reboot_uri);
+
+    httpd_uri_t grid_get_uri = {
+        .uri = "/api/grid/config",
+        .method = HTTP_GET,
+        .handler = grid_get_handler,
+        .user_ctx = nullptr,
+    };
+    httpd_register_uri_handler(server_, &grid_get_uri);
+
+    httpd_uri_t grid_set_uri = {
+        .uri = "/api/grid/config",
+        .method = HTTP_POST,
+        .handler = grid_set_handler,
+        .user_ctx = nullptr,
+    };
+    httpd_register_uri_handler(server_, &grid_set_uri);
 
     httpd_uri_t root_uri = {
         .uri = "/*",
@@ -706,6 +728,54 @@ class ReactSPAComponent : public Component {
 
     httpd_resp_set_type(req, "application/json");
     httpd_resp_sendstr(req, "{\"status\":\"connecting\"}");
+    return ESP_OK;
+  }
+
+  static esp_err_t grid_get_handler(httpd_req_t *req) {
+    FILE *f = fopen(GRID_CONFIG_PATH, "r");
+    if (!f) {
+        // Fallback: Serialize RAM version
+        char* buf = (char*)malloc(8192);
+        if (buf) {
+            ::grid_config_get_json(buf, 8192);
+            httpd_resp_set_type(req, "application/json");
+            httpd_resp_sendstr(req, buf);
+            free(buf);
+            return ESP_OK;
+        }
+        httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "OOM");
+        return ESP_FAIL;
+    }
+    httpd_resp_set_type(req, "application/json");
+    char buf[1024];
+    size_t n;
+    while ((n = fread(buf, 1, sizeof(buf), f)) > 0) {
+      httpd_resp_send_chunk(req, buf, (ssize_t)n);
+    }
+    fclose(f);
+    httpd_resp_send_chunk(req, nullptr, 0);
+    return ESP_OK;
+  }
+
+  static esp_err_t grid_set_handler(httpd_req_t *req) {
+    int total = (int)req->content_len;
+    if (total <= 0 || total > 8192) {
+      httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Too large or empty");
+      return ESP_FAIL;
+    }
+    char *body = (char*)malloc(total + 1);
+    if (!body) return HTTPD_500_INTERNAL_SERVER_ERROR;
+    
+    int received = httpd_req_recv(req, body, total);
+    if (received != total) { free(body); return ESP_FAIL; }
+    body[total] = '\0';
+    
+    // Save to SPIFFS via the manager (Global call)
+    ::grid_config_save(body);
+    free(body);
+    
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_sendstr(req, "{\"status\":\"ok\"}");
     return ESP_OK;
   }
 };
