@@ -14,7 +14,7 @@ struct GridItem {
     std::string type; // "btn", "switch", "slider", "label", "clock"
     int x, y, w, h;
     int scale; // 10-200 (percent)
-    int innerX, innerY; // 0-100 (percentage relative to block)
+    float innerX, innerY; // 0-100 (percentage relative to block)
     uint32_t color;
     uint32_t textColor;
     std::string action; // e.g. "mqtt:light/on" or "toggle:gpio/2"
@@ -119,6 +119,7 @@ void grid_config_refresh_cache() {
 }
 
 void grid_config_save(const char* json_str) {
+    ESP_LOGI("GRID", "INCOMING JSON: %s", json_str);
     FILE* f = fopen(GRID_CONFIG_FILE, "w");
     if (f) {
         fputs(json_str, f);

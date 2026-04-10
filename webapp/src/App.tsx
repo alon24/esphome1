@@ -1076,6 +1076,12 @@ function GridTab({
 	appInfo: AppInfo;
 	status: WifiStatus;
 }) {
+	const getWidgetBaseSize = (type: string) => {
+		if (type === "slider") return { w: 64, h: 12 }; // base slider assumes 80% of 1x1
+		if (type === "switch") return { w: 50, h: 25 };
+		return { w: 60, h: 40 };
+	};
+
 	const [items, setItems] = useState<GridItem[]>([]);
 	const canvasHeight = 480;
 	const [gridBg, setGridBg] = useState(0x0e0e0e);
@@ -1101,8 +1107,10 @@ function GridTab({
 		initialY: number;
 		initialW: number;
 		initialH: number;
-		mode: "move" | "resize";
+		initialScale: number;
+		mode: "move" | "resize" | "inner-resize";
 	} | null>(null);
+	const [clipboard, setClipboard] = useState<GridItem | null>(null);
 
 	useEffect(() => {
 		fetch("/api/grid/config")
@@ -1141,6 +1149,43 @@ function GridTab({
 				setSaving(false);
 			});
 	};
+	
+	useEffect(() => {
+		const handleKeyDown = (e: KeyboardEvent) => {
+			if (["INPUT", "TEXTAREA", "SELECT"].includes(document.activeElement?.tagName || "")) return;
+
+			if (e.key === "Escape") {
+				setEditingInner(null);
+				setSelected(null);
+				setDragInfo(null);
+			}
+
+			if ((e.key === "Delete" || e.key === "d") && selected !== null) {
+				removeItem(selected);
+			}
+
+			if (e.ctrlKey || e.metaKey) {
+				if (e.key === "c" && selected !== null) {
+					setClipboard({ ...items[selected] });
+					setSyncStatus("Copied");
+					setTimeout(() => setSyncStatus(""), 1000);
+				}
+				if (e.key === "v" && clipboard) {
+					const newItem = {
+						...clipboard,
+						x: Math.min(7, clipboard.x + 1),
+						y: Math.min(4, clipboard.y + 1),
+					};
+					setItems([...items, newItem]);
+					setSelected(items.length);
+					setSyncStatus("Pasted");
+					setTimeout(() => setSyncStatus(""), 1000);
+				}
+			}
+		};
+		window.addEventListener("keydown", handleKeyDown);
+		return () => window.removeEventListener("keydown", handleKeyDown);
+	}, [selected, items, clipboard]);
 
 	const updateItem = (idx: number, patch: Partial<GridItem>) => {
 		const next = [...items];
@@ -1177,7 +1222,7 @@ function GridTab({
 	const onMouseDown = (
 		e: React.MouseEvent,
 		idx: number,
-		mode: "move" | "resize",
+		mode: "move" | "resize" | "inner-resize",
 	) => {
 		e.preventDefault();
 		if (editingInner === idx && mode === "move") {
@@ -1189,6 +1234,7 @@ function GridTab({
 				initialY: items[idx].innerY,
 				initialW: 0,
 				initialH: 0,
+				initialScale: 0,
 				mode: "move",
 			});
 			return;
@@ -1201,6 +1247,7 @@ function GridTab({
 			initialY: items[idx].y,
 			initialW: items[idx].w,
 			initialH: items[idx].h,
+			initialScale: items[idx].scale,
 			mode,
 		});
 	};
@@ -1212,17 +1259,20 @@ function GridTab({
 			const next = [...items];
 			if (dragInfo.mode === "move") {
 				if (editingInner === dragInfo.idx) {
-					const blockW = items[dragInfo.idx].w * 80;
-					const blockH = items[dragInfo.idx].h * 80;
+					const it = items[dragInfo.idx];
+					const blockW = it.w * 80;
+					const blockH = it.h * 80;
+					const base = getWidgetBaseSize(it.type);
+					const wP = ((base.w * it.scale) / 100 / blockW) * 100;
+					const hP = ((base.h * it.scale) / 100 / blockH) * 100;
+
 					const dxP = ((e.clientX - dragInfo.startX) / blockW) * 100;
 					const dyP = ((e.clientY - dragInfo.startY) / blockH) * 100;
-					next[dragInfo.idx].innerX = Math.max(
-						0,
-						Math.min(100, dragInfo.initialX + dxP),
+					next[dragInfo.idx].innerX = Math.round(
+						Math.max(0, Math.min(100 - wP, dragInfo.initialX + dxP)),
 					);
-					next[dragInfo.idx].innerY = Math.max(
-						0,
-						Math.min(100, dragInfo.initialY + dyP),
+					next[dragInfo.idx].innerY = Math.round(
+						Math.max(0, Math.min(100 - hP, dragInfo.initialY + dyP)),
 					);
 				} else {
 					const dx = Math.round((e.clientX - dragInfo.startX) / 80);
@@ -1233,6 +1283,21 @@ function GridTab({
 					);
 					next[dragInfo.idx].y = Math.max(0, dragInfo.initialY + dy);
 				}
+			} else if (dragInfo.mode === "inner-resize") {
+				const it = items[dragInfo.idx];
+				const dx = e.clientX - dragInfo.startX;
+				let newScale = Math.max(10, Math.min(300, dragInfo.initialScale + dx / 2));
+
+				const blockW = it.w * 80;
+				const blockH = it.h * 80;
+				const base = getWidgetBaseSize(it.type);
+
+				// Max scale is limited by current inner position
+				const maxW = (blockW * (1 - it.innerX / 100) * 100) / base.w;
+				const maxH = (blockH * (1 - it.innerY / 100) * 100) / base.h;
+				newScale = Math.min(newScale, maxW, maxH);
+
+				next[dragInfo.idx].scale = Math.round(newScale);
 			} else {
 				const dx = Math.round((e.clientX - dragInfo.startX) / 80);
 				const dy = Math.round((e.clientY - dragInfo.startY) / 80);
@@ -1244,8 +1309,13 @@ function GridTab({
 			}
 			setItems(next);
 		};
-		const onUp = () => setDragInfo(null);
+		const onUp = () => {
+			setDragInfo(null);
+			document.body.style.cursor = "default";
+		};
 		if (dragInfo) {
+			document.body.style.cursor =
+				dragInfo.mode === "move" ? "move" : "nwse-resize";
 			window.addEventListener("mousemove", onMove);
 			window.addEventListener("mouseup", onUp);
 		}
@@ -1364,6 +1434,10 @@ function GridTab({
 										style={{ backgroundColor: `#${safeHex(gridBg, "0e0e0e")}` }}
 									>
 										<div
+											onMouseDown={() => {
+												setSelected(null);
+												setEditingInner(null);
+											}}
 											style={{
 												...s.gridV,
 												width: "100%",
@@ -1426,6 +1500,41 @@ function GridTab({
 														overflow: "hidden",
 													}}
 												>
+													{(() => {
+														const itAny = it as any;
+														const base = getWidgetBaseSize(itAny.type);
+														const isOverflow =
+															itAny.innerX +
+																((base.w * itAny.scale) / 100 / (itAny.w * 80)) * 100 >
+																100.1 ||
+															itAny.innerY +
+																((base.h * itAny.scale) / 100 / (itAny.h * 80)) * 100 >
+																100.1;
+
+														return (
+															isOverflow && (
+																<div
+																	style={{
+																		position: "absolute",
+																		top: "8px",
+																		right: "8px",
+																		background: "#ff4444",
+																		color: "#fff",
+																		fontSize: "0.6rem",
+																		padding: "4px 8px",
+																		borderRadius: "6px",
+																		fontWeight: 900,
+																		zIndex: 500,
+																		boxShadow: "0 10px 15px -3px rgba(255, 0, 0, 0.4)",
+																		border: "2px solid rgba(255,255,255,0.4)",
+																		pointerEvents: "none",
+																	}}
+																>
+																	CLIP!
+																</div>
+															)
+														);
+													})()}
 													<div
 														style={{
 															display: "flex",
@@ -1448,6 +1557,11 @@ function GridTab({
 																display: "flex",
 																flexDirection: "column",
 																width: "fit-content",
+																border: selected === i ? "1.5px dashed var(--primary)" : "1.5px solid transparent",
+																padding: "4px",
+																margin: "-4px",
+																borderRadius: "8px",
+																pointerEvents: "auto",
 															}}
 														>
 															{it.type === "label" && (
@@ -1528,6 +1642,28 @@ function GridTab({
 																>
 																	{time}
 																</span>
+															)}
+															{selected === i && (
+																<div
+																	data-handle="inner-resize"
+																	onMouseDown={(e) => {
+																		e.stopPropagation();
+																		onMouseDown(e, i, "inner-resize");
+																	}}
+																	style={{
+																		position: "absolute",
+																		bottom: "-8px",
+																		right: "-8px",
+																		width: "16px",
+																		height: "16px",
+																		background: "var(--primary)",
+																		borderRadius: "50%",
+																		cursor: "nwse-resize",
+																		zIndex: 200,
+																		boxShadow: "0 0 10px rgba(0,0,0,0.5)",
+																		border: "3px solid #fff",
+																	}}
+																/>
 															)}
 														</div>
 													</div>
