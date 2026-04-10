@@ -36,6 +36,7 @@ esphome:
     - "LovyanGFX"
     - "ArduinoJson@7.3.0"
   includes:
+    - custom/grid_config.h
     - custom/ui_helpers.h
     - custom/wifi_setup.h
     - custom/system_settings.h
@@ -45,7 +46,6 @@ esphome:
     - custom/tab_settings.h
     - custom/tab_wifi.h
     - custom/tab_sd.h
-    - custom/grid_config.h
     - custom/maindashboard.h
     - custom/slideshow.h
   on_boot:

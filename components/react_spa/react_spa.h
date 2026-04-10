@@ -27,7 +27,10 @@ namespace esphome { namespace react_spa {
 
 // Forward declarations for grid configuration
 void grid_config_save(const char* json_str);
+void grid_config_save(const char* json_str, const char* name);
 void grid_config_load();
+void grid_config_load(const char* name);
+void grid_list_screens(char* out, size_t max_len);
 void slideshow_start();
 void slideshow_stop();
 void grid_config_get_json(char* out, size_t max_len);
@@ -136,17 +139,39 @@ class ReactSPAComponent : public Component {
     reg("/api/wifi/scan", HTTP_GET, wifi_scan_handler);
     reg("/api/wifi/connect", HTTP_POST, wifi_connect_handler);
 
-    // --- GRID ENDPOINTS ---
+    reg("/api/grid/screens", HTTP_GET, [](httpd_req_t *req) {
+        char* buf = (char*)malloc(2048);
+        ::grid_list_screens(buf, 2048);
+        httpd_resp_set_type(req, "application/json");
+        esp_err_t res = httpd_resp_sendstr(req, buf);
+        free(buf);
+        return res;
+    });
+
     reg("/api/grid/config", HTTP_GET, [](httpd_req_t *req) {
+        char name[64] = "";
+        char query[128];
+        if (httpd_req_get_url_query_str(req, query, sizeof(query)) == ESP_OK) {
+            httpd_query_key_value(query, "name", name, sizeof(name));
+        }
+        if (strlen(name) > 0) {
+           ::grid_config_load(name); // Immediate load from disk if switching
+        }
         httpd_resp_set_type(req, "application/json");
         return httpd_resp_sendstr(req, g_grid_json_cache);
     });
+
     reg("/api/grid/config", HTTP_POST, [](httpd_req_t *req) {
+        char name[64] = "";
+        char query[128];
+        if (httpd_req_get_url_query_str(req, query, sizeof(query)) == ESP_OK) {
+            httpd_query_key_value(query, "name", name, sizeof(name));
+        }
         int total = (int)req->content_len;
         char *body = (char*)malloc(total + 1);
         httpd_req_recv(req, body, total);
         body[total] = '\0';
-        ::grid_config_save(body);
+        ::grid_config_save(body, name);
         free(body);
         return httpd_resp_sendstr(req, "{\"status\":\"ok\"}");
     });

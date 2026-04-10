@@ -19,7 +19,16 @@
 - [x] **Widget Clamping** — Size safety caps prevent widgets from bleeding out of blocks
 - [x] **mDNS Discovery** — Enabled `esp32-display.local` for zero-config access
 - [x] **State Persistence** — SPIFFS-based `grid.json` and `system.json` (settings saved on device)
+- [x] **Interactive Widget Rescaling** — Drag-and-drop handles for visual scaling of buttons/switches directly on the grid
+- [x] **Smart Safety Constraints** — Hard clamping for widget movement and resizing; prevents clipping
+- [x] **Visual Overflow Alerts** — High-visibility "CLIP!" badges in the Mirror to flag layout violations
+- [x] **Keyboard Productivity** — Copy/Paste, Delete, and Escape keys for rapid layout editing
+- [x] **High-Precision Persistence** — Fixed anchor-point reset issues with rounded coordinates and float support
 - [x] **Persistent Settings** — Slideshow auto-toggle saved across reboots
+- [x] **3-Column Architecture** — Hierarchy | Mirror | Inspector for professional dashboard management
+- [x] **Multi-Widget Components** — Components are now containers with nested element support
+- [x] **Slate-Pro Aesthetics** — Premium glassmorphism and neon-vibrant design system
+- [x] **Triple Compatibility Overloads** — Robust C++ config handlers for 0-arg, 1-arg, and 2-arg calls
 
 ---
 

@@ -1,20 +1,20 @@
 @import url("https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800;900&display=swap");
 
 :root {
-	--bg-deep: #020205;
-	--bg-card: rgba(15, 15, 30, 0.6);
-	--bg-input: rgba(0, 0, 0, 0.4);
-	--primary: #8b5cf6;
-	--primary-glow: rgba(139, 92, 246, 0.3);
+	--bg-deep: #0f172a;
+	--bg-card: #1e293b;
+	--bg-input: #334155;
+	--primary: #a855f7;
+	--primary-glow: rgba(168, 85, 247, 0.5);
 	--accent: #10b981;
 	--text-main: #f8fafc;
-	--text-dim: #94a3b8;
-	--border-glass: rgba(255, 255, 255, 0.08);
-	--border-active: rgba(139, 92, 246, 0.5);
-	--glass-blur: blur(24px);
+	--text-dim: #cbd5e1;
+	--border-glass: rgba(255, 255, 255, 0.15);
+	--border-active: #8b5cf6;
+	--glass-blur: blur(20px);
 	--device-width: 800px;
 	--device-height: 480px;
-	--panel-radius: 32px;
+	--panel-radius: 20px;
 }
 
 @keyframes moveGradient {
@@ -67,11 +67,9 @@ body {
 	overflow-x: hidden;
 	min-height: 100vh;
 	background-image:
-		radial-gradient(circle at 50% -20%, #1e1b4b 0%, transparent 50%),
-		radial-gradient(circle at 100% 100%, #1e1b4b 0%, transparent 40%),
-		radial-gradient(circle at 0% 100%, #0f172a 0%, transparent 40%);
+		radial-gradient(circle at 50% -20%, #334155 0%, transparent 70%),
+		radial-gradient(circle at 100% 100%, #1e293b 0%, transparent 60%);
 	background-size: 200% 200%;
-	animation: moveGradient 15s ease infinite;
 	background-attachment: fixed;
 }
 
@@ -87,15 +85,22 @@ body {
 	-webkit-backdrop-filter: var(--glass-blur);
 	border: 1px solid var(--border-glass);
 	border-radius: var(--panel-radius);
-	box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-	transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+	box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
 }
 
 .glass-hover:hover {
 	transform: translateY(-2px);
-	box-shadow: 0 16px 48px rgba(0, 0, 0, 0.6);
+	box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7);
 	border-color: var(--border-active);
 }
+
+@keyframes pulseGlow {
+	0% { box-shadow: 0 0 10px var(--primary-glow); }
+	50% { box-shadow: 0 0 30px var(--primary-glow); }
+	100% { box-shadow: 0 0 10px var(--primary-glow); }
+}
+
+.pulse { animation: pulseGlow 2s infinite; }
 
 ::-webkit-scrollbar {
 	width: 6px;
@@ -215,6 +220,7 @@ body {
 	flex: 1;
 	position: relative;
 	background: #0e0e0e;
+	overflow-y: auto;
 }
 
 .system-online {
