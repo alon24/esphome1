@@ -1445,11 +1445,9 @@ function GridTab({
 																position: "absolute",
 																left: `${it.innerX}%`,
 																top: `${it.innerY}%`,
-																transform: "translate(-50%, -50%)",
 																display: "flex",
 																flexDirection: "column",
-																alignItems: "center",
-																width: "100%",
+																width: "fit-content",
 															}}
 														>
 															{it.type === "label" && (
@@ -1466,8 +1464,8 @@ function GridTab({
 															{it.type === "switch" && (
 																<div
 																	style={{
-																		width: (50 * it.scale) / 100,
-																		height: (25 * it.scale) / 100,
+																		width: Math.min((50 * it.scale) / 100, it.w * 80),
+																		height: Math.min((25 * it.scale) / 100, it.h * 80),
 																		borderRadius: (12 * it.scale) / 100,
 																		background: "rgba(255,255,255,0.15)",
 																		position: "relative",
@@ -1491,7 +1489,7 @@ function GridTab({
 																<div
 																	style={{
 																		width: "80%",
-																		height: (12 * it.scale) / 100,
+																		height: Math.min((12 * it.scale) / 100, it.h * 80),
 																		borderRadius: (6 * it.scale) / 100,
 																		background: "rgba(255,255,255,0.15)",
 																		position: "relative",
@@ -1511,8 +1509,8 @@ function GridTab({
 															{it.type === "btn" && (
 																<div
 																	style={{
-																		width: (60 * it.scale) / 100,
-																		height: (40 * it.scale) / 100,
+																		width: Math.min((60 * it.scale) / 100, it.w * 80),
+																		height: Math.min((40 * it.scale) / 100, it.h * 80),
 																		borderRadius: (8 * it.scale) / 100,
 																		background: "var(--primary)",
 																		boxShadow: "0 0 20px var(--primary-glow)",

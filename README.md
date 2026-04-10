@@ -16,6 +16,8 @@ ESP32-S3 display board running ESPHome firmware with a React web app served dire
 
 ### Key Features
 - **1:1 Digital Twin**: Web-based Blueprint Mirror exactly represents the 800x480 ESP32 display.
+- **Top-Left Anchoring**: Intuitive 0,0 alignment for widgets (prevents clipping/half-offsets).
+- **Size-Safety Clamping**: Automatic constraints prevent widgets from exceeding their block boundaries.
 - **mDNS Zero-Config**: Access the dashboard at `http://esp32-display.local/` (No IP tracking required).
 - **Persistent State**: UI Grid layouts and system settings (Screensaver toggles) are saved to SPIFFS.
 - **SD Media Engine**: Interactive slideshow with touch navigation (Prev/Next) and remote control.

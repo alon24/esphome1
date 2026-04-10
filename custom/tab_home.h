@@ -71,14 +71,21 @@ static void _home_render_grid() {
             }
             
             if (item.type != "clock" && item.type != "label") {
+                // Ensure widget never exceeds block dimensions
+                bw = (bw > item.w * GRID_CELL_W) ? item.w * GRID_CELL_W : bw;
+                bh = (bh > item.h * GRID_CELL_H) ? item.h * GRID_CELL_H : bh;
                 lv_obj_set_size(child, bw, bh);
+            } else {
+                lv_obj_update_layout(child);
+                bw = lv_obj_get_width(child);
+                bh = lv_obj_get_height(child);
             }
 
+            // High-precision coordinate targeting
             int target_x = (int)(item.w * GRID_CELL_W * item.innerX / 100.0);
             int target_y = (int)(item.h * GRID_CELL_H * item.innerY / 100.0);
             
-            lv_obj_update_layout(child); 
-            lv_obj_set_pos(child, target_x - (lv_obj_get_width(child)/2), target_y - (lv_obj_get_height(child)/2));
+            lv_obj_set_pos(child, target_x, target_y);
         };
 
         if (item.type == "clock") {

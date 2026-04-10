@@ -1,5 +1,5 @@
 # ESP32-S3-8048S043 — Project TODO
-# Status: Final 1:1 Mirror Sync & mDNS Connectivity Deployed 🎉
+# Status: Final UX Polish — Anchoring & Clamping Implemented 💎
 
 ---
 
@@ -15,7 +15,8 @@
 - [x] **SD image viewer** — inline Decoding (stb_image/tjpgd)
 - [x] **Slideshow mode** — Full-screen image cycle with stop/start/nav
 - [x] **UI Mirror Scaling** — Perfect parity between React Blueprint Mirror and LVGL geometry
-- [x] **Digital Twin Geometry Fix** — Removed redundant header, fixed 640x416 content clipping
+- [x] **Top-Left Anchoring** — Switched from center-point to TL corner for easier snapping
+- [x] **Widget Clamping** — Size safety caps prevent widgets from bleeding out of blocks
 - [x] **mDNS Discovery** — Enabled `esp32-display.local` for zero-config access
 - [x] **State Persistence** — SPIFFS-based `grid.json` and `system.json` (settings saved on device)
 - [x] **Persistent Settings** — Slideshow auto-toggle saved across reboots
