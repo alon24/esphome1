@@ -28,6 +28,8 @@ namespace esphome { namespace react_spa {
 // Forward declarations for grid configuration
 void grid_config_save(const char* json_str);
 void grid_config_load();
+void slideshow_start();
+void slideshow_stop();
 void grid_config_get_json(char* out, size_t max_len);
 extern char g_grid_json_cache[8192];
 
@@ -97,7 +99,12 @@ class ReactSPAComponent : public Component {
         .max_files = 10,
         .format_if_mount_failed = true,
     };
-    esp_vfs_spiffs_register(&conf);
+    esp_err_t ret = esp_vfs_spiffs_register(&conf);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to mount SPIFFS (%s)", esp_err_to_name(ret));
+    } else {
+        ESP_LOGI(TAG, "SPIFFS mounted successfully");
+    }
     load_active_path();
 
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
@@ -113,6 +120,8 @@ class ReactSPAComponent : public Component {
         httpd_register_uri_handler(server_, &h);
     };
 
+    ESP_LOGI(TAG, "Starting HTTP server on port %d", port_);
+
     reg("/upload", HTTP_POST, upload_handler);
     reg("/api/health", HTTP_GET, [](httpd_req_t *req) { return httpd_resp_sendstr(req, "{\"status\":\"ok\"}"); });
     reg("/api/spa/info", HTTP_GET, [](httpd_req_t *req) {
@@ -125,6 +134,7 @@ class ReactSPAComponent : public Component {
     // --- WIFI ENDPOINTS ---
     reg("/api/wifi/status", HTTP_GET, wifi_status_handler);
     reg("/api/wifi/scan", HTTP_GET, wifi_scan_handler);
+    reg("/api/wifi/connect", HTTP_POST, wifi_connect_handler);
 
     // --- GRID ENDPOINTS ---
     reg("/api/grid/config", HTTP_GET, [](httpd_req_t *req) {
@@ -144,13 +154,29 @@ class ReactSPAComponent : public Component {
     // --- SD ENDPOINTS ---
     reg("/api/sd/list", HTTP_GET, sd_list_handler);
     reg("/api/sd/file/*", HTTP_GET, sd_file_handler);
+    reg("/api/sd/upload", HTTP_POST, sd_upload_handler);
+    reg("/api/sd/delete", HTTP_POST, sd_delete_handler);
+
+    reg("/api/slideshow/start", HTTP_POST, [](httpd_req_t *req) {
+        slideshow_start();
+        return httpd_resp_sendstr(req, "{\"status\":\"ok\"}");
+    });
+
+    reg("/api/slideshow/stop", HTTP_POST, [](httpd_req_t *req) {
+        slideshow_stop();
+        return httpd_resp_sendstr(req, "{\"status\":\"ok\"}");
+    });
 
     reg("/*", HTTP_GET, root_handler);
   }
 
   static esp_err_t root_handler(httpd_req_t *req) {
+    ESP_LOGI(TAG, "Root handler called for URI: %s", req->uri);
     FILE *f = fopen(g_active_app_path, "r");
-    if (!f) return httpd_resp_sendstr(req, "<html><body><h2>No app discovered.</h2></body></html>");
+    if (!f) {
+        ESP_LOGW(TAG, "File not found: %s", g_active_app_path);
+        return httpd_resp_sendstr(req, "<html><body><h2>No app discovered.</h2></body></html>");
+    }
     httpd_resp_set_type(req, "text/html");
     httpd_resp_set_hdr(req, "Content-Encoding", "gzip");
     httpd_resp_set_hdr(req, "Cache-Control", "no-cache, no-store, must-revalidate");
@@ -189,10 +215,26 @@ class ReactSPAComponent : public Component {
     esp_netif_ip_info_t ip_info;
     esp_netif_t *netif = esp_netif_get_handle_from_ifkey("WIFI_STA_DEF");
     char ip_str[16] = "0.0.0.0";
-    if (netif) { esp_netif_get_ip_info(netif, &ip_info); snprintf(ip_str, sizeof(ip_str), IPSTR, IP2STR(&ip_info.ip)); }
-    char json[128]; snprintf(json, sizeof(json), "{\"connected\":true,\"ip\":\"%s\"}", ip_str);
+    bool connected = false;
+    if (netif) { 
+        esp_netif_get_ip_info(netif, &ip_info); 
+        snprintf(ip_str, sizeof(ip_str), IPSTR, IP2STR(&ip_info.ip));
+        connected = (ip_info.ip.addr != 0);
+    }
+    char json[128]; snprintf(json, sizeof(json), "{\"connected\":%s,\"ip\":\"%s\"}", connected?"true":"false", ip_str);
     httpd_resp_set_type(req, "application/json");
     return httpd_resp_sendstr(req, json);
+  }
+
+  static esp_err_t wifi_connect_handler(httpd_req_t *req) {
+    int total = (int)req->content_len;
+    if (total <= 0 || total > 1024) return httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Too big");
+    char *body = (char*)malloc(total + 1);
+    httpd_req_recv(req, body, total);
+    body[total] = '\0';
+    ESP_LOGI(TAG, "WiFi Connect requested: %s", body);
+    free(body);
+    return httpd_resp_sendstr(req, "{\"status\":\"pending\"}");
   }
 
   static esp_err_t wifi_scan_handler(httpd_req_t *req) {
@@ -212,14 +254,31 @@ class ReactSPAComponent : public Component {
   }
 
   static esp_err_t sd_list_handler(httpd_req_t *req) {
+    char query[256]; char rel_path[128] = "";
+    if (httpd_req_get_url_query_str(req, query, sizeof(query)) == ESP_OK) {
+        char val[128];
+        if (httpd_query_key_value(query, "path", val, sizeof(val)) == ESP_OK) {
+            url_decode(rel_path, val);
+        }
+    }
+    char full_path[160] = "/sdcard";
+    if (strlen(rel_path) > 0) snprintf(full_path, sizeof(full_path), "/sdcard/%s", rel_path);
+
     httpd_resp_set_type(req, "application/json");
     httpd_resp_sendstr_chunk(req, "{\"files\":[");
-    DIR *dir = opendir("/sdcard");
+    DIR *dir = opendir(full_path);
     if (dir) {
         struct dirent *e; bool first = true;
         while ((e = readdir(dir)) != NULL) {
             if (e->d_name[0] == '.') continue;
-            char entry[256]; snprintf(entry, sizeof(entry), "%s{\"name\":\"%s\",\"isDir\":%s}", first?"":",", e->d_name, (e->d_type == DT_DIR)?"true":"false");
+            char entry[256]; 
+            bool is_dir = (e->d_type == DT_DIR);
+            if (e->d_type == DT_UNKNOWN) {
+                char check_path[300]; snprintf(check_path, sizeof(check_path), "%s/%s", full_path, e->d_name);
+                struct stat st;
+                if (stat(check_path, &st) == 0) is_dir = S_ISDIR(st.st_mode);
+            }
+            snprintf(entry, sizeof(entry), "%s{\"name\":\"%s\",\"isDir\":%s}", first?"":",", e->d_name, is_dir?"true":"false");
             httpd_resp_sendstr_chunk(req, entry); first = false;
         }
         closedir(dir);
@@ -229,8 +288,9 @@ class ReactSPAComponent : public Component {
   }
 
   static esp_err_t sd_file_handler(httpd_req_t *req) {
-    const char *filename = req->uri + strlen("/api/sd/file/");
-    char path[128]; snprintf(path, sizeof(path), "/sdcard/%s", filename);
+    const char *uri_filename = req->uri + strlen("/api/sd/file/");
+    char filename[128]; url_decode(filename, uri_filename);
+    char path[160]; snprintf(path, sizeof(path), "/sdcard/%s", filename);
     FILE *f = fopen(path, "r");
     if (!f) return httpd_resp_send_err(req, HTTPD_404_NOT_FOUND, "File missing");
     httpd_resp_set_type(req, "application/octet-stream");
@@ -238,6 +298,45 @@ class ReactSPAComponent : public Component {
     while ((n = fread(buf, 1, sizeof(buf), f)) > 0) httpd_resp_send_chunk(req, buf, (ssize_t)n);
     fclose(f);
     return httpd_resp_send_chunk(req, nullptr, 0);
+  }
+
+  static esp_err_t sd_upload_handler(httpd_req_t *req) {
+    char query[256]; char rel_path[128] = "upload.tmp";
+    if (httpd_req_get_url_query_str(req, query, sizeof(query)) == ESP_OK) {
+        char val[128];
+        if (httpd_query_key_value(query, "path", val, sizeof(val)) == ESP_OK) {
+            url_decode(rel_path, val);
+        }
+    }
+    char full_path[160]; snprintf(full_path, sizeof(full_path), "/sdcard/%s", rel_path);
+    ESP_LOGI(TAG, "SD Upload: %s", full_path);
+    FILE *f = fopen(full_path, "w");
+    if (!f) return httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "File open failed");
+    char buf[4096]; int remaining = (int)req->content_len;
+    while (remaining > 0) {
+        int received = httpd_req_recv(req, buf, std::min(remaining, (int)sizeof(buf)));
+        if (received <= 0) { fclose(f); remove(full_path); return ESP_FAIL; }
+        fwrite(buf, 1, received, f);
+        remaining -= received;
+    }
+    fclose(f);
+    return httpd_resp_sendstr(req, "{\"status\":\"ok\"}");
+  }
+
+  static esp_err_t sd_delete_handler(httpd_req_t *req) {
+    char query[256]; char rel_path[128] = "";
+    if (httpd_req_get_url_query_str(req, query, sizeof(query)) == ESP_OK) {
+        char val[128];
+        if (httpd_query_key_value(query, "path", val, sizeof(val)) == ESP_OK) {
+            url_decode(rel_path, val);
+        }
+    }
+    if (strlen(rel_path) == 0) return httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Missing path");
+    char full_path[160]; snprintf(full_path, sizeof(full_path), "/sdcard/%s", rel_path);
+    ESP_LOGI(TAG, "SD Delete: %s", full_path);
+    if (remove(full_path) == 0) return httpd_resp_sendstr(req, "{\"status\":\"ok\"}");
+    if (rmdir(full_path) == 0) return httpd_resp_sendstr(req, "{\"status\":\"ok\"}");
+    return httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Delete failed");
   }
 
   float get_setup_priority() const override { return setup_priority::AFTER_WIFI; }

@@ -1,6 +1,5 @@
 # ESP32-S3-8048S043 — Project TODO
-
-## Status: SD card tab integrated into device.yaml ✅, React HTTP API next
+# Status: Final 1:1 Mirror Sync & mDNS Connectivity Deployed 🎉
 
 ---
 
@@ -8,18 +7,23 @@
 
 - [x] SD card SPI driver (`components/sd_card`) — mounts FAT32, lists files
 - [x] LVGL file explorer UI (`sdcardtests_ui.yaml` + `custom/sdcardtests.h`)
-- [x] Touch verified working (colour-cycle test button)
+- [x] Touch verified working (GT911 polling)
 - [x] UART logging fixed (UART0, per-tag filtering)
 - [x] Python venv at `./venv/` (esphome 2026.3.2)
-- [x] `scripts/flash.sh` + `scripts/logs.sh` use venv, no docker
-- [x] **SD card tab integrated into `device.yaml`** — `custom/tab_sd.h` included, wired as tab 3 in `maindashboard.h`
-- [x] **SD image viewer** — inline BMP→RGB565 decoder, PNG/JPG pass-through via `LV_IMG_CF_RAW`, scrollable full-screen viewer with Back button
-- [x] **SD tab polish** — path label (scrolling), refresh button, directory navigation, SD insert polling via `tab_sd_poll()`
+- [x] `scripts/flash.sh` + `scripts/upload.sh` use venv, no docker
+- [x] **SD card tab integrated** — `custom/tab_sd.h` included, wired as tab 3
+- [x] **SD image viewer** — inline Decoding (stb_image/tjpgd)
+- [x] **Slideshow mode** — Full-screen image cycle with stop/start/nav
+- [x] **UI Mirror Scaling** — Perfect parity between React Blueprint Mirror and LVGL geometry
+- [x] **Digital Twin Geometry Fix** — Removed redundant header, fixed 640x416 content clipping
+- [x] **mDNS Discovery** — Enabled `esp32-display.local` for zero-config access
+- [x] **State Persistence** — SPIFFS-based `grid.json` and `system.json` (settings saved on device)
+- [x] **Persistent Settings** — Slideshow auto-toggle saved across reboots
 
 ---
 
-## Next
+## Roadmap
 
-- [ ] **Remove touch interrupt pin** from device.yaml if present (use polling like sdcardtests_ui)
-- [ ] **React integration** — expose SD file list via HTTP API, connect to web UI
-- [ ] **Slideshow mode** — auto-cycle images from SD card on a timer
+- [ ] **Advanced Sensor Graphs** — Custom LVGL chart components mirrored in React
+- [ ] **Animated Transitions** — Slide/Fade effects for tab switching on both platforms
+- [ ] **Smart OTA Monitoring** — Real-time progress percentage shown on the LCD during flash

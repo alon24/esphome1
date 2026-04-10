@@ -50,8 +50,8 @@ FAT32 works. Tested with 29GB card. No special formatting required.
 |-----------|---------|
 | Display | 4.3" 800×480 RGB parallel (ST7262 / `mipi_rgb`) |
 | Touch | GT911 capacitive, I2C addr `0x5D`, SDA=GPIO19, SCL=GPIO20 |
-| Touch INT | GPIO18 |
-| Touch RST | GPIO38 (also Touch CS — keep HIGH during SD init) |
+| Touch INT | GPIO18 (Disconnected - now using polling) |
+| Touch RST | GPIO38 (Shared with SD CS — pull HIGH before SD init) |
 | Backlight | GPIO2 via LEDC |
 
 ### LVGL
@@ -59,6 +59,21 @@ FAT32 works. Tested with 29GB card. No special formatting required.
 |---------|-------|-----|
 | `color_depth` | `16` | |
 | `byte_order` | `little_endian` | **Required.** Default big-endian causes pink/magenta colors on this display. |
+
+---
+
+## 🖼 Digital Twin Mirror & Slideshow
+The project features a **Digital Twin** architecture where the browser UI mirrors the physical display layout.
+
+### UI Scaling Rules
+- **Grid Units**: The hardware uses an 80x80 pixel grid base.
+- **Centering**: Widgets are anchored at their center points. The rendering engine calculates absolute coordinates on-the-fly to ensure identical positioning across the web and LVGL.
+- **Zero-Text Aesthetic**: Functional widgets (switches/sliders) on the device are rendered without labels, matching the clean minimalist design of the Blueprint Mirror.
+
+### Slideshow Engine (`slideshow.h`)
+- **Auto-Trigger**: Starts after 30s of inactivity.
+- **Decoding**: Uses `stb_image` for high-quality decoding and `tjpgd` for memory-efficient scaled decoding of large baseline JPEGs.
+- **Remote Control**: Integrated with the React SPA via `/api/slideshow/start|stop` endpoints.
 
 ---
 

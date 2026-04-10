@@ -38,6 +38,7 @@ esphome:
   includes:
     - custom/ui_helpers.h
     - custom/wifi_setup.h
+    - custom/system_settings.h
     - custom/version_info.h
     - custom/stb_image.h
     - custom/tab_home.h
@@ -46,7 +47,7 @@ esphome:
     - custom/tab_sd.h
     - custom/grid_config.h
     - custom/maindashboard.h
-    - custom/screensaver.h
+    - custom/slideshow.h
   on_boot:
     - priority: 100
       then:
@@ -94,8 +95,10 @@ logger:
   baud_rate: 115200
   hardware_uart: UART0
 
-captive_portal:
+# captive_portal:
   
+mdns:
+
 text_sensor:
   - platform: wifi_info
     ip_address:
@@ -135,8 +138,6 @@ touchscreen:
     display: main_display
     address: 0x5D
     reset_pin: GPIO38
-    on_touch:
-      - lambda: screensaver_refresh_activity();
 
 lvgl:
   displays:
@@ -163,7 +164,8 @@ interval:
   - interval: 1s
     then:
       - lambda: |-
-          screensaver_tick(); 
+          slideshow_tick();
+          grid_config_tick();
           auto now = id(sntp_time).now();
           dashboard_tick(now.hour, now.minute, now.second, now.day_of_month, now.month, now.year, now.day_of_week);
           if (now.second % 5 == 0) ESP_LOGI("main", "--- LIVE HEARTBEAT ---");

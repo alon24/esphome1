@@ -95,6 +95,7 @@ static void lvgl_flush_cb(lv_disp_drv_t *drv, const lv_area_t *area, lv_color_t 
 }
 
 static void maindashboard_create(void) {
+    system_settings_load();
     lv_obj_t *scr = lv_scr_act();
     lv_obj_clean(scr);
 
@@ -152,12 +153,9 @@ static void maindashboard_create(void) {
     lv_obj_set_size(content, 640, 416);
     lv_obj_set_pos(content, 160, 64);
     _panel_reset(content);
+    lv_obj_set_style_pad_all(content, 0, 0); // Explicitly zero padding
     lv_obj_set_style_bg_color(content, lv_color_hex(DASH_BG), 0);
     lv_obj_set_style_bg_opa(content, LV_OPA_COVER, 0);
-    lv_obj_set_style_border_width(content, 0, 0);
-    lv_obj_set_style_outline_width(content, 0, 0);
-    lv_obj_set_style_shadow_width(content, 0, 0);
-    lv_obj_clear_flag(content, LV_OBJ_FLAG_SCROLLABLE);
 
     g_dash_tabs[0] = _make_panel(content, 0, 0, 640, 416, DASH_BG);
     tab_home_create(g_dash_tabs[0]);

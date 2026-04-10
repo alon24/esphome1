@@ -669,16 +669,29 @@ static void tab_sd_create(lv_obj_t *parent) {
     lv_obj_add_event_cb(rbtn, [](lv_event_t *) {
         g_sd_cur_path = SD_TAB_MOUNT;
         esphome::sd_card_do_unmount();
-        // -I${sysenv.IDF_PATH}/components/driver/include
-        // -I${sysenv.IDF_PATH}/components/spi_flash/include
-        // -DLV_USE_PNG=1
-        // -DLV_USE_SJPG=1
-        // -DLV_USE_BMP=1
-        // -DPNG_USE_LV_FILESYSTEM=1
         esphome::sd_card_do_mount();
-        // Clear the poll-notify flag since we're handling the result directly
         esphome::sd_card::g_sd_newly_mounted = false;
         _sd_scan();
+    }, LV_EVENT_CLICKED, nullptr);
+
+    // Slideshow button
+    lv_obj_t *ssbtn = lv_btn_create(parent);
+    lv_obj_set_size(ssbtn, 130, 30);
+    lv_obj_set_pos(ssbtn, 390, 10);
+    lv_obj_set_style_bg_color(ssbtn, lv_color_hex(0x1C2828), LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_color(ssbtn, lv_color_hex(0x00CED1), LV_STATE_PRESSED);
+    lv_obj_set_style_bg_opa(ssbtn, LV_OPA_COVER, LV_STATE_DEFAULT);
+    lv_obj_set_style_radius(ssbtn, 6, 0);
+    lv_obj_set_style_border_width(ssbtn, 1, 0);
+    lv_obj_set_style_border_color(ssbtn, lv_color_hex(0x00CED1), 0);
+    lv_obj_t *ssl = lv_label_create(ssbtn);
+    lv_label_set_text(ssl, LV_SYMBOL_PLAY " SLIDE");
+    lv_obj_set_style_text_color(ssl, lv_color_hex(0x00CED1), 0);
+    lv_obj_set_style_text_font(ssl, &lv_font_montserrat_14, 0);
+    lv_obj_center(ssl);
+    lv_obj_add_event_cb(ssbtn, [](lv_event_t *) {
+        extern void slideshow_start();
+        slideshow_start();
     }, LV_EVENT_CLICKED, nullptr);
 
     // Scrollable file/dir list (occupies most of the tab)

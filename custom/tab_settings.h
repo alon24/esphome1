@@ -2,7 +2,7 @@
 #include "lvgl.h"
 #include "ui_helpers.h"
 #include "version_info.h"
-#include "screensaver.h"
+#include "version_info.h"
 #include "esphome/core/log.h"
 #include <cstdio>
 #include <esp_timer.h>
@@ -10,6 +10,8 @@
 
 #define TAB_SETTINGS_BG   0x0e0e0e
 #define TAB_SETTINGS_CARD 0x1a1a1a
+
+#include "system_settings.h"
 
 static lv_obj_t *g_set_ip_val         = nullptr;
 static lv_obj_t *g_set_uptime_val     = nullptr;
@@ -36,6 +38,20 @@ static void tab_settings_create(lv_obj_t *parent) {
     g_set_ip_val = _settings_row(card, "IP Address", "---", 70, TAB_SETTINGS_CARD);
     g_set_ssid_val = _settings_row(card, "Network", "---", 100, TAB_SETTINGS_CARD);
     g_set_uptime_val = _settings_row(card, "System Uptime", "---", 130, TAB_SETTINGS_CARD);
+
+    // Slideshow toggle row
+    lv_obj_t *ss_lbl = lv_label_create(card);
+    lv_label_set_text(ss_lbl, "Slideshow Auto");
+    lv_obj_set_style_text_color(ss_lbl, lv_color_hex(0x888888), 0);
+    lv_obj_set_pos(ss_lbl, 20, 160);
+
+    lv_obj_t *ss_sw = lv_switch_create(card);
+    lv_obj_set_pos(ss_sw, 210, 155);
+    if (g_ss_enabled) lv_obj_add_state(ss_sw, LV_STATE_CHECKED);
+    lv_obj_add_event_cb(ss_sw, [](lv_event_t *e) {
+        g_ss_enabled = lv_obj_has_state(lv_event_get_target(e), LV_STATE_CHECKED);
+        system_settings_save();
+    }, LV_EVENT_VALUE_CHANGED, nullptr);
 
     lv_obj_t *hint = lv_label_create(card);
     lv_label_set_text(hint, "Sidebar navigation active. System status verified.");

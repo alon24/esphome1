@@ -21,7 +21,7 @@ void ui_refresh_grid() {
 
 static void tab_home_create(lv_obj_t *parent) {
     g_home_grid_cont = lv_obj_create(parent);
-    lv_obj_set_size(g_home_grid_cont, 800, 480); // Full screen grid
+    lv_obj_set_size(g_home_grid_cont, 640, 416); // Mirror the content area exactly
     _panel_reset(g_home_grid_cont);
     lv_obj_set_style_bg_color(g_home_grid_cont, lv_color_hex(g_grid_bg), 0);
     lv_obj_set_style_bg_opa(g_home_grid_cont, LV_OPA_COVER, 0);
@@ -54,22 +54,30 @@ static void _home_render_grid() {
         lv_obj_set_style_clip_corner(obj, true, 0);
 
         auto apply_geo = [&](lv_obj_t* child) {
-            // 1. Calculate widget size based on base defaults * scale
             int bw = 60 * item.scale / 100;
             int bh = 40 * item.scale / 100;
-            if (item.type == "slider") { bw = (item.w * GRID_CELL_W * 0.8) * item.scale / 100; bh = 20 * item.scale / 100; }
-            if (item.type == "switch") { bw = 50 * item.scale / 100; bh = 30 * item.scale / 100; }
-            if (item.type == "btn")    { bw = (item.w * GRID_CELL_W * 0.7) * item.scale / 100; bh = (item.h * GRID_CELL_H * 0.6) * item.scale / 100; }
+            
+            if (item.type == "slider") { 
+                bw = (int)(item.w * GRID_CELL_W * 0.8); 
+                bh = 12 * item.scale / 100; 
+            }
+            if (item.type == "switch") { 
+                bw = 50 * item.scale / 100; 
+                bh = 25 * item.scale / 100; 
+            }
+            if (item.type == "btn") { 
+                bw = 60 * item.scale / 100; 
+                bh = 40 * item.scale / 100; 
+            }
             
             if (item.type != "clock" && item.type != "label") {
                 lv_obj_set_size(child, bw, bh);
             }
 
-            // 2. Absolute Positioning Sync (Center of widget at the innerX/Y coordinate)
             int target_x = (int)(item.w * GRID_CELL_W * item.innerX / 100.0);
             int target_y = (int)(item.h * GRID_CELL_H * item.innerY / 100.0);
             
-            // Apply Top-Left offset to achieve centering
+            lv_obj_update_layout(child); 
             lv_obj_set_pos(child, target_x - (lv_obj_get_width(child)/2), target_y - (lv_obj_get_height(child)/2));
         };
 
@@ -77,11 +85,12 @@ static void _home_render_grid() {
             lv_obj_t *time_lbl = lv_label_create(obj);
             lv_obj_set_style_text_color(time_lbl, lv_color_hex(item.textColor), 0);
             
-            if (item.scale < 60) lv_obj_set_style_text_font(time_lbl, &lv_font_montserrat_12, 0);
-            else if (item.scale < 90) lv_obj_set_style_text_font(time_lbl, &lv_font_montserrat_14, 0);
-            else if (item.scale < 120) lv_obj_set_style_text_font(time_lbl, &lv_font_montserrat_18, 0);
-            else if (item.scale < 160) lv_obj_set_style_text_font(time_lbl, &lv_font_montserrat_24, 0);
-            else if (item.scale < 200) lv_obj_set_style_text_font(time_lbl, &lv_font_montserrat_32, 0);
+            int fs = 32 * item.scale / 100;
+            if (fs < 14) lv_obj_set_style_text_font(time_lbl, &lv_font_montserrat_12, 0);
+            else if (fs < 18) lv_obj_set_style_text_font(time_lbl, &lv_font_montserrat_14, 0);
+            else if (fs < 24) lv_obj_set_style_text_font(time_lbl, &lv_font_montserrat_18, 0);
+            else if (fs < 32) lv_obj_set_style_text_font(time_lbl, &lv_font_montserrat_24, 0);
+            else if (fs < 48) lv_obj_set_style_text_font(time_lbl, &lv_font_montserrat_32, 0);
             else lv_obj_set_style_text_font(time_lbl, &lv_font_montserrat_48, 0);
 
             lv_obj_set_user_data(time_lbl, (void*)"clock"); 
@@ -92,17 +101,17 @@ static void _home_render_grid() {
             lv_label_set_text(lbl, item.name.c_str());
             lv_obj_set_style_text_color(lbl, lv_color_hex(item.textColor), 0);
             
-            if (item.scale < 60) lv_obj_set_style_text_font(lbl, &lv_font_montserrat_12, 0);
-            else if (item.scale < 90) lv_obj_set_style_text_font(lbl, &lv_font_montserrat_14, 0);
-            else if (item.scale < 120) lv_obj_set_style_text_font(lbl, &lv_font_montserrat_18, 0);
-            else if (item.scale < 160) lv_obj_set_style_text_font(lbl, &lv_font_montserrat_24, 0);
-            else if (item.scale < 200) lv_obj_set_style_text_font(lbl, &lv_font_montserrat_32, 0);
+            int fs = 18 * item.scale / 100;
+            if (fs < 14) lv_obj_set_style_text_font(lbl, &lv_font_montserrat_12, 0);
+            else if (fs < 18) lv_obj_set_style_text_font(lbl, &lv_font_montserrat_14, 0);
+            else if (fs < 24) lv_obj_set_style_text_font(lbl, &lv_font_montserrat_18, 0);
+            else if (fs < 32) lv_obj_set_style_text_font(lbl, &lv_font_montserrat_24, 0);
+            else if (fs < 48) lv_obj_set_style_text_font(lbl, &lv_font_montserrat_32, 0);
             else lv_obj_set_style_text_font(lbl, &lv_font_montserrat_48, 0);
             
             apply_geo(lbl);
 
         } else if (item.type == "btn") {
-            // Button with NO text, just the physical widget
             lv_obj_t *btn = lv_btn_create(obj);
             apply_geo(btn);
 

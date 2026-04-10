@@ -11,7 +11,9 @@ static inline void _panel_reset(lv_obj_t *p) {
     lv_obj_set_style_shadow_width(p, 0, 0);
     lv_obj_set_style_border_width(p, 0, 0);
     lv_obj_set_style_outline_width(p, 0, 0);
+    lv_obj_set_style_pad_all(p, 0, 0);
     lv_obj_set_style_bg_grad_dir(p, LV_GRAD_DIR_NONE, 0);
+    lv_obj_clear_flag(p, LV_OBJ_FLAG_SCROLLABLE);
 }
 
 // Give a label a solid bg so LVGL anti-aliases cleanly.

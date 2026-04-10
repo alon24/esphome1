@@ -1,4 +1,4 @@
-# LovyanGFX Integration Plan for Sunton 8048S043
+# [IMPLEMENTED] LovyanGFX Integration Plan for Sunton 8048S043
 
 This document outlines the plan to integrate the [LovyanGFX](https://github.com/lovyan03/LovyanGFX) library into the ESPHome project for the Sunton 8048S043 (4.3" 800x480) display.
 

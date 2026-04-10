@@ -24,6 +24,12 @@ static std::vector<GridItem> g_grid_items;
 static uint32_t g_grid_bg = 0x0e0e0e;
 char g_grid_json_cache[8192]; // Cache for zero-lag API (external linkage)
 static const char* GRID_CONFIG_FILE = "/spiffs/grid.json";
+bool g_grid_needs_refresh = false;
+
+void grid_config_refresh_cache();
+void ui_refresh_grid();
+
+// ... actual functions below ...
 
 // Forward declaration of the refresh functions
 void grid_config_get_json(char* out, size_t max_len);
@@ -118,10 +124,16 @@ void grid_config_save(const char* json_str) {
         fputs(json_str, f);
         fclose(f);
         ESP_LOGI("GRID", "Config saved to SPIFFS");
-        // Reload and refresh UI
         ::grid_config_load();
-        ui_refresh_grid();
+        g_grid_needs_refresh = true;
     } else {
         ESP_LOGE("GRID", "Failed to open config for writing");
+    }
+}
+
+void grid_config_tick() {
+    if (g_grid_needs_refresh) {
+        g_grid_needs_refresh = false;
+        ui_refresh_grid();
     }
 }
