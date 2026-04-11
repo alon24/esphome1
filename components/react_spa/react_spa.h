@@ -1,5 +1,6 @@
 #pragma once
 #include "esphome.h"
+#include <ArduinoJson.h>
 
 #ifdef ARDUINO
 #include <AsyncTCP.h>
@@ -35,6 +36,11 @@ void slideshow_start();
 void slideshow_stop();
 void grid_config_get_json(char* out, size_t max_len);
 void grid_panels_save(const char* json_str);
+void system_settings_save();
+extern bool g_ap_always_on;
+extern char g_ap_ssid[33];
+extern char g_ap_password[64];
+
 extern char g_grid_json_cache[8192];
 
 namespace esphome {
@@ -97,18 +103,6 @@ class ReactSPAComponent : public Component {
   }
 
   void setup() override {
-    esp_vfs_spiffs_conf_t conf = {
-        .base_path = SPIFFS_BASE,
-        .partition_label = nullptr,
-        .max_files = 10,
-        .format_if_mount_failed = true,
-    };
-    esp_err_t ret = esp_vfs_spiffs_register(&conf);
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to mount SPIFFS (%s)", esp_err_to_name(ret));
-    } else {
-        ESP_LOGI(TAG, "SPIFFS mounted successfully");
-    }
     load_active_path();
 
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
@@ -139,6 +133,7 @@ class ReactSPAComponent : public Component {
     reg("/api/wifi/status", HTTP_GET, wifi_status_handler);
     reg("/api/wifi/scan", HTTP_GET, wifi_scan_handler);
     reg("/api/wifi/connect", HTTP_POST, wifi_connect_handler);
+    reg("/api/wifi/ap", HTTP_POST, wifi_ap_handler);
 
     reg("/api/grid/screens", HTTP_GET, [](httpd_req_t *req) {
         char* buf = (char*)malloc(2048);
@@ -257,9 +252,53 @@ class ReactSPAComponent : public Component {
         snprintf(ip_str, sizeof(ip_str), IPSTR, IP2STR(&ip_info.ip));
         connected = (ip_info.ip.addr != 0);
     }
-    char json[128]; snprintf(json, sizeof(json), "{\"connected\":%s,\"ip\":\"%s\"}", connected?"true":"false", ip_str);
+    
+    wifi_mode_t mode;
+    esp_wifi_get_mode(&mode);
+    bool ap_active = (mode == WIFI_MODE_AP || mode == WIFI_MODE_APSTA);
+    
+    char json[512]; 
+    snprintf(json, sizeof(json), "{\"connected\":%s,\"ip\":\"%s\",\"ap_active\":%s,\"ap_always_on\":%s,\"ap_ssid\":\"%s\"}", 
+             connected?"true":"false", ip_str, ap_active?"true":"false", ::g_ap_always_on?"true":"false", ::g_ap_ssid);
     httpd_resp_set_type(req, "application/json");
     return httpd_resp_sendstr(req, json);
+  }
+
+  static esp_err_t wifi_ap_handler(httpd_req_t *req) {
+    int total = (int)req->content_len;
+    if (total <= 0 || total > 1024) return httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid");
+    char *body = (char*)malloc(total + 1);
+    httpd_req_recv(req, body, total);
+    body[total] = '\0';
+
+    JsonDocument doc;
+    deserializeJson(doc, body);
+    
+    if (doc.containsKey("always_on")) ::g_ap_always_on = doc["always_on"];
+    if (doc.containsKey("ssid")) strncpy(::g_ap_ssid, doc["ssid"] | "GRIDOS_AP", 31);
+    if (doc.containsKey("password")) strncpy(::g_ap_password, doc["password"] | "", 63);
+    
+    wifi_mode_t mode;
+    esp_wifi_get_mode(&mode);
+    
+    // Apply SSID/Password to ESP-IDF
+    wifi_config_t conf = {};
+    esp_wifi_get_config(WIFI_IF_AP, &conf);
+    strncpy((char*)conf.ap.ssid, ::g_ap_ssid, 32);
+    strncpy((char*)conf.ap.password, ::g_ap_password, 64);
+    conf.ap.ssid_len = strlen(::g_ap_ssid);
+    conf.ap.authmode = (strlen(::g_ap_password) > 7) ? WIFI_AUTH_WPA2_PSK : WIFI_AUTH_OPEN;
+    esp_wifi_set_config(WIFI_IF_AP, &conf);
+
+    if (doc.containsKey("active")) {
+        bool active = doc["active"];
+        if (active) esp_wifi_set_mode((mode == WIFI_MODE_STA) ? WIFI_MODE_APSTA : mode);
+        else esp_wifi_set_mode((mode == WIFI_MODE_APSTA) ? WIFI_MODE_STA : mode);
+    }
+    
+    ::system_settings_save();
+    free(body);
+    return httpd_resp_sendstr(req, "{\"status\":\"ok\"}");
   }
 
   static esp_err_t wifi_connect_handler(httpd_req_t *req) {

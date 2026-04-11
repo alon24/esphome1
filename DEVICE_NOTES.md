@@ -62,46 +62,31 @@ FAT32 works. Tested with 29GB card. No special formatting required.
 
 ---
 
-## 🖼 Digital Twin Mirror & Slideshow
-The project features a **Digital Twin** architecture where the browser UI mirrors the physical display layout.
+## 💾 Persistence & State Management (v110)
+Implementing layout persistence on ESP32-S3 requires overcoming early-boot race conditions between the LVGL engine and the SPIFFS partition mount.
 
-### UI Scaling Rules
-- **Grid Units**: The hardware uses an 80x80 pixel grid base.
-- **Centering**: Widgets are anchored at their center points. The rendering engine calculates absolute coordinates on-the-fly to ensure identical positioning across the web and LVGL.
-- **Zero-Text Aesthetic**: Functional widgets (switches/sliders) on the device are rendered without labels, matching the clean minimalist design of the Blueprint Mirror.
+### Autonomous Filesystem Mount
+To prevent "File Not Found" errors during boot, the `grid_config_load` engine implements a **Self-Mount** check. It registers the SPIFFS partition using the ESP-IDF VFS driver immediately before the first IO operation. This ensures the 1:1 state restore works even if YAML-level components are delayed.
 
-### Slideshow Engine (`slideshow.h`)
-- **Auto-Trigger**: Starts after 30s of inactivity.
-- **Decoding**: Uses `stb_image` for high-quality decoding and `tjpgd` for memory-efficient scaled decoding of large baseline JPEGs.
-- **Remote Control**: Integrated with the React SPA via `/api/slideshow/start|stop` endpoints.
+### State Parity Engine
+- **Active Screen Tracking**: The device records the current designer screen name in `system.json`.
+- **Serialization**: Layouts are pushed from React as JSON and parsed via `ArduinoJson 7.x`.
+- **UI Lifecycle**: `maindashboard_create` is anchored to specific LVGL page objects to prevent memory resets during auto-refreshes.
 
----
-
-## 📡 UART Logging
-Default ESP32-S3 ESP-IDF routes app logs to USB-JTAG CDC, not UART0. Required config to get logs on the serial pin (GPIO43 TX / GPIO44 RX):
-
-```yaml
-logger:
-  hardware_uart: UART0
-
-sdkconfig_options:
-  CONFIG_ESP_CONSOLE_UART: "y"
-  CONFIG_ESP_CONSOLE_UART_NUM: "0"
-  CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG_ENABLED: "n"
-```
+## 📡 Standalone AP Mode
+The device supports a field-deployable **GRIDOS Access Point**.
+- **Mode**: AP+STA (Concurrent).
+- **Credentials**: Persistent SSID and Password stored in `system.json`.
+- **Watchdog**: The firmware monitors the AP state and can be configured to "Always On" via the designer settings.
 
 ---
 
 ## ⚠️ Known Gotchas
 
-1. **SDMMC vs SPI**: The board wiring is SPI, not SDMMC. `esp_vfs_fat_sdmmc_mount` will fail silently with no mount. Always use `esp_vfs_fat_sdspi_mount`.
+1. **Double Initialization**: Avoid calling `maindashboard_create` from both `on_boot` and LVGL lifecycle; it causes task collisions. v110 centralizes this in the LVGL page-load.
 
-2. **GPIO38 contention**: GT911 touch reset shares GPIO38 with the SPI bus. Pull it HIGH before initializing the SD card or the SD init will fail intermittently.
+2. **Buffer Overflows**: Serializing system credentials (SSID/Pass) requires at least a **512-byte** character buffer. Smaller buffers (128 bytes) will cause immediate stack corruption and reboot.
 
-3. **Flash mode**: `board_build.flash_mode: qio` is mandatory. Any other mode causes a silent hang after the ROM `entry` log.
+3. **SDMMC vs SPI**: The Sunton 8048S043 wiring is SPI. Standard ESPHome SD components must be configured for SPI CS=GPIO10.
 
-4. **Task WDT**: Don't block in `setup()` for more than ~3 seconds. The default IDF task watchdog fires at 5s — SD init + any delays will trip it. Remove diagnostic delay loops from component setup.
-
-5. **POSIX VFS stubs**: Even if `esp_vfs_fat_sdspi_mount` succeeds, `opendir` will silently always-fail if `CONFIG_VFS_SUPPORT_POSIX` is not set and `vfs` is not in CMakeLists REQUIRES.
-
-6. **UART silence**: If you see ROM boot logs but no app logs, the console is going to USB-JTAG. See UART Logging section above.
+4. **SPIFFS Race**: Standard ESPHome SPIFFS mounting often happens too late for custom logic. Always use the autonomous mount pattern in `grid_config.h`.

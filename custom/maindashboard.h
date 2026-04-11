@@ -94,10 +94,13 @@ static void lvgl_flush_cb(lv_disp_drv_t *drv, const lv_area_t *area, lv_color_t 
     lv_disp_flush_ready(drv);
 }
 
-static void maindashboard_create(void) {
+static void maindashboard_create(lv_obj_t *parent) {
+    if (!parent) return;
     system_settings_load();
-    lv_obj_t *scr = lv_scr_act();
-    lv_obj_clean(scr);
+    void grid_config_load(const char* name); // Forward decl
+    grid_config_load(nullptr); // Load persistent active screen
+    lv_obj_clean(parent);
+    lv_obj_t *scr = parent;
 
     lv_disp_t *disp = lv_disp_get_default();
     if (disp && disp->driver) disp->driver->flush_cb = lvgl_flush_cb;
@@ -133,6 +136,22 @@ static void maindashboard_create(void) {
     lv_obj_set_style_text_color(vlbl, lv_color_hex(0xcccccc), 0); // High-contrast grey
     lv_obj_set_style_text_font(vlbl, &lv_font_montserrat_14, 0);
     lv_obj_align(vlbl, LV_ALIGN_RIGHT_MID, -180, 0);
+
+    // AP Icon (Mirroring Web Editor)
+    static lv_obj_t *g_dash_ap_icon = lv_label_create(header);
+    lv_label_set_text(g_dash_ap_icon, LV_SYMBOL_WIFI); 
+    lv_obj_set_style_text_color(g_dash_ap_icon, lv_color_hex(0x00CED1), 0);
+    lv_obj_add_flag(g_dash_ap_icon, LV_OBJ_FLAG_HIDDEN); // Hidden by default
+    lv_obj_align(g_dash_ap_icon, LV_ALIGN_RIGHT_MID, -140, 0);
+    
+    // Timer to update AP icon
+    lv_timer_create([](lv_timer_t *t){
+        lv_obj_t *icon = (lv_obj_t*)t->user_data;
+        wifi_mode_t mode;
+        esp_wifi_get_mode(&mode);
+        if (mode == WIFI_MODE_AP || mode == WIFI_MODE_APSTA) lv_obj_clear_flag(icon, LV_OBJ_FLAG_HIDDEN);
+        else lv_obj_add_flag(icon, LV_OBJ_FLAG_HIDDEN);
+    }, 1000, g_dash_ap_icon);
 
     // ── SIDEBAR (Left 160px, Below Header) ────────────────────────────────────
     lv_obj_t *sidebar = _make_panel(scr, 0, 64, 160, 416, DASH_SIDE_BG);
@@ -173,6 +192,11 @@ static void maindashboard_create(void) {
 }
 
 static void dashboard_tick(int h, int m, int s, int dom, int mon, int year, int dow) {
+    if (g_grid_needs_refresh) {
+        g_grid_needs_refresh = false;
+        if (g_dash_tabs[0]) tab_home_create(g_dash_tabs[0]); // Re-create home tab with latest grid
+        ESP_LOGI("GRID", "UI Refresh triggered from editor");
+    }
     if (g_dash_time_lbl && h != -1) {
         char tbuf[48];
         if (dow >= 1 && dow <= 7 && mon >= 1 && mon <= 12) {

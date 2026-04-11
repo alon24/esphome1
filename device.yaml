@@ -31,6 +31,9 @@ esphome:
       - -DLV_USE_SLIDER=1
       - -DLV_USE_SWITCH=1
       - -DLV_USE_CHECKBOX=1
+      - -DLV_USE_ARC=1
+      - -DLV_USE_DROPDOWN=1
+      - -DLV_USE_ROLLER=1
       - -DLV_USE_CHART=1
   libraries:
     - "LovyanGFX"
@@ -48,12 +51,6 @@ esphome:
     - custom/tab_sd.h
     - custom/maindashboard.h
     - custom/slideshow.h
-  on_boot:
-    - priority: 100
-      then:
-        - lambda: |-
-            maindashboard_create(); 
-            ESP_LOGI("main", "Dashboard Started - Diagnostic Revert Complete");
 
 esp32:
   board: esp32-s3-devkitc-1
@@ -153,7 +150,7 @@ lvgl:
   pages:
     - id: dashboard_page
       on_boot:
-        - lambda: maindashboard_create();
+        - lambda: maindashboard_create(id(dashboard_page).obj);
 
 time:
   - platform: sntp
@@ -166,6 +163,12 @@ interval:
       - lambda: |-
           slideshow_tick();
           grid_config_tick();
+          extern bool g_ap_always_on;
+          if (g_ap_always_on) {
+             wifi_mode_t mode;
+             esp_wifi_get_mode(&mode);
+             if (mode == WIFI_MODE_STA) esp_wifi_set_mode(WIFI_MODE_APSTA);
+          }
           auto now = id(sntp_time).now();
           dashboard_tick(now.hour, now.minute, now.second, now.day_of_month, now.month, now.year, now.day_of_week);
           if (now.second % 5 == 0) ESP_LOGI("main", "--- LIVE HEARTBEAT ---");

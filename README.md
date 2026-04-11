@@ -1,20 +1,20 @@
-# ESP32 Display — ESPHome + React SPA (v95-GRIDOS-PRO)
+# ESP32 Display — ESPHome + React SPA (v110-GRIDOS-ULTIMATE)
 
-A professional-grade, high-fidelity media station and UI designer powered by an ESP32-S3. This project features a **Digital Twin Designer** with pixel-perfect hardware parity, a high-density project manager, and a recursive multi-element rendering engine.
+A professional-grade, high-fidelity media station and UI designer powered by an ESP32-S3. This project features a **Memory-Persistent Digital Twin Designer** with pixel-perfect hardware parity, standalone WiFi Access Point modes, and a resilient autonomous filesystem engine.
 
 ## ✅ DONE
 - [x] **Project Manager**: Sidebar hub for Screens and Master Panels.
-- [x] **Right-Click Context Menu**: Rapid insertion of elements on Canvas and Scene Tree.
 - [x] **Recursive Rendering**: Nested panel-ref support (Device & Web).
-- [x] **Hierarchical Scene Tree**: Visual breadcrumbs for nested items.
-- [x] **Page Calibration**: 420px dashed lines marking usable display boundaries.
-- [x] **Origin Hub**: (0,0) crosshair for precise panel design.
-- [x] **Delete Support**: Keyboard (Del/Back) and UI-button object removal.
+- [x] **Autonomous Persistence**: Filesystem self-mounts for 100% reliable layout restoration on boot.
+- [x] **Standalone AP Mode**: Hotspot support with custom SSID/Password and "Always On" capability.
+- [x] **Industrial Widget Suite**: Roller, Dropdown, Arc, Bar, Switch, and Label with real-time hardware sync.
+- [x] **Smart Refreshes**: Background UI commit to physical hardware on designer "Sync".
+- [x] **Stable Lifecycle**: Parent-anchored rendering to prevent race conditions and memory resets.
 
 ## 🛠 PENDING
-- [ ] **Performance optimization** for very deep nests (>5 levels).
-- [ ] **State export/import** for full project backup (local file).
-- [ ] **Template library** for common UI patterns (Navbar, Sidebar).
+- [ ] **Performance optimization** for very deep nests (>8 levels).
+- [ ] **State export/import** for full project backup (local JSON download).
+- [ ] **Advanced Sensor Graphs**: Real-time plotting mirrored in LVGL/React.
 - [ ] **Touch event tunneling** for deeper nested items.
 
 ## Hardware
@@ -26,16 +26,16 @@ A professional-grade, high-fidelity media station and UI designer powered by an 
 | Config files | `device.yaml` (main) |
 | Hardware details | [DEVICE_NOTES.md](./DEVICE_NOTES.md) |
 
-## Status: 🚀 Final 1:1 Production Alignment
-**Hardware & Web Mirror are now pixel-perfect synchronized via `GRIDOS PRECISION CORE`.**
+## Status: 🥇 v110 ULTIMATE - Field-Ready Designer
+**The studio now operates as a robust, persistent standalone environment.**
 
 ### Key Features
-- **1:1 Digital Twin**: Web-based Blueprint Mirror exactly represents the 800x480 ESP32 display.
-- **Top-Left Anchoring**: Intuitive 0,0 alignment for widgets (prevents clipping/half-offsets).
-- **Size-Safety Clamping**: Automatic constraints prevent widgets from exceeding their block boundaries.
-- **mDNS Zero-Config**: Access the dashboard at `http://esp32-display.local/` (No IP tracking required).
-- **Persistent State**: UI Grid layouts and system settings (Screensaver toggles) are saved to SPIFFS.
-- **SD Media Engine**: Interactive slideshow with touch navigation (Prev/Next) and remote control.
+- **Deterministic Restore**: The hardware consumes its own Digital Twin state from SPIFFS on every power cycle.
+- **Standalone WiFi Orchestration**: Configure SSID/Pass in the builder; hardware acts as a primary AP.
+- **Precision 1:1 Rendering**: LVGL 8.4 engine maps React widgets with absolute coordinate parity.
+- **Autonomous Mount**: Filesystem ready-checks ensure data integrity before UI initialization.
+- **mDNS Zero-Config**: Access the dashboard at `http://esp32-display.local/` or via AP IP `192.168.4.1`.
+- **SD Media Engine**: Interactive slideshow with touch navigation and remote control.
 
 ---
 

@@ -60,8 +60,11 @@ static void _home_render_item(lv_obj_t *parent, const GridItem &it, int offsetX,
         lv_obj_center(lbl);
     } else if (it.type == "switch") {
         obj = lv_switch_create(parent);
+        if (it.value) lv_obj_add_state(obj, LV_STATE_CHECKED);
     } else if (it.type == "slider") {
         obj = lv_slider_create(parent);
+        lv_slider_set_range(obj, it.min, it.max);
+        lv_slider_set_value(obj, it.value, LV_ANIM_OFF);
     } else if (it.type == "clock") {
         obj = lv_label_create(parent);
         lv_obj_set_user_data(obj, (void*)"clock");
@@ -69,6 +72,28 @@ static void _home_render_item(lv_obj_t *parent, const GridItem &it, int offsetX,
     } else if (it.type == "label") {
         obj = lv_label_create(parent);
         lv_label_set_text(obj, it.name.empty() ? "LABEL" : it.name.c_str());
+    } else if (it.type == "arc") {
+        obj = lv_arc_create(parent);
+        lv_arc_set_range(obj, it.min, it.max);
+        lv_arc_set_value(obj, it.value);
+    } else if (it.type == "checkbox") {
+        obj = lv_checkbox_create(parent);
+        lv_checkbox_set_text(obj, it.name.empty() ? "CHECK" : it.name.c_str());
+        if (it.value) lv_obj_add_state(obj, LV_STATE_CHECKED);
+    } else if (it.type == "dropdown") {
+        obj = lv_dropdown_create(parent);
+        if (!it.options.empty()) lv_dropdown_set_options(obj, it.options.c_str());
+        lv_dropdown_set_selected(obj, it.value);
+    } else if (it.type == "roller") {
+        obj = lv_roller_create(parent);
+        if (!it.options.empty()) lv_roller_set_options(obj, it.options.c_str(), LV_ROLLER_MODE_NORMAL);
+        lv_roller_set_visible_row_count(obj, 3);
+        lv_roller_set_selected(obj, it.value, LV_ANIM_OFF);
+        lv_obj_clear_flag(obj, LV_OBJ_FLAG_SCROLL_CHAIN);
+    } else if (it.type == "bar") {
+        obj = lv_bar_create(parent);
+        lv_bar_set_range(obj, it.min, it.max);
+        lv_bar_set_value(obj, it.value, LV_ANIM_OFF);
     }
 
     if (obj) {
@@ -91,6 +116,7 @@ static void _home_render_item(lv_obj_t *parent, const GridItem &it, int offsetX,
 }
 
 void tab_home_create(lv_obj_t *parent) {
+    lv_obj_clean(parent);
     g_home_grid_cont = lv_obj_create(parent);
     lv_obj_set_size(g_home_grid_cont, 640, 416);
     _panel_reset(g_home_grid_cont);

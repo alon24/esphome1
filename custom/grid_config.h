@@ -16,6 +16,8 @@ struct GridItem {
     uint32_t textColor;
     std::string panelId;
     std::string action;
+    int value, min, max;
+    std::string options;
 };
 
 struct Panel {
@@ -28,6 +30,7 @@ struct Panel {
 static std::vector<GridItem> g_grid_items;
 static std::vector<Panel> g_panels;
 static uint32_t g_grid_bg = 0x0e0e0e;
+extern char g_active_screen[64];
 static std::string g_current_screen = "main";
 char g_grid_json_cache[8192] __attribute__((weak)); 
 bool g_grid_needs_refresh = false;
@@ -92,8 +95,25 @@ void grid_panels_load() {
 }
 
 void grid_config_load(const char* name) {
-    if (name && strlen(name) > 0) g_current_screen = name;
+    if (name && strlen(name) > 0) {
+        g_current_screen = name;
+    } else {
+        g_current_screen = g_active_screen;
+    }
     
+    // Ensure SPIFFS is mounted at least once
+    static bool spiffs_init = false;
+    if (!spiffs_init) {
+        esp_vfs_spiffs_conf_t conf = {
+            .base_path = "/spiffs",
+            .partition_label = NULL,
+            .max_files = 10,
+            .format_if_mount_failed = true
+        };
+        esp_vfs_spiffs_register(&conf);
+        spiffs_init = true;
+    }
+
     // Load panels first!
     grid_panels_load();
 
@@ -109,11 +129,12 @@ void grid_config_load(const char* name) {
     size_t sz = ftell(f);
     fseek(f, 0, SEEK_SET);
     char* buf = (char*)malloc(sz + 1);
-    if (!buf) { fclose(f); return; }
+    if (!buf) { fclose(f); ESP_LOGE("GRID", "Failed to alloc %d", sz); return; }
 
     fread(buf, 1, sz, f);
     buf[sz] = '\0';
     fclose(f);
+    ESP_LOGI("GRID", "Loaded %d bytes from %s", (int)sz, path.c_str());
     
     JsonDocument doc;
     DeserializationError err = deserializeJson(doc, buf);
@@ -126,6 +147,7 @@ void grid_config_load(const char* name) {
     g_grid_items.clear();
     g_grid_bg = doc["bg"] | 0x0e0e0e;
     JsonArray array = doc["items"].as<JsonArray>();
+    ESP_LOGI("GRID", "Parsing %d items (bg: %06X)", (int)array.size(), (unsigned int)g_grid_bg);
     for (JsonObject v : array) {
         GridItem it;
         it.id        = v["id"]        | "";
@@ -139,17 +161,27 @@ void grid_config_load(const char* name) {
         it.textColor = v["textColor"] | 0xFFFFFF;
         it.panelId   = v["panelId"]   | "";
         it.action    = v["action"]    | "";
+        it.value     = v["value"]     | 0;
+        it.min       = v["min"]       | 0;
+        it.max       = v["max"]       | 100;
+        it.options   = v["options"]   | "";
         g_grid_items.push_back(it);
-        ESP_LOGI("GRID", "  Loaded item: %s (%s)", it.name.c_str(), it.type.c_str());
+        ESP_LOGI("GRID", "  Loaded [%s] %s", it.type.c_str(), it.name.c_str());
     }
-    free(buf);
     
     // Cache for web UI retrieval
-    strncpy(g_grid_json_cache, buf, sizeof(g_grid_json_cache)-1);
+    strncpy(g_grid_json_cache, buf, 8191);
+    g_grid_json_cache[8191] = '\0';
+    free(buf);
 }
 
 void grid_config_save(const char* json_str, const char* name) {
-    if (name && strlen(name) > 0) g_current_screen = name;
+    if (name && strlen(name) > 0) {
+        g_current_screen = name;
+        strncpy(g_active_screen, name, 63);
+        void system_settings_save(); 
+        system_settings_save();
+    }
     std::string path = get_screen_path(g_current_screen);
     FILE* f = fopen(path.c_str(), "w");
     if (f) {
