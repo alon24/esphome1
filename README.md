@@ -1,15 +1,21 @@
-# ESP32 Display — ESPHome + React SPA (v82-ULTIMATE)
+# ESP32 Display — ESPHome + React SPA (v95-GRIDOS-PRO)
 
-A professional-grade, high-fidelity media station powered by an ESP32-S3. This project features a **Digital Twin Dashboard** with pixel-perfect hardware parity, a high-density 3-column editor, and a native multi-element rendering engine.
+A professional-grade, high-fidelity media station and UI designer powered by an ESP32-S3. This project features a **Digital Twin Designer** with pixel-perfect hardware parity, a high-density project manager, and a recursive multi-element rendering engine.
 
-## 🚀 Key Features (v82 Upgrade)
-- **3-Column Digital Twin Editor**: A refined layout architecture featuring a Layer Hierarchy (Left), a High-Fidelity Blueprint Mirror (Center), and a Precision Inspector (Right).
-- **Multi-Element Components**: Components are now high-performance containers that can house multiple interactive widgets (Buttons, Sliders, Switches, Clocks, and Labels) with independent positioning and hardware-native actions.
-- **Slate-Pro Design System**: Premium Cyberpunk aesthetics featuring advanced glassmorphism (backdrop-blur), neon gradients, and hyper-glow interactive elements.
-- **Hardware-Native Rendering**: Optimized C++ LVGL engine in `tab_home.h` that dynamically parses nested JSON layouts and handles granular action dispatching for each individual widget.
-- **Live Deployment**: One-click "Deploy to Station" that gzipps the React frontend and pushes it directly to the ESP32 SPIFFS alongside the C++ rendering logic.
-- **mDNS Zero-Config**: Access the production dashboard at `http://esp32-display.local/` or via explicit IP tracking.
-- **SD Media Engine**: Interactive slideshow with touch navigation (Prev/Next) and remote control via the **Director** tab.
+## ✅ DONE
+- [x] **Project Manager**: Sidebar hub for Screens and Master Panels.
+- [x] **Right-Click Context Menu**: Rapid insertion of elements on Canvas and Scene Tree.
+- [x] **Recursive Rendering**: Nested panel-ref support (Device & Web).
+- [x] **Hierarchical Scene Tree**: Visual breadcrumbs for nested items.
+- [x] **Page Calibration**: 420px dashed lines marking usable display boundaries.
+- [x] **Origin Hub**: (0,0) crosshair for precise panel design.
+- [x] **Delete Support**: Keyboard (Del/Back) and UI-button object removal.
+
+## 🛠 PENDING
+- [ ] **Performance optimization** for very deep nests (>5 levels).
+- [ ] **State export/import** for full project backup (local file).
+- [ ] **Template library** for common UI patterns (Navbar, Sidebar).
+- [ ] **Touch event tunneling** for deeper nested items.
 
 ## Hardware
 

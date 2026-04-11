@@ -6,7 +6,7 @@
 
 set -euo pipefail
 
-DEVICE_IP="${DEVICE_IP:-esp32-display.local}"
+DEVICE_IP="${DEVICE_IP:-10.100.102.46}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 WEBAPP_DIR="$SCRIPT_DIR/../webapp"
 DIST="$WEBAPP_DIR/dist"

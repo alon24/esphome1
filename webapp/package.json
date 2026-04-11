@@ -3,9 +3,9 @@
 	"version": "1.0.0",
 	"private": true,
 	"scripts": {
-		"dev": "vite --port 3008",
+		"dev": "vite --port 3009 --host",
 		"build": "vite build",
-		"preview": "vite preview --port 3008"
+		"preview": "vite preview --port 3009 --host"
 	},
 	"dependencies": {
 		"react": "^18.3.1",

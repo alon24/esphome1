@@ -186,4 +186,5 @@ external_components:
 
 sd_card:
 react_spa:
+  id: my_react_spa
   port: 80

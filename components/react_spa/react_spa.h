@@ -34,6 +34,7 @@ void grid_list_screens(char* out, size_t max_len);
 void slideshow_start();
 void slideshow_stop();
 void grid_config_get_json(char* out, size_t max_len);
+void grid_panels_save(const char* json_str);
 extern char g_grid_json_cache[8192];
 
 namespace esphome {
@@ -172,6 +173,16 @@ class ReactSPAComponent : public Component {
         httpd_req_recv(req, body, total);
         body[total] = '\0';
         ::grid_config_save(body, name);
+        free(body);
+        return httpd_resp_sendstr(req, "{\"status\":\"ok\"}");
+    });
+
+    reg("/api/grid/panels", HTTP_POST, [](httpd_req_t *req) {
+        int total = (int)req->content_len;
+        char *body = (char*)malloc(total + 1);
+        httpd_req_recv(req, body, total);
+        body[total] = '\0';
+        grid_panels_save(body);
         free(body);
         return httpd_resp_sendstr(req, "{\"status\":\"ok\"}");
     });

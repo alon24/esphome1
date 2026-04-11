@@ -28,7 +28,13 @@
 - [x] **3-Column Architecture** — Hierarchy | Mirror | Inspector for professional dashboard management
 - [x] **Multi-Widget Components** — Components are now containers with nested element support
 - [x] **Slate-Pro Aesthetics** — Premium glassmorphism and neon-vibrant design system
-- [x] **Triple Compatibility Overloads** — Robust C++ config handlers for 0-arg, 1-arg, and 2-arg calls
+- [x] **Project Manager** — Sidebar hub for managing multiple Screens and reusable Master Panels
+- [x] **Right-Click Context Menu** — Rapid insertion system for widgets and panels on Canvas and Tree
+- [x] **Hierarchical Scene Tree** — Professional layer manager visualizing nested relationships
+- [x] **Recursive Rendering (V2)** — Rebuilt C++ parser and React renderers for deep panel nesting
+- [x] **Page Calibration** — 420px dashed guides reflecting usable vertical space (Height - Header)
+- [x] **Origin Hub** — Precision (0,0) crosshair indicators for Master Panel design
+- [x] **Hardware Alignment** — 1:1 parity between web designer and ESP32 physical display
 
 ---
 
