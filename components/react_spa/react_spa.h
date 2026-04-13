@@ -262,19 +262,51 @@ class ReactSPAComponent : public Component {
             snprintf(target_path, sizeof(target_path), "/spiffs/%s", name_val);
         }
     }
+
+    // Cleanup old app files to prevent SPIFFS exhaustion
+    DIR *dir = opendir("/spiffs");
+    if (dir) {
+        struct dirent *ent;
+        while ((ent = readdir(dir)) != NULL) {
+            if (strstr(ent->d_name, "app-v") && strstr(ent->d_name, ".gz")) {
+                char old_path[128];
+                snprintf(old_path, sizeof(old_path), "/spiffs/%s", ent->d_name);
+                if (strcmp(old_path, target_path) != 0) {
+                    ESP_LOGI(TAG, "Cleaning up old app: %s", old_path);
+                    remove(old_path);
+                }
+            }
+        }
+        closedir(dir);
+    }
+
+    ESP_LOGI(TAG, "Starting upload to %s (%d bytes)", target_path, (int)req->content_len);
     FILE *f = fopen(target_path, "w");
-    if (!f) return HTTPD_500_INTERNAL_SERVER_ERROR;
+    if (!f) {
+        ESP_LOGE(TAG, "Failed to open %s for writing", target_path);
+        return HTTPD_500_INTERNAL_SERVER_ERROR;
+    }
+    
     char buf[1024]; int remaining = (int)req->content_len;
     while (remaining > 0) {
       int received = httpd_req_recv(req, buf, std::min(remaining, (int)sizeof(buf)));
-      if (received <= 0) { fclose(f); remove(target_path); return ESP_FAIL; }
+      if (received <= 0) {
+          if (received == HTTPD_SOCK_ERR_TIMEOUT) continue;
+          fclose(f); 
+          remove(target_path); 
+          ESP_LOGE(TAG, "Upload failed: received=%d", received);
+          return ESP_FAIL; 
+      }
       fwrite(buf, 1, received, f);
       remaining -= received;
     }
     fclose(f);
+    
     FILE *meta = fopen(ACTIVE_META_PATH, "w");
     if (meta) { fputs(target_path, meta); fclose(meta); }
     strncpy(g_active_app_path, target_path, sizeof(g_active_app_path)-1);
+    
+    ESP_LOGI(TAG, "Upload complete: %s", target_path);
     return httpd_resp_sendstr(req, "{\"status\":\"ok\"}");
   }
 

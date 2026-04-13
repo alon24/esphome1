@@ -307,9 +307,17 @@ function MirrorTab() {
 	const [width] = useWindowSize();
 	const scale = Math.min(1, (width - 40) / 800);
 	return (
-		<div style={{ display: "flex", flex: 1, height: "100%", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
-			<div className="device-mirror" style={{ transform: `scale(${scale})`, transformOrigin: "center center" }}>
-				<div className="device-screen"><GridRenderer /></div>
+		<div style={{ display: "flex", flex: 1, height: "100%", alignItems: "center", justifyContent: "flex-start", overflowX: "auto", padding: "40px" }}>
+			<div className="device-mirror" style={{ 
+				transform: `scale(${scale})`, transformOrigin: "left center",
+				width: "2400px", height: "480px", position: "relative", flexShrink: 0
+			}}>
+				<div className="device-screen" style={{ width: "100%", height: "100%" }}>
+					<GridRenderer />
+					{[800, 1600].map(x => (
+						<div key={x} style={{ position: "absolute", left: x, top: 0, bottom: 0, width: 0, borderLeft: "2px dashed rgba(255,255,255,0.2)", pointerEvents: "none" }} />
+					))}
+				</div>
 			</div>
 		</div>
 	);
@@ -342,7 +350,7 @@ function GridRenderer() {
 		return <div key={it.id} style={style}>{it.name.toUpperCase()}</div>;
 	};
 
-	return <div style={{ width: "100%", height: "100%", background: `#${safeHex(bg)}`, position: "relative" }}>{items.map(it => renderItem(it))}</div>;
+	return <div style={{ width: "2400px", height: "100%", background: `#${safeHex(bg)}`, position: "relative", overflow: "hidden" }}>{items.map(it => renderItem(it))}</div>;
 }
 
 // --- GRID EDITOR TAB ---
@@ -383,12 +391,22 @@ function GridTab({ isMobile, width, wifiStatus, onWifiUpdate, onSettingsUpdate }
 		setActiveScreen(name);
 	};
 
+	const canvasContainerRef = useRef<HTMLDivElement>(null);
+
 	const addItem = (type: ElementType, x: number, y: number, panelId?: string) => {
 		const newId = `${type}_${Math.random().toString(36).substr(2, 5)}`;
 		const w = type === "panel-ref" ? 200 : (type === "slider" ? 180 : (type === "switch" ? 60 : (type === "arc" ? 80 : 120)));
 		const h = type === "panel-ref" ? 150 : (type === "slider" ? 24 : (type === "switch" ? 32 : (type === "arc" ? 80 : 40)));
+		
+		// Contextual X: adjust for current scroll position
+		let spawnX = x;
+		if (canvasContainerRef.current) {
+			const scroll = canvasContainerRef.current.scrollLeft;
+			spawnX = Math.round((scroll / scale) + x);
+		}
+
 		const newItem: GridItem = { 
-			id: newId, name: `New ${type}`, type, x: Math.max(0, Math.round(x)), y: Math.max(0, Math.round(y)), w, h, 
+			id: newId, name: `New ${type}`, type, x: Math.max(0, spawnX), y: Math.max(0, Math.round(y)), w, h, 
 			textColor: 0xffffff, color: 0x4f46e5, panelId, 
 			value: 50, min: 0, max: 100, options: "Item 1\nItem 2\nItem 3" 
 		};
@@ -433,6 +451,10 @@ function GridTab({ isMobile, width, wifiStatus, onWifiUpdate, onSettingsUpdate }
 
 	const selectedItem = selectedIds.length === 1 ? getActiveList().find(it => it.id === selectedIds[0]) : null;
 
+	// Page Boundaries (800x480 chunks)
+	const pagesX = [800, 1600];
+	const pagesY = [480, 960];
+
 	const [dragInfo, setDragInfo] = useState<{ id: string; startX: number; startY: number; initialX: number; initialY: number; initialW: number; initialH: number; mode: "move" | "resize" } | null>(null);
 	useEffect(() => {
 		const onMove = (e: MouseEvent | TouchEvent) => {
@@ -474,12 +496,21 @@ function GridTab({ isMobile, width, wifiStatus, onWifiUpdate, onSettingsUpdate }
 				</div>
 			)}
 
-			<div style={{ flex: 1, background: "#f8fafc", position: "relative", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center" }}>
-				<div style={{ 
-					width: "800px", height: "480px", background: `#${safeHex(gridBg)}`, position: "relative",
-					transform: `scale(${scale})`, transformOrigin: "center center",
-					boxShadow: "0 20px 50px rgba(0,0,0,0.15)"
-				}}>
+				<div ref={canvasContainerRef} style={{ flex: 1, background: "#f8fafc", position: "relative", overflow: "auto", display: "flex", alignItems: "center", justifyContent: "flex-start", padding: "40px", scrollBehavior: "smooth" }}>
+					<div style={{ 
+						width: "2400px", height: "480px", background: `#${safeHex(gridBg)}`, position: "relative",
+						transform: `scale(${scale})`, transformOrigin: "left center",
+						boxShadow: "0 20px 50px rgba(0,0,0,0.15)",
+						flexShrink: 0
+					}}>
+						{/* Paging Lines & Labels */}
+						{[0, 800, 1600].map(x => (
+							<React.Fragment key={x}>
+								{x > 0 && <div style={{ position: "absolute", left: x, top: 0, bottom: 0, width: 0, borderLeft: "2px dashed rgba(255,255,255,0.3)", zIndex: 1, pointerEvents: "none" }} />}
+								<div style={{ position: "absolute", left: x + 10, top: 10, fontSize: "10px", fontWeight: 900, color: "rgba(255,255,255,0.4)", zIndex: 1, pointerEvents: "none" }}>PAGE {Math.floor(x/800)+1}</div>
+							</React.Fragment>
+						))}
+					
 					{getActiveList().map(it => (
 						<div key={it.id} 
 						  onMouseDown={(e) => { e.stopPropagation(); setSelectedIds([it.id]); setDragInfo({ id: it.id, startX: e.clientX, startY: e.clientY, initialX: it.x, initialY: it.y, initialW: it.w, initialH: it.h, mode: "move" }); }} 
