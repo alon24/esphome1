@@ -22,6 +22,7 @@
 
 static lv_obj_t *g_dash_time_lbl    = nullptr;
 static lv_obj_t *g_dash_ip_lbl      = nullptr;
+static lv_obj_t *g_dash_ap_ip_lbl   = nullptr;
 static lv_obj_t *g_dash_tabs[4]     = {nullptr, nullptr, nullptr, nullptr};
 static lv_obj_t *g_dash_nav_btns[4] = {nullptr, nullptr, nullptr, nullptr};
 static int        g_dash_active_tab = 0;
@@ -99,6 +100,12 @@ static void maindashboard_create(lv_obj_t *parent) {
     system_settings_load();
     void grid_config_load(const char* name); // Forward decl
     grid_config_load(nullptr); // Load persistent active screen
+    
+    // Apply boot-time AP settings
+    if (g_ap_always_on) {
+        ::wifi_apply_ap_settings(true, g_ap_ssid, g_ap_password);
+        ESP_LOGI("SYS", "Persistent AP Mode Active on Boot: %s", g_ap_ssid);
+    }
     lv_obj_clean(parent);
     lv_obj_t *scr = parent;
 
@@ -135,23 +142,55 @@ static void maindashboard_create(lv_obj_t *parent) {
     lv_label_set_text(vlbl, FW_VERSION_STR);
     lv_obj_set_style_text_color(vlbl, lv_color_hex(0xcccccc), 0); // High-contrast grey
     lv_obj_set_style_text_font(vlbl, &lv_font_montserrat_14, 0);
-    lv_obj_align(vlbl, LV_ALIGN_RIGHT_MID, -180, 0);
+    lv_obj_align(vlbl, LV_ALIGN_RIGHT_MID, -420, 0); // Shifted further left to make room
 
     // AP Icon (Mirroring Web Editor)
-    static lv_obj_t *g_dash_ap_icon = lv_label_create(header);
-    lv_label_set_text(g_dash_ap_icon, LV_SYMBOL_WIFI); 
-    lv_obj_set_style_text_color(g_dash_ap_icon, lv_color_hex(0x00CED1), 0);
-    lv_obj_add_flag(g_dash_ap_icon, LV_OBJ_FLAG_HIDDEN); // Hidden by default
-    lv_obj_align(g_dash_ap_icon, LV_ALIGN_RIGHT_MID, -140, 0);
+    // AP Icon (Interactive & Color-coded)
+    static lv_obj_t *g_dash_ap_btn = lv_obj_create(header);
+    lv_obj_set_size(g_dash_ap_btn, 44, 44);
+    lv_obj_align(g_dash_ap_btn, LV_ALIGN_RIGHT_MID, -360, 0); // Shifted to make room for IPs
+    _panel_reset(g_dash_ap_btn);
+    lv_obj_set_style_bg_opa(g_dash_ap_btn, 0, 0);
+    lv_obj_clear_flag(g_dash_ap_btn, LV_OBJ_FLAG_SCROLLABLE);
+
+    lv_obj_t *ap_icn = lv_label_create(g_dash_ap_btn);
+    lv_label_set_text(ap_icn, LV_SYMBOL_WIFI);
+    lv_obj_set_style_text_font(ap_icn, &lv_font_montserrat_20, 0);
+    lv_obj_center(ap_icn);
     
-    // Timer to update AP icon
+    // Switch to WiFi Tab on click
+    lv_obj_add_event_cb(g_dash_ap_btn, [](lv_event_t *){ _dash_show_tab(2); }, LV_EVENT_CLICKED, nullptr);
+
+    g_dash_ap_ip_lbl = lv_label_create(header);
+    lv_label_set_text(g_dash_ap_ip_lbl, "");
+    lv_obj_set_style_text_color(g_dash_ap_ip_lbl, lv_color_hex(0x00CED1), 0);
+    lv_obj_set_style_text_font(g_dash_ap_ip_lbl, &lv_font_montserrat_14, 0);
+    lv_obj_align(g_dash_ap_ip_lbl, LV_ALIGN_RIGHT_MID, -190, 0); // Placed between STA IP and AP Icon
+
+    // Dynamic Color & IP Timer
     lv_timer_create([](lv_timer_t *t){
-        lv_obj_t *icon = (lv_obj_t*)t->user_data;
+        lv_obj_t *p = (lv_obj_t*)t->user_data;
+        lv_obj_t *icn = lv_obj_get_child(p, 0);
         wifi_mode_t mode;
         esp_wifi_get_mode(&mode);
-        if (mode == WIFI_MODE_AP || mode == WIFI_MODE_APSTA) lv_obj_clear_flag(icon, LV_OBJ_FLAG_HIDDEN);
-        else lv_obj_add_flag(icon, LV_OBJ_FLAG_HIDDEN);
-    }, 1000, g_dash_ap_icon);
+        bool active = (mode == WIFI_MODE_AP || mode == WIFI_MODE_APSTA);
+        lv_obj_set_style_text_color(icn, lv_color_hex(active ? 0x00FF00 : 0x555555), 0);
+        
+        if (g_dash_ap_ip_lbl) {
+            if (active) {
+                esp_netif_ip_info_t ap_ip_info;
+                esp_netif_t *ap_netif = esp_netif_get_handle_from_ifkey("WIFI_AP_DEF");
+                if (ap_netif) {
+                    esp_netif_get_ip_info(ap_netif, &ap_ip_info);
+                    char buf[32];
+                    snprintf(buf, sizeof(buf), "AP: " IPSTR, IP2STR(&ap_ip_info.ip));
+                    lv_label_set_text(g_dash_ap_ip_lbl, buf);
+                }
+            } else {
+                lv_label_set_text(g_dash_ap_ip_lbl, "");
+            }
+        }
+    }, 1000, g_dash_ap_btn);
 
     // ── SIDEBAR (Left 160px, Below Header) ────────────────────────────────────
     lv_obj_t *sidebar = _make_panel(scr, 0, 64, 160, 416, DASH_SIDE_BG);

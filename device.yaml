@@ -92,9 +92,10 @@ logger:
   baud_rate: 115200
   hardware_uart: UART0
 
-# captive_portal:
-  
-mdns:
+web_server:
+  port: 81 # Move standard web server to 81 so React SPA can have 80
+
+captive_portal:
 
 text_sensor:
   - platform: wifi_info
@@ -167,7 +168,10 @@ interval:
           if (g_ap_always_on) {
              wifi_mode_t mode;
              esp_wifi_get_mode(&mode);
-             if (mode == WIFI_MODE_STA) esp_wifi_set_mode(WIFI_MODE_APSTA);
+             if (mode == WIFI_MODE_STA) {
+                esp_wifi_set_mode(WIFI_MODE_APSTA);
+                wifi_apply_ap_settings(true, g_ap_ssid, g_ap_password);
+             }
           }
           auto now = id(sntp_time).now();
           dashboard_tick(now.hour, now.minute, now.second, now.day_of_month, now.month, now.year, now.day_of_week);

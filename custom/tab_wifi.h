@@ -26,6 +26,10 @@ static lv_obj_t *g_wifi_keyboard   = nullptr;  // floating keyboard (lv_layer_to
 static lv_obj_t *g_wifi_scan_btn   = nullptr;
 static lv_obj_t *g_wifi_scan_lbl   = nullptr;  // label inside scan btn
 static lv_obj_t *g_wifi_active_ta  = nullptr;  // currently active textarea
+static lv_obj_t *g_wifi_ap_sw      = nullptr;  // AP Mode switch
+static lv_obj_t *g_wifi_ap_ssid_ta = nullptr;  // AP SSID
+static lv_obj_t *g_wifi_ap_pass_ta = nullptr;  // AP Password
+static lv_obj_t *g_wifi_ap_ip_lbl   = nullptr;  // AP IP Status
 
 // ── Keyboard show/hide ────────────────────────────────────────────────────────
 
@@ -355,19 +359,93 @@ static void tab_wifi_create(lv_obj_t *parent, lv_obj_t *root) {
     lv_obj_set_width(g_wifi_status_lbl, 395);
     lv_label_set_long_mode(g_wifi_status_lbl, LV_LABEL_LONG_WRAP);
 
-    // ── Scroll-test rows (below the 352px visible fold — swipe up to reveal) ───
-    {
-        const char *txts[] = { "▼  SCROLL TEST  ▼", "row 1", "row 2", "row 3", "end of page" };
-        uint32_t cols[]    = { 0x00CED1, 0x555555, 0x555555, 0x555555, 0x00CC44 };
-        for (int i = 0; i < 5; i++) {
-            lv_obj_t *tl = lv_label_create(right);
-            lv_label_set_text(tl, txts[i]);
-            lv_obj_set_style_text_color(tl, lv_color_hex(cols[i]), LV_STATE_DEFAULT);
-            lv_obj_set_style_text_font(tl, &lv_font_montserrat_16, LV_STATE_DEFAULT);
-            _lbl_bg(tl, TAB_WIFI_BG);
-            lv_obj_set_pos(tl, 12, 360 + i * 34);
-        }
-    }
+    // ── AP MODE SETTINGS (Below fold) ─────────────────────────────────────────
+    lv_obj_t *ap_sep = lv_obj_create(right);
+    lv_obj_set_size(ap_sep, 360, 2);
+    lv_obj_set_pos(ap_sep, 10, 270);
+    lv_obj_set_style_bg_color(ap_sep, lv_color_hex(0x333333), 0);
+    _panel_reset(ap_sep);
+
+    lv_obj_t *ap_hdr = lv_label_create(right);
+    lv_label_set_text(ap_hdr, "STANDALONE AP MODE");
+    lv_obj_set_style_text_color(ap_hdr, lv_color_hex(0x00CED1), 0);
+    lv_obj_set_style_text_font(ap_hdr, &lv_font_montserrat_14, 0);
+    lv_obj_set_pos(ap_hdr, 12, 280);
+
+    g_wifi_ap_ip_lbl = lv_label_create(right);
+    lv_label_set_text(g_wifi_ap_ip_lbl, "Portal IP: 0.0.0.0");
+    lv_obj_set_style_text_color(g_wifi_ap_ip_lbl, lv_color_hex(0x666666), 0);
+    lv_obj_set_style_text_font(g_wifi_ap_ip_lbl, &lv_font_montserrat_14, 0);
+    lv_obj_set_pos(g_wifi_ap_ip_lbl, 160, 280);
+
+    // Switch
+    g_wifi_ap_sw = lv_switch_create(right);
+    lv_obj_set_pos(g_wifi_ap_sw, 300, 276);
+    lv_obj_set_style_bg_color(g_wifi_ap_sw, lv_color_hex(0x00CED1), (uint32_t)LV_PART_INDICATOR | (uint32_t)LV_STATE_CHECKED);
+
+    // AP SSID
+    lv_obj_t *aps_hdr = lv_label_create(right);
+    lv_label_set_text(aps_hdr, "AP SSID");
+    lv_obj_set_style_text_color(aps_hdr, lv_color_hex(0x888888), 0);
+    lv_obj_set_style_text_font(aps_hdr, &lv_font_montserrat_14, 0);
+    lv_obj_set_pos(aps_hdr, 12, 310);
+
+    g_wifi_ap_ssid_ta = lv_textarea_create(right);
+    lv_textarea_set_text(g_wifi_ap_ssid_ta, "");
+    lv_textarea_set_one_line(g_wifi_ap_ssid_ta, true);
+    lv_obj_set_pos(g_wifi_ap_ssid_ta, 10, 330);
+    lv_obj_set_size(g_wifi_ap_ssid_ta, 330, 44);
+    lv_obj_set_style_bg_color(g_wifi_ap_ssid_ta, lv_color_hex(0x222222), 0);
+    lv_obj_set_style_text_color(g_wifi_ap_ssid_ta, lv_color_hex(0xffffff), 0);
+    lv_obj_set_style_text_font(g_wifi_ap_ssid_ta, &lv_font_montserrat_18, 0);
+    lv_obj_set_style_radius(g_wifi_ap_ssid_ta, 6, 0);
+    lv_obj_add_event_cb(g_wifi_ap_ssid_ta, [](lv_event_t *e) {
+        lv_event_code_t code = lv_event_get_code(e);
+        if (code == LV_EVENT_FOCUSED || code == LV_EVENT_CLICKED) _wifi_kb_show(g_wifi_ap_ssid_ta);
+        else if (code == LV_EVENT_DEFOCUSED) _wifi_kb_hide();
+    }, LV_EVENT_ALL, nullptr);
+
+    // AP Password
+    lv_obj_t *app_hdr = lv_label_create(right);
+    lv_label_set_text(app_hdr, "AP PASSWORD");
+    lv_obj_set_style_text_color(app_hdr, lv_color_hex(0x888888), 0);
+    lv_obj_set_style_text_font(app_hdr, &lv_font_montserrat_14, 0);
+    lv_obj_set_pos(app_hdr, 12, 385);
+
+    g_wifi_ap_pass_ta = lv_textarea_create(right);
+    lv_textarea_set_text(g_wifi_ap_pass_ta, "");
+    lv_textarea_set_one_line(g_wifi_ap_pass_ta, true);
+    lv_textarea_set_password_mode(g_wifi_ap_pass_ta, true);
+    lv_obj_set_pos(g_wifi_ap_pass_ta, 10, 405);
+    lv_obj_set_size(g_wifi_ap_pass_ta, 330, 44);
+    lv_obj_set_style_bg_color(g_wifi_ap_pass_ta, lv_color_hex(0x222222), 0);
+    lv_obj_set_style_text_color(g_wifi_ap_pass_ta, lv_color_hex(0xffffff), 0);
+    lv_obj_set_style_text_font(g_wifi_ap_pass_ta, &lv_font_montserrat_18, 0);
+    lv_obj_set_style_radius(g_wifi_ap_pass_ta, 6, 0);
+    lv_obj_add_event_cb(g_wifi_ap_pass_ta, [](lv_event_t *e) {
+        lv_event_code_t code = lv_event_get_code(e);
+        if (code == LV_EVENT_FOCUSED || code == LV_EVENT_CLICKED) _wifi_kb_show(g_wifi_ap_pass_ta);
+        else if (code == LV_EVENT_DEFOCUSED) _wifi_kb_hide();
+    }, LV_EVENT_ALL, nullptr);
+
+    // Save AP Button
+    lv_obj_t *save_ap_btn = _wifi_btn(right, "SAVE & APPLY AP", 10, 465, 330, 44, 0x00CED1, 0xFFFFFF);
+    lv_obj_add_event_cb(save_ap_btn, [](lv_event_t *) {
+        _wifi_kb_hide();
+        bool active = lv_obj_has_state(g_wifi_ap_sw, LV_STATE_CHECKED);
+        const char *ssid = lv_textarea_get_text(g_wifi_ap_ssid_ta);
+        const char *pass = lv_textarea_get_text(g_wifi_ap_pass_ta);
+        
+        // Update globals
+        g_ap_always_on = active;
+        if (ssid) strncpy(g_ap_ssid, ssid, 32);
+        if (pass) strncpy(g_ap_password, pass, 64);
+        
+        wifi_apply_ap_settings(active, g_ap_ssid, g_ap_password);
+        system_settings_save();
+        
+        lv_label_set_text(g_wifi_status_lbl, "AP Settings applied & saved.");
+    }, LV_EVENT_CLICKED, nullptr);
 
     // ── Floating keyboard — child of lv_scr_act() per manufacturer example.
     g_wifi_keyboard = lv_keyboard_create(lv_scr_act());
@@ -402,12 +480,33 @@ static void tab_wifi_on_show() {
             if (g_wifi_status_lbl) lv_label_set_text(g_wifi_status_lbl, "Saved credentials loaded - ready.");
         }
     }
+    
+    // Populate AP fields from globals
+    if (g_wifi_ap_ssid_ta) lv_textarea_set_text(g_wifi_ap_ssid_ta, g_ap_ssid);
+    if (g_wifi_ap_pass_ta) lv_textarea_set_text(g_wifi_ap_pass_ta, g_ap_password);
+    
+    wifi_mode_t mode;
+    esp_wifi_get_mode(&mode);
+    if (g_wifi_ap_sw) {
+        if (mode == WIFI_MODE_AP || mode == WIFI_MODE_APSTA) lv_obj_add_state(g_wifi_ap_sw, LV_STATE_CHECKED);
+        else lv_obj_clear_state(g_wifi_ap_sw, LV_STATE_CHECKED);
+    }
 }
 
 // Called every second from maindashboard
 static void tab_wifi_tick() {
-    // Automatic background scanning disabled to prevent UI lag.
-    // Use the manual SCAN button to refresh networks.
+    if (g_wifi_ap_ip_lbl) {
+        esp_netif_ip_info_t ap_ip_info;
+        esp_netif_t *ap_netif = esp_netif_get_handle_from_ifkey("WIFI_AP_DEF");
+        if (ap_netif) {
+            esp_netif_get_ip_info(ap_netif, &ap_ip_info);
+            char buf[32];
+            snprintf(buf, sizeof(buf), "Portal IP: " IPSTR, IP2STR(&ap_ip_info.ip));
+            lv_label_set_text(g_wifi_ap_ip_lbl, buf);
+        } else {
+            lv_label_set_text(g_wifi_ap_ip_lbl, "Portal IP: OFF");
+        }
+    }
 }
 
 static void tab_wifi_set_status(const char *msg) {

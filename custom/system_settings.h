@@ -3,19 +3,31 @@
 #include <cstdio>
 #include <cstdlib>
 #include "esp_log.h"
+#include <esp_spiffs.h>
 
 // ── SYSTEM SETTINGS PERSISTENCE ─────────────────────────────────────────────
 // Manages simple key-value settings like screensaver enable/disable.
 // ──────────────────────────────────────────────────────────────────────────────
 
-bool g_ss_enabled = true; 
-bool g_ap_always_on = false;
-char g_ap_ssid[33] = "GRIDOS_AP";
-char g_ap_password[64] = "";
-char g_active_screen[64] = "main";
+inline bool g_ss_enabled = false; 
+inline bool g_ap_always_on = false;
+inline char g_ap_ssid[33] = "GRIDOS_AP";
+inline char g_ap_password[64] = "";
+inline char g_active_screen[64] = "main";
 static const char* SYS_SETTINGS_FILE = "/spiffs/system.json";
 
 void system_settings_load() {
+    static bool spiffs_init = false;
+    if (!spiffs_init) {
+        esp_vfs_spiffs_conf_t conf = {
+            .base_path = "/spiffs",
+            .partition_label = NULL,
+            .max_files = 10,
+            .format_if_mount_failed = true
+        };
+        esp_vfs_spiffs_register(&conf);
+        spiffs_init = true;
+    }
     FILE* f = fopen(SYS_SETTINGS_FILE, "r");
     if (!f) {
         ESP_LOGI("SYS", "No system settings found, using defaults");
@@ -30,12 +42,13 @@ void system_settings_load() {
         buf[sz] = '\0';
         JsonDocument doc;
         if (!deserializeJson(doc, buf)) {
-            g_ss_enabled = doc["ss_enabled"] | true;
+            g_ss_enabled = doc["ss_enabled"] | false;
             g_ap_always_on = doc["ap_always_on"] | false;
             strncpy(g_ap_ssid, doc["ap_ssid"] | "GRIDOS_AP", sizeof(g_ap_ssid)-1);
             strncpy(g_ap_password, doc["ap_password"] | "", sizeof(g_ap_password)-1);
             strncpy(g_active_screen, doc["last_screen"] | "main", sizeof(g_active_screen)-1);
-            ESP_LOGI("SYS", "Settings loaded: last_screen=%s", g_active_screen);
+            ESP_LOGI("SYS", "Settings loaded: screen=%s, ss=%s, ap_on=%s", 
+                     g_active_screen, g_ss_enabled?"ON":"OFF", g_ap_always_on?"YES":"NO");
         }
         free(buf);
     }
@@ -58,5 +71,5 @@ void system_settings_save() {
     serializeJson(doc, buf);
     fputs(buf, f);
     fclose(f);
-    ESP_LOGI("SYS", "Settings saved");
+    ESP_LOGI("SYS", "Settings saved: ss=%s, ap_on=%s", g_ss_enabled?"ON":"OFF", g_ap_always_on?"YES":"NO");
 }

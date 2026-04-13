@@ -1,20 +1,20 @@
 @import url("https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800;900&display=swap");
 
 :root {
-	--bg-deep: #0f172a;
-	--bg-card: #1e293b;
-	--bg-input: #334155;
-	--primary: #a855f7;
-	--primary-glow: rgba(168, 85, 247, 0.5);
+	--bg-deep: #f1f5f9;
+	--bg-card: #ffffff;
+	--bg-input: #f8fafc;
+	--primary: #6366f1;
+	--primary-glow: rgba(99, 102, 241, 0.2);
 	--accent: #10b981;
-	--text-main: #f8fafc;
-	--text-dim: #cbd5e1;
-	--border-glass: rgba(255, 255, 255, 0.15);
-	--border-active: #8b5cf6;
+	--text-main: #1e293b;
+	--text-dim: #64748b;
+	--border-glass: #e2e8f0;
+	--border-active: #6366f1;
 	--glass-blur: blur(20px);
 	--device-width: 800px;
 	--device-height: 480px;
-	--panel-radius: 20px;
+	--panel-radius: 24px;
 }
 
 @keyframes moveGradient {
@@ -67,8 +67,8 @@ body {
 	overflow-x: hidden;
 	min-height: 100vh;
 	background-image:
-		radial-gradient(circle at 50% -20%, #334155 0%, transparent 70%),
-		radial-gradient(circle at 100% 100%, #1e293b 0%, transparent 60%);
+		radial-gradient(circle at 50% -20%, #e2e8f0 0%, transparent 70%),
+		radial-gradient(circle at 100% 100%, #f8fafc 0%, transparent 60%);
 	background-size: 200% 200%;
 	background-attachment: fixed;
 }
@@ -80,17 +80,17 @@ body {
 }
 
 .glass {
-	background: var(--bg-card);
+	background: rgba(255, 255, 255, 0.8);
 	backdrop-filter: var(--glass-blur);
 	-webkit-backdrop-filter: var(--glass-blur);
 	border: 1px solid var(--border-glass);
 	border-radius: var(--panel-radius);
-	box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+	box-shadow: 0 10px 25px rgba(0, 0, 0, 0.03);
 }
 
 .glass-hover:hover {
 	transform: translateY(-2px);
-	box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7);
+	box-shadow: 0 15px 35px rgba(0, 0, 0, 0.06);
 	border-color: var(--border-active);
 }
 

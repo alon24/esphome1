@@ -25,6 +25,7 @@ namespace esphome { namespace react_spa {
 #include "esp_spiffs.h"
 #include "esp_wifi.h"
 #include "esp_netif.h"
+#include "esp_mac.h"
 
 // Forward declarations for grid configuration
 void grid_config_save(const char* json_str);
@@ -38,8 +39,13 @@ void grid_config_get_json(char* out, size_t max_len);
 void grid_panels_save(const char* json_str);
 void system_settings_save();
 extern bool g_ap_always_on;
+extern bool g_ss_enabled;
 extern char g_ap_ssid[33];
 extern char g_ap_password[64];
+extern char g_active_screen[64];
+void system_settings_save();
+extern bool sd_card_is_mounted();
+void wifi_apply_ap_settings(bool active, const char* ssid, const char* pass);
 
 extern char g_grid_json_cache[8192];
 
@@ -108,7 +114,8 @@ class ReactSPAComponent : public Component {
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
     config.server_port = port_;
     config.uri_match_fn = httpd_uri_match_wildcard;
-    config.max_uri_handlers = 30;
+    config.max_uri_handlers = 40;
+    config.ctrl_port = 32769; // Shift control port to avoid conflict with default web server
 
     if (httpd_start(&server_, &config) != ESP_OK) return;
 
@@ -202,7 +209,36 @@ class ReactSPAComponent : public Component {
   }
 
   static esp_err_t root_handler(httpd_req_t *req) {
-    ESP_LOGI(TAG, "Root handler called for URI: %s", req->uri);
+    // Captive Portal Logic: Redirect unexpected hosts to the local IP
+    char host[64] = "";
+    httpd_req_get_hdr_value_str(req, "Host", host, sizeof(host));
+    
+    esp_netif_ip_info_t ap_ip_info;
+    esp_netif_t *ap_netif = esp_netif_get_handle_from_ifkey("WIFI_AP_DEF");
+    char ap_ip_str[16] = "192.168.4.1";
+    if (ap_netif) {
+        esp_netif_get_ip_info(ap_netif, &ap_ip_info);
+        snprintf(ap_ip_str, sizeof(ap_ip_str), IPSTR, IP2STR(&ap_ip_info.ip));
+    }
+
+    esp_netif_ip_info_t sta_ip_info;
+    esp_netif_t *sta_netif = esp_netif_get_handle_from_ifkey("WIFI_STA_DEF");
+    char sta_ip_str[16] = "";
+    if (sta_netif) {
+        esp_netif_get_ip_info(sta_netif, &sta_ip_info);
+        snprintf(sta_ip_str, sizeof(sta_ip_str), IPSTR, IP2STR(&sta_ip_info.ip));
+    }
+
+    if (strlen(host) > 0 && !strstr(host, ap_ip_str) && (strlen(sta_ip_str) == 0 || !strstr(host, sta_ip_str)) && !strstr(host, "127.0.0.1") && strstr(host, ".")) {
+        ESP_LOGI(TAG, "Captive portal redirect: %s -> http://%s/", host, ap_ip_str);
+        httpd_resp_set_status(req, "302 Found");
+        char redir[128];
+        snprintf(redir, sizeof(redir), "http://%s/", ap_ip_str);
+        httpd_resp_set_hdr(req, "Location", redir);
+        return httpd_resp_send(req, NULL, 0);
+    }
+
+    ESP_LOGI(TAG, "Serving SPA for URI: %s", req->uri);
     FILE *f = fopen(g_active_app_path, "r");
     if (!f) {
         ESP_LOGW(TAG, "File not found: %s", g_active_app_path);
@@ -243,23 +279,42 @@ class ReactSPAComponent : public Component {
   }
 
   static esp_err_t wifi_status_handler(httpd_req_t *req) {
-    esp_netif_ip_info_t ip_info;
-    esp_netif_t *netif = esp_netif_get_handle_from_ifkey("WIFI_STA_DEF");
-    char ip_str[16] = "0.0.0.0";
+    esp_netif_ip_info_t sta_ip_info;
+    esp_netif_t *sta_netif = esp_netif_get_handle_from_ifkey("WIFI_STA_DEF");
+    char sta_ip_str[16] = "0.0.0.0";
     bool connected = false;
-    if (netif) { 
-        esp_netif_get_ip_info(netif, &ip_info); 
-        snprintf(ip_str, sizeof(ip_str), IPSTR, IP2STR(&ip_info.ip));
-        connected = (ip_info.ip.addr != 0);
+    if (sta_netif) { 
+        esp_netif_get_ip_info(sta_netif, &sta_ip_info); 
+        snprintf(sta_ip_str, sizeof(sta_ip_str), IPSTR, IP2STR(&sta_ip_info.ip));
+        connected = (sta_ip_info.ip.addr != 0);
+    }
+
+    esp_netif_ip_info_t ap_ip_info;
+    esp_netif_t *ap_netif = esp_netif_get_handle_from_ifkey("WIFI_AP_DEF");
+    char ap_ip_str[16] = "0.0.0.0";
+    if (ap_netif) {
+        esp_netif_get_ip_info(ap_netif, &ap_ip_info);
+        snprintf(ap_ip_str, sizeof(ap_ip_str), IPSTR, IP2STR(&ap_ip_info.ip));
     }
     
     wifi_mode_t mode;
     esp_wifi_get_mode(&mode);
     bool ap_active = (mode == WIFI_MODE_AP || mode == WIFI_MODE_APSTA);
     
-    char json[512]; 
-    snprintf(json, sizeof(json), "{\"connected\":%s,\"ip\":\"%s\",\"ap_active\":%s,\"ap_always_on\":%s,\"ap_ssid\":\"%s\"}", 
-             connected?"true":"false", ip_str, ap_active?"true":"false", ::g_ap_always_on?"true":"false", ::g_ap_ssid);
+    char json[1024]; 
+    int pos = snprintf(json, sizeof(json), "{\"connected\":%s,\"ip\":\"%s\",\"ap_active\":%s,\"ap_always_on\":%s,\"ss_enabled\":%s,\"ap_ssid\":\"%s\",\"ap_ip\":\"%s\",\"ap_clients\":[", 
+                       connected?"true":"false", sta_ip_str, ap_active?"true":"false", ::g_ap_always_on?"true":"false", ::g_ss_enabled?"true":"false", ::g_ap_ssid, ap_ip_str);
+    
+    // Get AP Clients
+    wifi_sta_list_t clients;
+    esp_wifi_ap_get_sta_list(&clients);
+    for (int i = 0; i < clients.num; i++) {
+        uint8_t *m = clients.sta[i].mac;
+        pos += snprintf(json + pos, sizeof(json) - pos, "%s{\"mac\":\"%02x:%02x:%02x:%02x:%02x:%02x\",\"ip\":\"%d dBm\"}", 
+                        (i==0)?"":",", m[0], m[1], m[2], m[3], m[4], m[5], clients.sta[i].rssi);
+    }
+    snprintf(json + pos, sizeof(json) - pos, "]}");
+
     httpd_resp_set_type(req, "application/json");
     return httpd_resp_sendstr(req, json);
   }
@@ -274,26 +329,16 @@ class ReactSPAComponent : public Component {
     JsonDocument doc;
     deserializeJson(doc, body);
     
-    if (doc.containsKey("always_on")) ::g_ap_always_on = doc["always_on"];
-    if (doc.containsKey("ssid")) strncpy(::g_ap_ssid, doc["ssid"] | "GRIDOS_AP", 31);
-    if (doc.containsKey("password")) strncpy(::g_ap_password, doc["password"] | "", 63);
+    if (doc["always_on"].is<bool>()) ::g_ap_always_on = doc["always_on"];
+    if (doc["ss_enabled"].is<bool>()) ::g_ss_enabled = doc["ss_enabled"];
+    if (doc["ssid"].is<const char*>()) strncpy(::g_ap_ssid, doc["ssid"], 31);
+    if (doc["password"].is<const char*>()) strncpy(::g_ap_password, doc["password"], 63);
     
-    wifi_mode_t mode;
-    esp_wifi_get_mode(&mode);
-    
-    // Apply SSID/Password to ESP-IDF
-    wifi_config_t conf = {};
-    esp_wifi_get_config(WIFI_IF_AP, &conf);
-    strncpy((char*)conf.ap.ssid, ::g_ap_ssid, 32);
-    strncpy((char*)conf.ap.password, ::g_ap_password, 64);
-    conf.ap.ssid_len = strlen(::g_ap_ssid);
-    conf.ap.authmode = (strlen(::g_ap_password) > 7) ? WIFI_AUTH_WPA2_PSK : WIFI_AUTH_OPEN;
-    esp_wifi_set_config(WIFI_IF_AP, &conf);
-
-    if (doc.containsKey("active")) {
-        bool active = doc["active"];
-        if (active) esp_wifi_set_mode((mode == WIFI_MODE_STA) ? WIFI_MODE_APSTA : mode);
-        else esp_wifi_set_mode((mode == WIFI_MODE_APSTA) ? WIFI_MODE_STA : mode);
+    if (doc["active"].is<bool>()) {
+        ::g_ap_always_on = doc["active"];
+        ::wifi_apply_ap_settings(::g_ap_always_on, ::g_ap_ssid, ::g_ap_password);
+    } else {
+        ::wifi_apply_ap_settings(::g_ap_always_on, ::g_ap_ssid, ::g_ap_password); 
     }
     
     ::system_settings_save();

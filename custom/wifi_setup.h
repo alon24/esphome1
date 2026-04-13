@@ -145,3 +145,44 @@ static void wifi_connect_from_ui(lv_obj_t *ssid_ta, lv_obj_t *pass_ta) {
   }
   printf("--- WIFI CONNECT PKT SENT ---\n");
 }
+
+inline void wifi_apply_ap_settings(bool active, const char* ssid, const char* pass) {
+    ESP_LOGI("WIFI", "Applying AP Settings: active=%s, SSID=%s", active?"YES":"NO", ssid?ssid:"(null)");
+    esp_wifi_set_storage(WIFI_STORAGE_FLASH);
+    
+    wifi_mode_t mode;
+    esp_wifi_get_mode(&mode);
+    
+    wifi_config_t conf;
+    memset(&conf, 0, sizeof(wifi_config_t)); // CRITICAL: Start clean to override defaults
+    
+    if (ssid) {
+        strncpy((char*)conf.ap.ssid, ssid, 32);
+        conf.ap.ssid[31] = '\0';
+        conf.ap.ssid_len = strlen((char*)conf.ap.ssid);
+    }
+    if (pass) {
+        strncpy((char*)conf.ap.password, pass, 64);
+        conf.ap.password[63] = '\0';
+        conf.ap.authmode = (strlen((char*)conf.ap.password) > 7) ? WIFI_AUTH_WPA2_PSK : WIFI_AUTH_OPEN;
+    }
+    conf.ap.max_connection = 4;
+    conf.ap.channel = 1;
+    
+    // Mode toggle - MUST happen before or during config application on some IDF versions
+    if (active) {
+        if (mode == WIFI_MODE_STA) esp_wifi_set_mode(WIFI_MODE_APSTA);
+        else if (mode == WIFI_MODE_NULL) esp_wifi_set_mode(WIFI_MODE_AP);
+    } else {
+        if (mode == WIFI_MODE_APSTA) esp_wifi_set_mode(WIFI_MODE_STA);
+        else if (mode == WIFI_MODE_AP) esp_wifi_set_mode(WIFI_MODE_STA);
+    }
+
+    esp_err_t err = esp_wifi_set_config(WIFI_IF_AP, &conf);
+    if (err != ESP_OK) {
+        ESP_LOGE("WIFI", "FAILED to set AP config: %d", err);
+    } else {
+        ESP_LOGI("WIFI", "AP config set successfully: %s", (char*)conf.ap.ssid);
+    }
+    ESP_LOGI("WIFI", "AP Mode Applied. Current active state: %d", (int)active);
+}
