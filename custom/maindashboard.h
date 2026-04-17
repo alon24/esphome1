@@ -98,8 +98,8 @@ static void lvgl_flush_cb(lv_disp_drv_t *drv, const lv_area_t *area, lv_color_t 
 static void maindashboard_create(lv_obj_t *parent) {
     if (!parent) return;
     system_settings_load();
-    void grid_config_load(const char* name); // Forward decl
-    grid_config_load(nullptr); // Load persistent active screen
+    void grid_config_load(const char* name, bool force); // Forward decl
+    grid_config_load(nullptr, false); // Load persistent active screen
     
     // Apply boot-time AP settings
     if (g_ap_always_on) {

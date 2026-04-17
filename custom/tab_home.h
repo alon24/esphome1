@@ -14,6 +14,9 @@ void ui_refresh_grid() {
     ESP_LOGI("GRID", "Refreshing UI (Items: %d, Panels: %d)", (int)g_grid_items.size(), (int)g_panels.size());
     lv_obj_clean(g_home_grid_cont);
     lv_obj_set_style_bg_color(g_home_grid_cont, lv_color_hex(g_grid_bg), 0);
+    lv_obj_set_style_border_color(g_home_grid_cont, lv_color_hex(g_grid_border_color), 0);
+    lv_obj_set_style_border_width(g_home_grid_cont, g_grid_border_width, 0);
+    lv_obj_set_style_border_side(g_home_grid_cont, LV_BORDER_SIDE_FULL, 0);
     
     for (const auto &it : g_grid_items) {
         _home_render_item(g_home_grid_cont, it);
@@ -22,7 +25,15 @@ void ui_refresh_grid() {
 
 static void _item_event_cb(lv_event_t *e) {
     const char *action = (const char *)lv_event_get_user_data(e);
-    if (action) ESP_LOGI("GRID", "UI Action: %s", action);
+    if (action) {
+        ESP_LOGI("GRID", "UI Action: %s", action);
+        if (strncmp(action, "scr:", 4) == 0) {
+            const char *screen_name = action + 4;
+            ESP_LOGI("GRID", "Navigating to screen: %s", screen_name);
+            void grid_config_save(const char* json, const char* name);
+            grid_config_save("", screen_name); // This reloads the UI via internal flag
+        }
+    }
 }
 
 static void _home_render_item(lv_obj_t *parent, const GridItem &it, int offsetX, int offsetY) {
@@ -94,6 +105,38 @@ static void _home_render_item(lv_obj_t *parent, const GridItem &it, int offsetX,
         obj = lv_bar_create(parent);
         lv_bar_set_range(obj, it.min, it.max);
         lv_bar_set_value(obj, it.value, LV_ANIM_OFF);
+    } else if (it.type == "border") {
+        obj = lv_obj_create(parent);
+        _panel_reset(obj);
+    } else if (it.type == "nav-menu") {
+        obj = lv_obj_create(parent);
+        _panel_reset(obj);
+        lv_obj_set_flex_flow(obj, it.orientation == "h" ? LV_FLEX_FLOW_ROW : LV_FLEX_FLOW_COLUMN);
+        lv_obj_set_flex_align(obj, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+        lv_obj_set_style_pad_all(obj, 10, 0);
+        lv_obj_set_style_pad_gap(obj, 10, 0);
+        
+        char buf[512];
+        strncpy(buf, it.options.c_str(), 511);
+        char *line = strtok(buf, "\n");
+        while (line) {
+            char *sep = strchr(line, '|');
+            if (sep) {
+                *sep = '\0';
+                char *label = line;
+                char *act = sep + 1;
+                
+                lv_obj_t *btn = lv_btn_create(obj);
+                lv_obj_set_size(btn, it.orientation == "h" ? LV_SIZE_CONTENT : lv_pct(100), LV_SIZE_CONTENT);
+                lv_obj_t *l = lv_label_create(btn);
+                lv_label_set_text(l, label);
+                lv_obj_center(l);
+                
+                char *persist_act = strdup(act);
+                lv_obj_add_event_cb(btn, _item_event_cb, LV_EVENT_CLICKED, persist_act);
+            }
+            line = strtok(NULL, "\n");
+        }
     }
 
     if (obj) {
@@ -101,12 +144,17 @@ static void _home_render_item(lv_obj_t *parent, const GridItem &it, int offsetX,
         lv_obj_set_pos(obj, it.x + offsetX, it.y + offsetY);
         
         // Only apply background color to objects that aren't inherently stylized (like labels)
-        if (it.type != "label" && it.type != "clock") {
+        if (it.type != "label" && it.type != "clock" && it.type != "border") {
             lv_obj_set_style_bg_color(obj, lv_color_hex(it.color), 0);
             lv_obj_set_style_bg_opa(obj, LV_OPA_COVER, 0);
+        } else if (it.type == "border") {
+            lv_obj_set_style_bg_opa(obj, LV_OPA_TRANSP, 0);
         }
         
         lv_obj_set_style_text_color(obj, lv_color_hex(it.textColor), 0);
+        lv_obj_set_style_border_color(obj, lv_color_hex(it.textColor), 0); // Use textColor as border color
+        lv_obj_set_style_border_width(obj, it.borderWidth, 0);
+        lv_obj_set_style_radius(obj, it.radius, 0);
         
         if (!it.action.empty()) {
             lv_obj_add_flag(obj, LV_OBJ_FLAG_CLICKABLE);

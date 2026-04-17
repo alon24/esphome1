@@ -18,6 +18,9 @@ struct GridItem {
     std::string action;
     int value, min, max;
     std::string options;
+    int borderWidth;
+    int radius;
+    std::string orientation;
 };
 
 struct Panel {
@@ -30,6 +33,8 @@ struct Panel {
 static std::vector<GridItem> g_grid_items;
 static std::vector<Panel> g_panels;
 static uint32_t g_grid_bg = 0x0e0e0e;
+static uint32_t g_grid_border_color = 0x222222;
+static int g_grid_border_width = 0;
 extern char g_active_screen[64];
 static std::string g_current_screen = "main";
 char g_grid_json_cache[8192] __attribute__((weak)); 
@@ -86,6 +91,9 @@ void grid_panels_load() {
             it.h = eObj["h"] | 20;
             it.color = eObj["color"] | 0x333333;
             it.textColor = eObj["textColor"] | 0xFFFFFF;
+            it.borderWidth = eObj["borderWidth"] | 0;
+            it.radius = eObj["radius"] | 0;
+            it.orientation = eObj["orientation"] | "v";
             p.elements.push_back(it);
         }
         g_panels.push_back(p);
@@ -94,7 +102,12 @@ void grid_panels_load() {
     free(buf);
 }
 
-void grid_config_load(const char* name) {
+void grid_config_load(const char* name, bool force = false) {
+    if (!force && name && strlen(name) > 0 && name == g_current_screen && g_grid_items.size() > 0) {
+        ESP_LOGI("GRID", "Using memory-cached screen: %s", name);
+        return; // Skip SPIFFS hit
+    }
+
     if (name && strlen(name) > 0) {
         g_current_screen = name;
     } else {
@@ -146,8 +159,10 @@ void grid_config_load(const char* name) {
 
     g_grid_items.clear();
     g_grid_bg = doc["bg"] | 0x0e0e0e;
+    g_grid_border_color = doc["borderColor"] | 0x222222;
+    g_grid_border_width = doc["borderWidth"] | 0;
     JsonArray array = doc["items"].as<JsonArray>();
-    ESP_LOGI("GRID", "Parsing %d items (bg: %06X)", (int)array.size(), (unsigned int)g_grid_bg);
+    ESP_LOGI("GRID", "Parsing %d items (bg: %06X, border: %06X, width: %d)", (int)array.size(), (unsigned int)g_grid_bg, (unsigned int)g_grid_border_color, g_grid_border_width);
     for (JsonObject v : array) {
         GridItem it;
         it.id        = v["id"]        | "";
@@ -165,6 +180,9 @@ void grid_config_load(const char* name) {
         it.min       = v["min"]       | 0;
         it.max       = v["max"]       | 100;
         it.options   = v["options"]   | "";
+        it.borderWidth = v["borderWidth"] | 0;
+        it.radius    = v["radius"]    | 0;
+        it.orientation = v["orientation"] | "v";
         g_grid_items.push_back(it);
         ESP_LOGI("GRID", "  Loaded [%s] %s", it.type.c_str(), it.name.c_str());
     }
@@ -190,7 +208,7 @@ void grid_config_save(const char* json_str, const char* name) {
         ESP_LOGI("GRID", "Saved screen: %s", path.c_str());
     }
     g_grid_needs_refresh = true;
-    grid_config_load(g_current_screen.c_str());
+    grid_config_load(g_current_screen.c_str(), true);
 }
 
 void grid_panels_save(const char* json_str) {

@@ -30,8 +30,7 @@ namespace esphome { namespace react_spa {
 // Forward declarations for grid configuration
 void grid_config_save(const char* json_str);
 void grid_config_save(const char* json_str, const char* name);
-void grid_config_load();
-void grid_config_load(const char* name);
+void grid_config_load(const char* name, bool force);
 void grid_list_screens(char* out, size_t max_len);
 void slideshow_start();
 void slideshow_stop();
@@ -57,6 +56,11 @@ static const char *const TAG = "react_spa";
 static char g_active_app_path[128] = "/spiffs/ultimate.gz";
 static const char *const SPIFFS_BASE = "/spiffs";
 static const char *const ACTIVE_META_PATH = "/spiffs/active_app.txt";
+
+// PSRAM caching for SPA content to avoid bus contention
+static char* g_spa_cache_buf = nullptr;
+static size_t g_spa_cache_len = 0;
+static bool g_spa_cache_dirty = true;
 
 static void json_escape(const char *in, char *out, size_t out_len) {
   size_t j = 0;
@@ -110,6 +114,7 @@ class ReactSPAComponent : public Component {
 
   void setup() override {
     load_active_path();
+    refresh_spa_cache();
 
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
     config.server_port = port_;
@@ -158,7 +163,7 @@ class ReactSPAComponent : public Component {
             httpd_query_key_value(query, "name", name, sizeof(name));
         }
         if (strlen(name) > 0) {
-           ::grid_config_load(name); // Immediate load from disk if switching
+           ::grid_config_load(name, false); // Memory-cache friendly load
         }
         httpd_resp_set_type(req, "application/json");
         return httpd_resp_sendstr(req, g_grid_json_cache);
@@ -208,6 +213,31 @@ class ReactSPAComponent : public Component {
     reg("/*", HTTP_GET, root_handler);
   }
 
+  void refresh_spa_cache() {
+      if (g_spa_cache_buf) {
+          free(g_spa_cache_buf);
+          g_spa_cache_buf = nullptr;
+      }
+      g_spa_cache_len = 0;
+
+      FILE *f = fopen(g_active_app_path, "r");
+      if (!f) return;
+      fseek(f, 0, SEEK_END);
+      size_t sz = ftell(f);
+      fseek(f, 0, SEEK_SET);
+
+      // Allocate from PSRAM explicitly if possible, otherwise DRAM
+      g_spa_cache_buf = (char*)heap_caps_malloc(sz, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+      if (!g_spa_cache_buf) g_spa_cache_buf = (char*)malloc(sz);
+
+      if (g_spa_cache_buf) {
+          g_spa_cache_len = fread(g_spa_cache_buf, 1, sz, f);
+          ESP_LOGI(TAG, "SPA Cached in PSRAM: %d bytes from %s", (int)g_spa_cache_len, g_active_app_path);
+      }
+      fclose(f);
+      g_spa_cache_dirty = false;
+  }
+
   static esp_err_t root_handler(httpd_req_t *req) {
     // Captive Portal Logic: Redirect unexpected hosts to the local IP
     char host[64] = "";
@@ -238,19 +268,23 @@ class ReactSPAComponent : public Component {
         return httpd_resp_send(req, NULL, 0);
     }
 
-    ESP_LOGI(TAG, "Serving SPA for URI: %s", req->uri);
-    FILE *f = fopen(g_active_app_path, "r");
-    if (!f) {
-        ESP_LOGW(TAG, "File not found: %s", g_active_app_path);
-        return httpd_resp_sendstr(req, "<html><body><h2>No app discovered.</h2></body></html>");
+    ESP_LOGI(TAG, "Serving SPA for URI: %s (Buffer: %d)", req->uri, (int)g_spa_cache_len);
+    
+    ReactSPAComponent* self = (ReactSPAComponent*)req->user_ctx;
+    if (g_spa_cache_dirty || !g_spa_cache_buf) {
+        self->refresh_spa_cache();
     }
+
+    if (!g_spa_cache_buf || g_spa_cache_len == 0) {
+        ESP_LOGW(TAG, "SPA not found or cache empty: %s", g_active_app_path);
+        return httpd_resp_sendstr(req, "<html><body><h2>No app discovered. Load failed.</h2></body></html>");
+    }
+
     httpd_resp_set_type(req, "text/html");
     httpd_resp_set_hdr(req, "Content-Encoding", "gzip");
     httpd_resp_set_hdr(req, "Cache-Control", "no-cache, no-store, must-revalidate");
-    char buf[1024]; size_t n;
-    while ((n = fread(buf, 1, sizeof(buf), f)) > 0) httpd_resp_send_chunk(req, buf, (ssize_t)n);
-    fclose(f);
-    return httpd_resp_send_chunk(req, nullptr, 0);
+    
+    return httpd_resp_send(req, g_spa_cache_buf, (ssize_t)g_spa_cache_len);
   }
 
   static esp_err_t upload_handler(httpd_req_t *req) {
@@ -299,6 +333,7 @@ class ReactSPAComponent : public Component {
       }
       fwrite(buf, 1, received, f);
       remaining -= received;
+      vTaskDelay(pdMS_TO_TICKS(1)); // Yield to allow LCD DMA a window
     }
     fclose(f);
     
@@ -307,6 +342,7 @@ class ReactSPAComponent : public Component {
     strncpy(g_active_app_path, target_path, sizeof(g_active_app_path)-1);
     
     ESP_LOGI(TAG, "Upload complete: %s", target_path);
+    g_spa_cache_dirty = true; // Force reload on next request
     return httpd_resp_sendstr(req, "{\"status\":\"ok\"}");
   }
 
