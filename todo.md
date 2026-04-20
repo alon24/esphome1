@@ -44,6 +44,7 @@
 - [x] **Origin Hub** — Precision (0,0) crosshair indicators for Master Panel design
 - [x] **Hardware Alignment** — 1:1 parity between web designer and ESP32 physical display
 - [x] **Persistent Settings** — Slideshow auto-toggle saved across reboots
+- [x] **ESPHome 2026.4.1 / LVGL 9.5.0 Migration** — Full API refactor, thread-safe deferral system, and 400kHz I2C optimization.
 
 ---
 

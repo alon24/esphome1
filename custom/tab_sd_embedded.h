@@ -96,17 +96,17 @@ static void _csd_show_image(const char *path) {
     }
     stbi_image_free(pix);
 
-    g_csd_img_dsc.header.cf     = LV_IMG_CF_TRUE_COLOR;
+    g_csd_img_dsc.header.cf     = LV_COLOR_FORMAT_RGB565;
     g_csd_img_dsc.header.w      = dw;
     g_csd_img_dsc.header.h      = dh;
     g_csd_img_dsc.data_size     = buf_sz;
     g_csd_img_dsc.data          = g_csd_img_buf;
 
     if (!g_csd_img_obj) {
-        g_csd_img_obj = lv_img_create(g_csd_right_panel);
+        g_csd_img_obj = lv_image_create(g_csd_right_panel);
         lv_obj_align(g_csd_img_obj, LV_ALIGN_TOP_MID, 0, 10);
     }
-    lv_img_set_src(g_csd_img_obj, &g_csd_img_dsc);
+    lv_image_set_src(g_csd_img_obj, &g_csd_img_dsc);
     lv_obj_set_size(g_csd_img_obj, dw, dh);
     lv_obj_clear_flag(g_csd_img_obj, LV_OBJ_FLAG_HIDDEN);
 
@@ -151,10 +151,10 @@ static void _csd_scan_dir(const std::string &path) {
         lv_obj_set_user_data(up_row, strdup(up_path.c_str()));
         lv_obj_add_event_cb(up_row, [](lv_event_t *e) {
             if (lv_event_get_code(e) == LV_EVENT_CLICKED) {
-                const char *p = (const char*)lv_obj_get_user_data(lv_event_get_target(e));
+                const char *p = (const char*)lv_obj_get_user_data((lv_obj_t*)lv_event_get_target(e));
                 if (p) _csd_scan_dir(p);
             } else if (lv_event_get_code(e) == LV_EVENT_DELETE) {
-                char *p = (char *)lv_obj_get_user_data(lv_event_get_target(e));
+                char *p = (char *)lv_obj_get_user_data((lv_obj_t*)lv_event_get_target(e));
                 if (p) free(p);
             }
         }, LV_EVENT_ALL, nullptr);
@@ -219,7 +219,7 @@ static void _csd_scan_dir(const std::string &path) {
         
         lv_obj_add_event_cb(row, [](lv_event_t *e) {
             lv_event_code_t code = lv_event_get_code(e);
-            lv_obj_t *target = lv_event_get_target(e);
+            lv_obj_t *target = (lv_obj_t*)lv_event_get_target(e);
             if (code == LV_EVENT_CLICKED) {
                 const char *p = (const char*)lv_obj_get_user_data(target);
                 if (!p) return;
@@ -262,13 +262,13 @@ void tab_sd_create_embedded(lv_obj_t *parent) {
     lv_obj_clear_flag(parent, LV_OBJ_FLAG_SCROLLABLE);
     
     // Dynamic theme detection
-    lv_color_t bg_col = lv_obj_get_style_bg_color(parent, 0);
-    g_csd_bg = lv_color_to32(bg_col);
+    lv_color_t bg_col = lv_obj_get_style_bg_color(parent, LV_PART_MAIN);
+    lv_color32_t c32 = lv_color_to_32(bg_col, LV_OPA_COVER);
     
     // Simple brightness check (R*0.299 + G*0.587 + B*0.114)
-    uint8_t r = (g_csd_bg >> 16) & 0xFF;
-    uint8_t g = (g_csd_bg >> 8) & 0xFF;
-    uint8_t b = g_csd_bg & 0xFF;
+    uint8_t r = c32.red;
+    uint8_t g = c32.green;
+    uint8_t b = c32.blue;
     float brightness = r * 0.299f + g * 0.587f + b * 0.114f;
     
     if (brightness > 160) {
@@ -395,17 +395,23 @@ void tab_sd_create_embedded(lv_obj_t *parent) {
     lv_obj_center(del_lbl);
     lv_obj_add_event_cb(del_btn, [](lv_event_t*) {
         if (g_csd_sel_path.empty()) return;
-        static const char *btns[] = { "Delete", "Cancel", "" };
-        lv_obj_t *mb = lv_msgbox_create(NULL, "Delete?",
-            ("Delete " + g_csd_sel_path.substr(g_csd_sel_path.find_last_of('/')+1)).c_str(),
-            btns, true);
+        lv_obj_t *mb = lv_msgbox_create(lv_screen_active());
+        lv_msgbox_add_title(mb, "Delete?");
+        lv_msgbox_add_text(mb, ("Delete " + g_csd_sel_path.substr(g_csd_sel_path.find_last_of('/')+1)).c_str());
+        lv_msgbox_add_footer_button(mb, "Delete");
+        lv_msgbox_add_footer_button(mb, "Cancel");
+        
         lv_obj_center(mb);
         lv_obj_add_event_cb(mb, [](lv_event_t *e) {
-            lv_obj_t *m = lv_event_get_current_target(e);
-            const char *txt = lv_msgbox_get_active_btn_text(m);
-            if (strcmp(txt, "Delete") == 0) {
-                _csd_do_delete(g_csd_sel_path);
-                _csd_scan_dir(g_csd_cur_path); // refresh list
+            lv_obj_t *m = (lv_obj_t *)lv_event_get_current_target(e);
+            lv_obj_t *target = (lv_obj_t *)(lv_obj_t*)lv_event_get_target(e);
+            lv_obj_t *label = lv_obj_get_child(target, 0);
+            if (label) {
+                const char *txt = lv_label_get_text(label);
+                if (txt && strcmp(txt, "Delete") == 0) {
+                    _csd_do_delete(g_csd_sel_path);
+                    _csd_scan_dir(g_csd_cur_path); // refresh list
+                }
             }
             lv_msgbox_close(m);
         }, LV_EVENT_VALUE_CHANGED, NULL);

@@ -162,7 +162,7 @@ static void _wifi_populate_list(lv_obj_t *list, lv_obj_t *ssid_ta) {
         // Click: copy SSID to ssid_ta
         lv_obj_set_user_data(row, ssid_ta);
         lv_obj_add_event_cb(row, [](lv_event_t *e) {
-            lv_obj_t *r  = lv_event_get_target(e);
+            lv_obj_t *r  = (lv_obj_t *)lv_event_get_target(e);
             lv_obj_t *ta = (lv_obj_t *)lv_obj_get_user_data(r);
             if (!ta) return;
             // ssid_lbl is at child index 5 (5 bars + ssid_lbl)
@@ -331,7 +331,7 @@ void tab_wifi_create(lv_obj_t *parent, lv_obj_t *root) {
     }, LV_EVENT_ALL, nullptr);
 
     // Show/Hide Password Button
-    lv_obj_t *eye_btn = lv_btn_create(right);
+    lv_obj_t *eye_btn = lv_button_create(right);
     lv_obj_set_size(eye_btn, 40, 40);
     lv_obj_set_pos(eye_btn, 302, 106);
     lv_obj_set_style_bg_color(eye_btn, lv_color_hex(0x333333), 0);
@@ -342,8 +342,9 @@ void tab_wifi_create(lv_obj_t *parent, lv_obj_t *root) {
 
     lv_obj_add_event_cb(eye_btn, [](lv_event_t * e) {
         if (lv_event_get_code(e) == LV_EVENT_CLICKED) {
-            lv_obj_t * btn = lv_event_get_target(e);
+            lv_obj_t * btn = (lv_obj_t *)lv_event_get_target(e);
             lv_obj_t * lbl = lv_obj_get_child(btn, 0);
+            if (!lbl) return;
             bool is_pass = lv_textarea_get_password_mode(g_wifi_pass_ta);
             if (is_pass) {
                 lv_textarea_set_password_mode(g_wifi_pass_ta, false);
@@ -366,13 +367,13 @@ void tab_wifi_create(lv_obj_t *parent, lv_obj_t *root) {
     lv_obj_add_event_cb(g_wifi_scan_btn, [](lv_event_t *) {
         ESP_LOGI("WIFI", "Scan button clicked!");
         _wifi_kb_hide();
-        lv_label_set_text(g_wifi_scan_lbl, "SCANNING...");
+        if (g_wifi_scan_lbl) lv_label_set_text(g_wifi_scan_lbl, "SCANNING...");
         lv_refr_now(NULL);  // show "SCANNING..." before blocking
-        lv_label_set_text(g_wifi_status_lbl, "Scanning for networks...");
+        if (g_wifi_status_lbl) lv_label_set_text(g_wifi_status_lbl, "Scanning for networks...");
         lv_refr_now(NULL);
         _wifi_populate_list(g_wifi_list, g_wifi_ssid_ta);
-        lv_label_set_text(g_wifi_scan_lbl, "SCAN");
-        lv_label_set_text(g_wifi_status_lbl, "Tap a network to select");
+        if (g_wifi_scan_lbl) lv_label_set_text(g_wifi_scan_lbl, "SCAN");
+        if (g_wifi_status_lbl) lv_label_set_text(g_wifi_status_lbl, "Tap a network to select");
     }, LV_EVENT_CLICKED, nullptr);
 
     lv_obj_add_event_cb(conn_btn, [](lv_event_t *) {
@@ -487,8 +488,8 @@ void tab_wifi_create(lv_obj_t *parent, lv_obj_t *root) {
         lv_label_set_text(g_wifi_status_lbl, "AP Settings applied & saved.");
     }, LV_EVENT_CLICKED, nullptr);
 
-    // ── Floating keyboard — child of lv_scr_act() per manufacturer example.
-    g_wifi_keyboard = lv_keyboard_create(lv_scr_act());
+    // ── Floating keyboard — child of lv_screen_active() per manufacturer example.
+    g_wifi_keyboard = lv_keyboard_create(lv_screen_active());
     // lv_obj_set_pos(g_wifi_keyboard, 0, 280);
     lv_obj_set_size(g_wifi_keyboard, 800, 200);
     lv_obj_set_style_bg_color(g_wifi_keyboard, lv_color_hex(0x111111), LV_STATE_DEFAULT);

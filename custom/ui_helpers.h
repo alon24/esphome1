@@ -1,6 +1,14 @@
 #pragma once
 #include "lvgl.h"
 
+LV_FONT_DECLARE(lv_font_montserrat_12);
+LV_FONT_DECLARE(lv_font_montserrat_14);
+LV_FONT_DECLARE(lv_font_montserrat_16);
+LV_FONT_DECLARE(lv_font_montserrat_18);
+LV_FONT_DECLARE(lv_font_montserrat_20);
+LV_FONT_DECLARE(lv_font_montserrat_22);
+LV_FONT_DECLARE(lv_font_montserrat_24);
+
 // Forward declarations for global UI state (defined in maindashboard.h)
 void ui_set_connected(const char *ip);
 void ui_set_disconnected();

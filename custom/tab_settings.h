@@ -56,7 +56,8 @@ void tab_settings_create(lv_obj_t *parent) {
     lv_obj_set_pos(ss_sw, 210, 155);
     if (g_ss_enabled) lv_obj_add_state(ss_sw, LV_STATE_CHECKED);
     lv_obj_add_event_cb(ss_sw, [](lv_event_t *e) {
-        g_ss_enabled = lv_obj_has_state(lv_event_get_target(e), LV_STATE_CHECKED);
+        lv_obj_t * sw = (lv_obj_t *)lv_event_get_target(e);
+        g_ss_enabled = lv_obj_has_state(sw, LV_STATE_CHECKED);
         system_settings_save();
     }, LV_EVENT_VALUE_CHANGED, nullptr);
 

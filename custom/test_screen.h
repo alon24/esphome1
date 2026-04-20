@@ -79,7 +79,7 @@ static void _ta_event_cb(lv_event_t *e) {
 // ── Screen builder ────────────────────────────────────────────────────────────
 
 static void test_screen_create() {
-    lv_obj_t *scr = lv_scr_act();
+    lv_obj_t *scr = lv_screen_active();
     lv_obj_set_style_bg_color(scr, lv_color_hex(0x111111), LV_STATE_DEFAULT);
     lv_obj_set_style_bg_opa(scr, LV_OPA_COVER, LV_STATE_DEFAULT);
     lv_obj_clear_flag(scr, LV_OBJ_FLAG_SCROLLABLE);
@@ -169,7 +169,7 @@ static void test_screen_create() {
     }
 
     // ── SHOW/HIDE KEYBOARD BUTTON (y=230–280) — always visible ───────────────
-    lv_obj_t *btn = lv_btn_create(scr);
+    lv_obj_t *btn = lv_button_create(scr);
     lv_obj_set_pos(btn, 0, 230);
     lv_obj_set_size(btn, 800, 50);
     lv_obj_set_style_bg_color(btn, lv_color_hex(0x1a0a2a), LV_STATE_DEFAULT);

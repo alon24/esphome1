@@ -109,7 +109,7 @@ void ui_refresh_list() {
 }
 
 void ui_init_explorer() {
-    lv_obj_t* screen = lv_scr_act();
+    lv_obj_t* screen = lv_screen_active();
     lv_obj_set_style_bg_color(screen, lv_palette_darken(LV_PALETTE_BLUE_GREY, 3), 0);
 
     // Path label at top
@@ -121,7 +121,7 @@ void ui_init_explorer() {
     lv_obj_align(g_path_label, LV_ALIGN_TOP_LEFT, 20, 10);
 
     // Touch test button — fixed at bottom, always visible
-    g_touch_btn = lv_btn_create(screen);
+    g_touch_btn = lv_button_create(screen);
     lv_obj_set_size(g_touch_btn, 800, 50);
     lv_obj_align(g_touch_btn, LV_ALIGN_BOTTOM_MID, 0, 0);
     lv_obj_set_style_bg_color(g_touch_btn, TOUCH_COLORS[0], 0);

@@ -47,7 +47,7 @@ static void wifi_scan_and_populate(lv_obj_t *list_obj, lv_obj_t *ssid_ta) {
   for (int i = 0; i < count; i++) {
     if (recs[i].ssid[0] == '\0') continue;
 
-    lv_obj_t *btn = lv_btn_create(list_obj);
+    lv_obj_t *btn = lv_button_create(list_obj);
     lv_obj_set_pos(btn, 0, y);
     lv_obj_set_size(btn, LV_PCT(100), BTN_H);
 
@@ -89,7 +89,7 @@ static void wifi_scan_and_populate(lv_obj_t *list_obj, lv_obj_t *ssid_ta) {
     // Pass ssid_ta via user_data so the callback can reach it
     lv_obj_set_user_data(btn, ssid_ta);
     lv_obj_add_event_cb(btn, [](lv_event_t *e) {
-      lv_obj_t *b  = lv_event_get_target(e);
+      lv_obj_t *b  = (lv_obj_t*)lv_event_get_target(e);
       lv_obj_t *ta = (lv_obj_t *)lv_obj_get_user_data(b);
       // child 0 = bar_panel, child 1 = ssid label
       lv_obj_t *l  = lv_obj_get_child(b, 1);

@@ -101,11 +101,22 @@ static void _cwifi_do_scan() {
                     g_cwifi_results.clear();
                     for (int i = 0; i < (int)count; i++) {
                         if (recs[i].ssid[0] == '\0') continue;
-                        ScanResult rs;
-                        strncpy(rs.ssid, (char*)recs[i].ssid, 32);
-                        rs.ssid[32] = '\0';
-                        rs.rssi = recs[i].rssi;
-                        g_cwifi_results.push_back(rs);
+                        
+                        // 7.3 SSID Deduplication
+                        bool found = false;
+                        for (const auto &existing : g_cwifi_results) {
+                            if (strncmp(existing.ssid, (char*)recs[i].ssid, 32) == 0) {
+                                found = true;
+                                break;
+                            }
+                        }
+                        if (!found) {
+                            ScanResult rs;
+                            strncpy(rs.ssid, (char*)recs[i].ssid, 32);
+                            rs.ssid[32] = '\0';
+                            rs.rssi = recs[i].rssi;
+                            g_cwifi_results.push_back(rs);
+                        }
                     }
                 }
                 free(recs);
@@ -207,7 +218,7 @@ static void _cwifi_populate_list() {
         lv_obj_add_flag(row, LV_OBJ_FLAG_CLICKABLE);
         lv_obj_set_user_data(row, g_cwifi_ssid_ta);
         lv_obj_add_event_cb(row, [](lv_event_t *e) {
-            lv_obj_t *r  = lv_event_get_target(e);
+            lv_obj_t *r  = (lv_obj_t*)lv_event_get_target(e);
             lv_obj_t *ta = (lv_obj_t*)lv_obj_get_user_data(r);
             // SSID label is specifically child index 1 because bar_panel is 0
             lv_obj_t *sl = lv_obj_get_child(r, 1); 
@@ -359,7 +370,7 @@ void tab_wifi_create_embedded(lv_obj_t *parent) {
     }, LV_EVENT_ALL, nullptr);
 
     // Eye toggle button for password visibility
-    lv_obj_t *eye_btn = lv_btn_create(right);
+    lv_obj_t *eye_btn = lv_button_create(right);
     lv_obj_set_size(eye_btn, 38, 34);
     lv_obj_align_to(eye_btn, g_cwifi_pass_ta, LV_ALIGN_RIGHT_MID, -2, 0);
     lv_obj_set_style_bg_opa(eye_btn, 0, 0);
@@ -371,7 +382,7 @@ void tab_wifi_create_embedded(lv_obj_t *parent) {
     lv_obj_set_style_text_font(eye_lbl, &lv_font_montserrat_18, LV_STATE_DEFAULT);
     lv_obj_center(eye_lbl);
     lv_obj_add_event_cb(eye_btn, [](lv_event_t *e) {
-        lv_obj_t *btn = lv_event_get_target(e);
+        lv_obj_t *btn = (lv_obj_t*)lv_event_get_target(e);
         lv_obj_t *lbl = lv_obj_get_child(btn, 0);
         bool mode = lv_textarea_get_password_mode(g_cwifi_pass_ta);
         lv_textarea_set_password_mode(g_cwifi_pass_ta, !mode);
@@ -443,16 +454,15 @@ void tab_wifi_create_embedded(lv_obj_t *parent) {
     lv_obj_set_width(g_cwifi_status_lbl, rw - 20);
     lv_label_set_long_mode(g_cwifi_status_lbl, LV_LABEL_LONG_WRAP);
 
-    // Auto-populate saved SSID
+    // Auto-populate saved SSID (7.2 Security Fix: do NOT prefill password)
     wifi_config_t conf;
     if (esp_wifi_get_config(WIFI_IF_STA, &conf) == ESP_OK && conf.sta.ssid[0]) {
         lv_textarea_set_text(g_cwifi_ssid_ta, (char*)conf.sta.ssid);
-        lv_textarea_set_text(g_cwifi_pass_ta, (char*)conf.sta.password);
-        lv_label_set_text(g_cwifi_status_lbl, "Saved credentials loaded");
+        lv_label_set_text(g_cwifi_status_lbl, "Saved SSID loaded");
     }
 
     // D9: Floating keyboard — full screen width, anchored bottom ─────────────
-    g_cwifi_keyboard = lv_keyboard_create(lv_scr_act());
+    g_cwifi_keyboard = lv_keyboard_create(lv_screen_active());
     lv_obj_set_size(g_cwifi_keyboard, 800, 200);
     lv_obj_set_style_bg_color(g_cwifi_keyboard, lv_color_hex(0x111111), LV_STATE_DEFAULT);
     lv_obj_set_style_bg_opa(g_cwifi_keyboard, LV_OPA_COVER, LV_STATE_DEFAULT);

@@ -42,11 +42,12 @@ extern bool g_ss_enabled;
 extern char g_ap_ssid[33];
 extern char g_ap_password[64];
 extern char g_active_screen[64];
+extern bool g_grid_needs_refresh;
 void system_settings_save();
 extern bool sd_card_is_mounted();
 void wifi_apply_ap_settings(bool active, const char* ssid, const char* pass);
 
-extern char g_grid_json_cache[8192];
+extern char g_grid_json_cache[65536];
 
 namespace esphome {
 extern bool sd_card_is_mounted();
@@ -60,7 +61,9 @@ static const char *const ACTIVE_META_PATH = "/spiffs/active_app.txt";
 // PSRAM caching for SPA content to avoid bus contention
 static char* g_spa_cache_buf = nullptr;
 static size_t g_spa_cache_len = 0;
-static bool g_spa_cache_dirty = true;
+static std::atomic<bool> g_spa_cache_dirty{true};
+
+static std::string g_pending_nav_screen = "";
 
 static void json_escape(const char *in, char *out, size_t out_len) {
   size_t j = 0;
@@ -191,10 +194,24 @@ class ReactSPAComponent : public Component {
         }
         int total = (int)req->content_len;
         char *body = (char*)malloc(total + 1);
-        httpd_req_recv(req, body, total);
+        
+        int received = 0;
+        while (received < total) {
+            int r = httpd_req_recv(req, body + received, total - received);
+            if (r <= 0) {
+                if (r == HTTPD_SOCK_ERR_TIMEOUT) continue;
+                free(body);
+                return ESP_FAIL;
+            }
+            received += r;
+        }
         body[total] = '\0';
         ::grid_config_save(body, name);
-        ::ui_navigate_to(name); // Navigate to the screen we just synced
+        
+        // HIGH-4: Thread safe navigation
+        g_pending_nav_screen = name;
+        ::g_grid_needs_refresh = true;
+
         free(body);
         httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
         return httpd_resp_sendstr(req, "{\"status\":\"ok\"}");
@@ -203,7 +220,17 @@ class ReactSPAComponent : public Component {
     reg("/api/grid/panels", HTTP_POST, [](httpd_req_t *req) {
         int total = (int)req->content_len;
         char *body = (char*)malloc(total + 1);
-        httpd_req_recv(req, body, total);
+        
+        int received = 0;
+        while (received < total) {
+            int r = httpd_req_recv(req, body + received, total - received);
+            if (r <= 0) {
+                if (r == HTTPD_SOCK_ERR_TIMEOUT) continue;
+                free(body);
+                return ESP_FAIL;
+            }
+            received += r;
+        }
         body[total] = '\0';
         grid_panels_save(body);
         free(body);
@@ -262,6 +289,7 @@ class ReactSPAComponent : public Component {
     
     esp_netif_ip_info_t ap_ip_info;
     esp_netif_t *ap_netif = esp_netif_get_handle_from_ifkey("WIFI_AP_DEF");
+    if (!ap_netif) ESP_LOGW(TAG, "AP netif not found — captive portal will be broken");
     char ap_ip_str[16] = "192.168.4.1";
     if (ap_netif) {
         esp_netif_get_ip_info(ap_netif, &ap_ip_info);
@@ -270,6 +298,7 @@ class ReactSPAComponent : public Component {
 
     esp_netif_ip_info_t sta_ip_info;
     esp_netif_t *sta_netif = esp_netif_get_handle_from_ifkey("WIFI_STA_DEF");
+    if (!sta_netif) ESP_LOGW(TAG, "STA netif not found — IP detection will be broken");
     char sta_ip_str[16] = "";
     if (sta_netif) {
         esp_netif_get_ip_info(sta_netif, &sta_ip_info);
@@ -305,6 +334,10 @@ class ReactSPAComponent : public Component {
   }
 
   static esp_err_t upload_handler(httpd_req_t *req) {
+    if (req->content_len > 500000) {
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "File too large (max 500KB)");
+        return ESP_FAIL;
+    }
     char target_path[128] = "/spiffs/ultimate.gz";
     char query[128];
     if (httpd_req_get_url_query_str(req, query, sizeof(query)) == ESP_OK) {
@@ -409,7 +442,17 @@ class ReactSPAComponent : public Component {
     int total = (int)req->content_len;
     if (total <= 0 || total > 1024) return httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid");
     char *body = (char*)malloc(total + 1);
-    httpd_req_recv(req, body, total);
+    
+    int received = 0;
+    while (received < total) {
+        int r = httpd_req_recv(req, body + received, total - received);
+        if (r <= 0) {
+            if (r == HTTPD_SOCK_ERR_TIMEOUT) continue;
+            free(body);
+            return ESP_FAIL;
+        }
+        received += r;
+    }
     body[total] = '\0';
 
     JsonDocument doc;

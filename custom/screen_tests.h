@@ -12,7 +12,7 @@ static void _add_test_nav();
 
 static void _cb_next_test(lv_event_t *) {
   g_current_test = (g_current_test % NUM_TESTS) + 1;
-  lv_obj_clean(lv_scr_act());
+  lv_obj_clean(lv_screen_active());
   _run_test(g_current_test);
 }
 
@@ -21,7 +21,7 @@ static void _add_test_nav() {
   int W = lv_disp_get_hor_res(disp);
   int H = lv_disp_get_ver_res(disp);
   // Invisible 160×160 touch area in the centre
-  lv_obj_t *btn = lv_btn_create(lv_scr_act());
+  lv_obj_t *btn = lv_button_create(lv_screen_active());
   lv_obj_set_pos(btn, W / 2 - 80, H / 2 - 80);
   lv_obj_set_size(btn, 160, 160);
   lv_obj_set_style_bg_opa(btn, LV_OPA_TRANSP, LV_STATE_DEFAULT);
@@ -60,7 +60,7 @@ static void _draw_dashed_rect(lv_obj_t *scr,
 
 // ── Test 1: concentric dashed rectangles ──────────────────────────────────
 static void screen_test_1() {
-  lv_obj_t *scr = lv_scr_act();
+  lv_obj_t *scr = lv_screen_active();
   lv_obj_clear_flag(scr, LV_OBJ_FLAG_SCROLLABLE);
   lv_obj_set_style_bg_color(scr, lv_color_hex(0x0a0a14), LV_STATE_DEFAULT);
   lv_obj_set_style_bg_opa(scr, LV_OPA_COVER, LV_STATE_DEFAULT);
@@ -99,7 +99,7 @@ static void screen_test_1() {
 
 // ── Test 2: text at growing font sizes (8–40, stops if off-screen) ────────
 static void screen_test_2() {
-  lv_obj_t *scr = lv_scr_act();
+  lv_obj_t *scr = lv_screen_active();
   lv_obj_clear_flag(scr, LV_OBJ_FLAG_SCROLLABLE);
   lv_obj_set_style_bg_color(scr, lv_color_hex(0x0a0a14), LV_STATE_DEFAULT);
   lv_obj_set_style_bg_opa(scr, LV_OPA_COVER, LV_STATE_DEFAULT);

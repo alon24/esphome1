@@ -88,7 +88,7 @@ static lv_obj_t *_make_btn(lv_obj_t *parent, const char *text,
                             lv_coord_t x, lv_coord_t y,
                             lv_coord_t w, lv_coord_t h,
                             lv_event_cb_t cb) {
-  lv_obj_t *btn = lv_btn_create(parent);
+  lv_obj_t *btn = lv_button_create(parent);
   lv_obj_set_pos(btn, x, y);
   lv_obj_set_size(btn, w, h);
   if (cb) lv_obj_add_event_cb(btn, cb, LV_EVENT_CLICKED, nullptr);
@@ -114,7 +114,7 @@ static lv_obj_t *_make_textarea(lv_obj_t *parent, const char *initial,
 
 // ── Main UI init — call once after LVGL is ready ───────────────────────────
 static void ui_init() {
-  lv_obj_t *scr = lv_scr_act();
+  lv_obj_t *scr = lv_screen_active();
   lv_obj_set_style_bg_color(scr, lv_color_hex(0x1a1a2e), LV_STATE_DEFAULT);
   lv_obj_clear_flag(scr, LV_OBJ_FLAG_SCROLLABLE);
 

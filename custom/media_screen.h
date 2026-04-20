@@ -64,7 +64,7 @@ static void _media_viewer_open_file(const char *path) {
     dsc.header.w = (uint32_t)iw;
     dsc.header.h = (uint32_t)ih;
 
-    lv_img_set_src(g_media_view_img, &dsc);
+    lv_image_set_src(g_media_view_img, &dsc);
 
     // Fit zoom
     uint16_t zx = (uint16_t)((800 * 256) / (iw > 0 ? iw : 1));
@@ -164,14 +164,14 @@ static void _media_refresh_list() {
 
 static void media_screen_hide() {
     _media_viewer_close();
-    if (g_media_prev_scr) lv_scr_load(g_media_prev_scr);
+    if (g_media_prev_scr) lv_screen_load(g_media_prev_scr);
     g_media_prev_scr = nullptr;
 }
 
 static void media_screen_show(lv_obj_t *prev_scr) {
     if (!g_media_scr) return;
     g_media_prev_scr = prev_scr;
-    lv_scr_load(g_media_scr);
+    lv_screen_load(g_media_scr);
     _media_refresh_list();
 }
 
@@ -323,7 +323,7 @@ static void media_screen_create() {
     lv_obj_clear_flag(g_media_viewer, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_add_flag(g_media_viewer, LV_OBJ_FLAG_HIDDEN);
 
-    g_media_view_img = lv_img_create(g_media_viewer);
+    g_media_view_img = lv_image_create(g_media_viewer);
     lv_obj_set_style_bg_opa(g_media_view_img, LV_OPA_TRANSP, 0);
 
     // Tap viewer to close

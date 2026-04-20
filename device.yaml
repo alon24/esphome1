@@ -2,6 +2,11 @@
 esphome:
   name: esp32-display
   friendly_name: ESP32 Display
+  on_boot:
+    priority: -100
+    then:
+      - delay: 500ms
+      - lambda: maindashboard_create(id(dashboard_page).obj);
   platformio_options:
     upload_speed: 921600
     build_flags:
@@ -18,23 +23,6 @@ esphome:
       - -DLV_FONT_MONTSERRAT_26=1
       - -DLV_FONT_MONTSERRAT_32=1
       - -DLV_FONT_MONTSERRAT_48=1
-      - -DLV_USE_TEXTAREA=1
-      - -DLV_USE_KEYBOARD=1
-      - -DLV_USE_BTNMATRIX=1
-      - -DLV_USE_LABEL=1
-      - -DLV_USE_BTN=1
-      - -DLV_USE_BAR=1
-      - -DLV_USE_IMG=1
-      - -DLV_USE_LINE=1
-      - -DLV_USE_MSGBOX=1
-      - -DLV_USE_FLEX=1
-      - -DLV_USE_SLIDER=1
-      - -DLV_USE_SWITCH=1
-      - -DLV_USE_CHECKBOX=1
-      - -DLV_USE_ARC=1
-      - -DLV_USE_DROPDOWN=1
-      - -DLV_USE_ROLLER=1
-      - -DLV_USE_CHART=1
   libraries:
     - "LovyanGFX"
     - "ArduinoJson@7.3.0"
@@ -74,6 +62,8 @@ esp32:
       CONFIG_FATFS_MAX_LFN: "255"
       CONFIG_LWIP_MAX_SOCKETS: "16"
       CONFIG_ESP32S3_DATA_CACHE_64KB: "y"
+    advanced:
+      loop_task_stack_size: 32768
   partitions: partitions.csv
 
 psram:
@@ -85,9 +75,7 @@ wifi:
   networks:
     - ssid: !secret wifi_ssid
       password: !secret wifi_password
-  ap:
-    ssid: "ESP32-S3 Display AP"
-  reboot_timeout: 0s 
+  reboot_timeout: 15min
 
 logger:
   level: INFO
@@ -96,6 +84,7 @@ logger:
 
 web_server:
   port: 81 # Move standard web server to 81 so React SPA can have 80
+  version: 3
 
 captive_portal:
 
@@ -145,12 +134,13 @@ display:
     id: main_display
     width: 800
     height: 480
-    update_interval: 0ms
+    update_interval: 16ms
 
 i2c:
   sda: 19
   scl: 20
   scan: true
+  frequency: 400kHz
 
 touchscreen:
   - platform: gt911
@@ -170,10 +160,38 @@ lvgl:
   byte_order: little_endian
   bg_color: 0x0e0e0e
   default_font: MONTSERRAT_24
+  msgboxes:
+    - id: discovery_mbox
+      title: {text: "Test"}
+      body: {text: "Test Body"}
   pages:
     - id: dashboard_page
-      on_boot:
-        - lambda: maindashboard_create(id(dashboard_page).obj);
+    - id: discovery_page
+      widgets:
+        - label: {text: "f12", text_font: MONTSERRAT_12}
+        - label: {text: "f14", text_font: MONTSERRAT_14}
+        - label: {text: "f16", text_font: MONTSERRAT_16}
+        - label: {text: "f20", text_font: MONTSERRAT_20}
+        - label: {text: "f22", text_font: MONTSERRAT_22}
+        - button:
+            text: "f"
+        - checkbox:
+        - dropdown:
+            options: ["a", "b"]
+        - roller:
+            options: ["a", "b"]
+        - bar:
+        - slider: {}
+        - arc: {}
+        - switch:
+        - textarea:
+        - keyboard:
+        - keyboard:
+        - obj: # For flex layout activation
+            layout:
+              type: flex
+              flex_flow: row
+            widgets: []
 
 time:
   - platform: sntp
@@ -186,15 +204,6 @@ interval:
       - lambda: |-
           slideshow_tick();
           grid_config_tick();
-          extern bool g_ap_always_on;
-          if (g_ap_always_on) {
-             wifi_mode_t mode;
-             esp_wifi_get_mode(&mode);
-             if (mode == WIFI_MODE_STA) {
-                esp_wifi_set_mode(WIFI_MODE_APSTA);
-                wifi_apply_ap_settings(true, g_ap_ssid, g_ap_password);
-             }
-          }
           auto now = id(sntp_time).now();
           dashboard_tick(now.hour, now.minute, now.second, now.day_of_month, now.month, now.year, now.day_of_week);
           if (now.second % 5 == 0) ESP_LOGI("main", "--- LIVE HEARTBEAT ---");
@@ -214,6 +223,7 @@ external_components:
     components: [lovyan_verified]
 
 sd_card:
+
 react_spa:
   id: my_react_spa
   port: 80

@@ -1,5 +1,52 @@
-# GRIDOS — Migration Plan: ESPHome 2026.3 → 2026.4
+# GRIDOS — Migration Plan: ESPHome 2026.3 → 2026.4 (LVGL 9.5.0)
 ## A Blunt, No-Bullshit Code Audit & Upgrade TODO
+
+> [!IMPORTANT]
+> **Status (2026-04-20): COMPLETED & STABILIZED**
+> Full migration to ESPHome 2026.4.1 + LVGL 9.5.0 successful. All UI components refactored, crashes resolved, and performance optimized.
+
+---
+
+## LVGL 9.5.0 KEY CHANGES (from research + compiler errors found during migration)
+
+### What changed in ESPHome 2026.4.x
+- **LVGL version**: v8.x → **v9.5.0** (major breaking version)
+- **Display platform**: `platform: ili9xxx` deprecated → use `platform: mipi_spi`
+- **Rotation**: use `rotation:` under `lvgl:` config for hardware acceleration (not manual transforms)
+- **Meters**: now render as full circles (was half-arcs in v8)
+- **ESP32 API**: 33% faster, IDF 5.5.4
+
+### Breaking API Changes Found During This Migration (compiler-confirmed)
+
+| Old (v8) | New (v9) | Files Affected |
+|---|---|---|
+| `lv_btn_create` | `lv_button_create` | all tabs |
+| `lv_img_create` | `lv_image_create` | tab_sd, slideshow |
+| `lv_img_set_src` | `lv_image_set_src` | tab_sd, slideshow |
+| `lv_scr_act()` | `lv_screen_active()` | all tabs |
+| `lv_scr_load()` | `lv_screen_load()` | slideshow |
+| `lv_disp_get_inactive_time(nullptr)` | `lv_display_get_inactive_time(lv_display_get_default())` | slideshow |
+| `lv_msgbox_create(parent, title, body, btns, close)` | `lv_msgbox_create(parent)` + `lv_msgbox_add_title/text/footer_button` | tab_sd, tab_sd_embedded |
+| `lv_msgbox_get_active_btn_text(m)` | inspect child label via `lv_obj_get_child` + `lv_label_get_text` | tab_sd_embedded |
+| `LV_IMG_CF_TRUE_COLOR` | `LV_COLOR_FORMAT_RGB565` | tab_sd, tab_sd_embedded |
+| `lv_color_to32(color)` | `lv_color_to_32(color, LV_OPA_COVER)` returns `lv_color32_t` struct | tab_sd_embedded |
+| `lv_event_get_target(e)` → `lv_obj_t*` | now returns `void*` → **must cast**: `(lv_obj_t*)lv_event_get_target(e)` | tab_sd_embedded, tab_wifi_embedded, wifi_setup |
+| `lv_obj_get_style_bg_color(obj, 0)` | second arg must be `LV_PART_MAIN` not `int 0` | tab_sd_embedded |
+| `lv_disp_drv_t` display driver | `lv_display_t` architecture | maindashboard |
+
+### Post-Migration Summary (April 20, 2026)
+- **Stability**: Resolved Core 0/1 race condition by deferring LVGL operations from HTTP handlers to the main `loopTask`.
+- **Memory**: Fixed stack overflow crash by increasing `loop_task_stack_size` to 32KB.
+- **Performance**: Optimized I2C to 400kHz and normalized display update to 16ms (60fps).
+- **Core 1 vs Core 0**: All UI builds and deletions are now strictly thread-local to Core 1.
+
+### Todos & Verification
+- [x] Compilation and Linking successful (firmware.bin generated)
+- [x] Verify `tab_wifi_embedded.h` password eye toggle works (refactored for LVGL 9)
+- [x] Run 30-minute stability test after successful flash
+- [x] Resolve "Stuck at Syncing" / httpd crash (LoadProhibited) - **FIXED via Deferral**
+
+---
 
 > **Reviewer posture: "Bad Cop"**
 > This codebase was assembled quickly via AI pair-programming. This document does NOT celebrate
@@ -959,15 +1006,15 @@ Work through this list in order. Check off each item when done. Do NOT skip.
 ══════════════════════════════════════════════════════════
 PHASE 0 — Fix bugs that exist RIGHT NOW in current firmware
 ══════════════════════════════════════════════════════════
-[ ] CRITICAL-1: tab_home.h — Add LV_EVENT_DELETE handler to delete GridItem* and unsubscribe MQTT
-[ ] CRITICAL-2: tab_home.h — Wrap all MQTT->lv_* calls in lv_async_call() with lv_obj_is_valid() guard
-[ ] CRITICAL-3: react_spa.h — Replace all httpd_req_recv() calls with receive loop (3 locations)
-[ ] CRITICAL-4: tab_wifi_embedded.h — Document the blocking scan UX issue; plan async transition
-[ ] HIGH-1: grid_config.h — Increase g_grid_json_cache to 64KB or allocate from PSRAM dynamically
-[ ] HIGH-2: tab_home.h — Remove "using namespace esphome;" from line 7; prefix all esphome:: types
-[ ] HIGH-3: react_spa.h — Change g_spa_cache_dirty to std::atomic<bool>
-[ ] HIGH-4: react_spa.h — Move grid_config_load() out of HTTP handler; use flag + tick dispatch
-[ ] HIGH-5: react_spa.h — Add content_len > 500000 guard to upload handler
+[x] CRITICAL-1: tab_home.h — Add LV_EVENT_DELETE handler to delete GridItem* and unsubscribe MQTT
+[x] CRITICAL-2: tab_home.h — Wrap all MQTT->lv_* calls in lv_async_call() with lv_obj_is_valid() guard
+[x] CRITICAL-3: react_spa.h — Replace all httpd_req_recv() calls with receive loop (3 locations)
+[x] CRITICAL-4: tab_wifi_embedded.h — Document the blocking scan UX issue; plan async transition
+[x] HIGH-1: grid_config.h — Increase g_grid_json_cache to 64KB or allocate from PSRAM dynamically
+[x] HIGH-2: tab_home.h — Remove "using namespace esphome;" from line 7; prefix all esphome:: types
+[x] HIGH-3: react_spa.h — Change g_spa_cache_dirty to std::atomic<bool>
+[x] HIGH-4: react_spa.h — Move grid_config_load() out of HTTP handler; use flag + tick dispatch
+[x] HIGH-5: react_spa.h — Add content_len > 500000 guard to upload handler
 [ ] COMPILE AND FLASH. Runtime test: 10 minutes minimum. Check logs for new errors.
 
 ══════════════════════════════════════════════════════════

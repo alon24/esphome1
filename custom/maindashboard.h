@@ -28,15 +28,15 @@ static lv_obj_t *g_dash_main_cont   = nullptr;
 static const char *DASH_DAYS[]   = { "Sun","Mon","Tue","Wed","Thu","Fri","Sat" };
 static const char *DASH_MONTHS[] = { "","Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec" };
 
-static void lvgl_flush_cb(lv_disp_drv_t *drv, const lv_area_t *area, lv_color_t *color_p) {
+static void lvgl_flush_cb(lv_display_t *disp, const lv_area_t *area, uint8_t *px_map) {
     auto &lcd = esphome::lovyan_gfx::v_lcd();
-    int32_t w = (area->x2 - area->x1 + 1);
-    int32_t h = (area->y2 - area->y1 + 1);
+    int32_t w = (area->x1 > area->x2) ? (area->x1 - area->x2 + 1) : (area->x2 - area->x1 + 1);
+    int32_t h = (area->y1 > area->y2) ? (area->y1 - area->y2 + 1) : (area->y2 - area->y1 + 1);
     lcd.startWrite();
     lcd.setAddrWindow(area->x1, area->y1, w, h);
-    lcd.writePixels((uint16_t *)&color_p->full, w * h);
+    lcd.writePixels((uint16_t *)px_map, w * h);
     lcd.endWrite();
-    lv_disp_flush_ready(drv);
+    lv_display_flush_ready(disp);
 }
 
 static void maindashboard_create(lv_obj_t *parent) {
@@ -53,8 +53,8 @@ static void maindashboard_create(lv_obj_t *parent) {
     lv_obj_clean(parent);
     lv_obj_t *scr = parent;
 
-    lv_disp_t *disp = lv_disp_get_default();
-    if (disp && disp->driver) disp->driver->flush_cb = lvgl_flush_cb;
+    lv_display_t *disp = lv_display_get_default();
+    if (disp) lv_display_set_flush_cb(disp, lvgl_flush_cb);
 
     lv_obj_set_style_bg_color(scr, lv_color_hex(DASH_BG), 0);
     
@@ -116,12 +116,13 @@ static void maindashboard_create(lv_obj_t *parent) {
 
     // Dynamic Color & IP Timer
     lv_timer_create([](lv_timer_t *t){
-        lv_obj_t *p = (lv_obj_t*)t->user_data;
+        lv_obj_t *p = (lv_obj_t*)lv_timer_get_user_data(t);
+        if (!lv_obj_is_valid(p)) return;
         lv_obj_t *icn = lv_obj_get_child(p, 0);
         wifi_mode_t mode;
         esp_wifi_get_mode(&mode);
         bool active = (mode == WIFI_MODE_AP || mode == WIFI_MODE_APSTA);
-        lv_obj_set_style_text_color(icn, lv_color_hex(active ? 0x00FF00 : 0x555555), 0);
+        if (icn) lv_obj_set_style_text_color(icn, lv_color_hex(active ? 0x00FF00 : 0x555555), 0);
         
         if (g_dash_ap_ip_lbl) {
             if (active) {

@@ -30,12 +30,13 @@ type GridItem = {
 	type: ElementType;
 	x: number;
 	y: number;
-	w: number;
-	h: number;
+	width: number;
+	height: number;
 	panelId?: string;     
 	textColor?: number;   
 	action?: string;      
 	color?: number;       
+	itemBg?: number;     // 5.1 Added
 	value?: number;
 	min?: number;
 	max?: number;
@@ -70,6 +71,7 @@ type Panel = {
 	id: string;
 	name: string;
 	width: number;
+	height: number;
 	bg: number;
 	itemBg: number;
 	elements: GridItem[];
@@ -91,8 +93,11 @@ const SMART_COMPONENTS = [
 // --- UTILS ---
 const safeHex = (num: any, fallback = "000000") => {
 	if (num === undefined || num === null) return fallback;
-	if (typeof num === "string") return num;
-	return num.toString(16).padStart(6, "0");
+	if (typeof num === "string") {
+		const clean = num.replace('#', '');
+		return clean.padStart(6, "0").toUpperCase();
+	}
+	return num.toString(16).padStart(6, "0").toUpperCase();
 };
 
 const brightness = (hex: string) => {
@@ -693,10 +698,23 @@ const PanelNode = ({ pan, isActive }: { pan: Panel, isActive: boolean }) => {
 
 function GridTab({ isMobile, width, wifiStatus, onWifiUpdate, onSettingsUpdate }: { isMobile: boolean, width: number, wifiStatus: WifiStatus, onWifiUpdate: () => void, onSettingsUpdate: (active?: boolean) => void }) {
 	const [project, setProject] = useState<Project>(() => {
+		const VERSION = "2026.4"; // 6.1 Version Guard
+		const savedVersion = localStorage.getItem("ds_project_version");
 		const saved = localStorage.getItem("ds_project_v3");
+		
+		if (savedVersion !== VERSION) {
+			console.warn("New version detected, clearing stale localStorage...");
+			localStorage.removeItem("ds_project_v3");
+			localStorage.setItem("ds_project_version", VERSION);
+			return {
+				screens: [{ id: "main", name: "Main Screen", bg: 0x0e0e12, pages: [{ id: "p1", name: "Page 1", x: 0, y: 0, items: [] }] }],
+				panels: [{ id: "sidebar", name: "Sidebar", width: 160, height: 480, bg: 0x000000, itemBg: 0x000000, elements: [] }]
+			};
+		}
+
 		return saved ? JSON.parse(saved) : {
 			screens: [{ id: "main", name: "Main Screen", bg: 0x0e0e12, pages: [{ id: "p1", name: "Page 1", x: 0, y: 0, items: [] }] }],
-			panels: [{ id: "sidebar", name: "Sidebar", width: 160, bg: 0x000000, itemBg: 0x000000, elements: [] }]
+			panels: [{ id: "sidebar", name: "Sidebar", width: 160, height: 480, bg: 0x000000, itemBg: 0x000000, elements: [] }]
 		};
 	});
 	const [activeScreenId, setActiveScreenId] = useState("main");
@@ -740,7 +758,7 @@ function GridTab({ isMobile, width, wifiStatus, onWifiUpdate, onSettingsUpdate }
 		}));
 		if (selectedEntity?.id === pageId) setSelectedEntity(null);
 	};
-	const [dragInfo, setDragInfo] = useState<{ id: string; pageId: string; startX: number; startY: number; initialX: number; initialY: number; initialW: number; initialH: number; mode: "move" | "resize" } | null>(null);
+	const [dragInfo, setDragInfo] = useState<{ id: string; pageId: string; startX: number; startY: number; initialX: number; initialY: number; initialWidth: number; initialHeight: number; mode: "move" | "resize" } | null>(null);
 	const [showLib, setShowLib] = useState(false);
 	const [showEditor, setShowEditor] = useState(false);
 	const [baseWidth, setBaseWidth] = useState(800);
@@ -788,6 +806,7 @@ function GridTab({ isMobile, width, wifiStatus, onWifiUpdate, onSettingsUpdate }
 			id: `pan_${Math.random().toString(36).substr(2, 5)}`,
 			name: `Navigation ${project.panels.length+1}`,
 			width: 160,
+			height: 480,
 			bg: 0x4f46e5,
 			itemBg: 0x6366f1,
 			elements: []
@@ -867,7 +886,7 @@ function GridTab({ isMobile, width, wifiStatus, onWifiUpdate, onSettingsUpdate }
 
 	const addItem = (type: ElementType, pageId: string, parentId?: string, panelId?: string, forceX?: number, forceY?: number, itemOverride?: Partial<GridItem>) => {
 		const newId = `${type}_${Math.random().toString(36).substr(2, 5)}`;
-		const newItem: GridItem = { id: newId, name: `New ${type}`, type, x: forceX ?? 20, y: forceY ?? 20, w: type === 'panel-ref' ? 160 : 120, h: type === 'panel-ref' ? 416 : 40, textColor: 0xffffff, color: 0x4f46e5, value: 50, min: 0, max: 100, options: "Item 1\nItem 2\nItem 3", borderWidth: 0, radius: 0, panelId, ...itemOverride };
+		const newItem: GridItem = { id: newId, name: `New ${type}`, type, x: forceX ?? 20, y: forceY ?? 20, width: type === 'panel-ref' ? 160 : 120, height: type === 'panel-ref' ? 416 : 40, textColor: 0xffffff, color: 0x4f46e5, value: 50, min: 0, max: 100, options: "Item 1\nItem 2\nItem 3", borderWidth: 0, radius: 0, panelId, ...itemOverride };
 		
 		if (pageId === 'panel' && editingPanel) {
 			setProject(prev => ({
@@ -982,9 +1001,16 @@ function GridTab({ isMobile, width, wifiStatus, onWifiUpdate, onSettingsUpdate }
 		setIsSyncing(true);
 		setSyncStatus('idle');
 		try {
+			const controller = new AbortController();
+			const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
+
 			// 1. Sync Panels
 			if (useRemote) {
-				await fetch(`http://${targetIp}/api/grid/panels`, { method: "POST", body: JSON.stringify(project.panels) });
+				await fetch(`http://${targetIp}/api/grid/panels`, { 
+					method: "POST", 
+					body: JSON.stringify(project.panels),
+					signal: controller.signal
+				});
 			} else {
 				await API.savePanels(project.panels);
 			}
@@ -1011,12 +1037,14 @@ function GridTab({ isMobile, width, wifiStatus, onWifiUpdate, onSettingsUpdate }
 					await fetch(`http://${targetIp}/api/grid/config?name=${scr.id}`, { 
 						method: "POST", 
 						headers: { 'Content-Type': 'application/json' },
-						body: JSON.stringify(scrData) 
+						body: JSON.stringify(scrData),
+						signal: controller.signal
 					});
 				} else {
 					await API.saveGrid(scr.id, scrData);
 				}
 			}
+			clearTimeout(timeoutId);
 			if (useRemote) {
 				setSyncStatus('success');
 				setTimeout(() => setSyncStatus('idle'), 3000);
@@ -1037,7 +1065,7 @@ function GridTab({ isMobile, width, wifiStatus, onWifiUpdate, onSettingsUpdate }
 			if (dragInfo) {
 				const dx = clientX - dragInfo.startX; const dy = clientY - dragInfo.startY;
 				if (dragInfo.mode === "move") updateItem(dragInfo.pageId, dragInfo.id, { x: Math.max(0, Math.round(dragInfo.initialX + dx/scale)), y: Math.max(0, Math.round(dragInfo.initialY + dy/scale)) });
-				else updateItem(dragInfo.pageId, dragInfo.id, { w: Math.max(10, Math.round(dragInfo.initialW + dx/scale)), h: Math.max(10, Math.round(dragInfo.initialH + dy/scale)) });
+				else updateItem(dragInfo.pageId, dragInfo.id, { width: Math.max(10, Math.round(dragInfo.initialWidth + dx/scale)), height: Math.max(10, Math.round(dragInfo.initialHeight + dy/scale)) });
 			}
 		};
 		const onUp = () => setDragInfo(null);
@@ -1152,7 +1180,7 @@ function GridTab({ isMobile, width, wifiStatus, onWifiUpdate, onSettingsUpdate }
 										}}
 										onDoubleClick={() => {
 											const targetPageId = selectedEntity?.type === 'page' ? selectedEntity.id : (activeScreen.pages[0]?.id ?? '');
-											if (targetPageId) addItem("component", targetPageId, undefined, undefined, 160, 0, { name: comp.label, component: comp.id, w: comp.defaultW, h: comp.defaultH, color: 0x0e0e0e });
+											if (targetPageId) addItem("component", targetPageId, undefined, undefined, 160, 0, { name: comp.label, component: comp.id, width: comp.defaultW, height: comp.defaultH, color: 0x0e0e0e });
 										}}
 										style={{ display: "flex", alignItems: "center", gap: "10px", padding: "10px 12px", background: "white", border: "1px solid #ddd6fe", borderRadius: "8px", cursor: "grab", userSelect: "none", transition: "all 0.15s" }}
 										onMouseEnter={e => (e.currentTarget.style.boxShadow = "0 4px 12px rgba(99,102,241,0.2)")}
@@ -1236,10 +1264,10 @@ function GridTab({ isMobile, width, wifiStatus, onWifiUpdate, onSettingsUpdate }
 														}}
 														style={{ position: "absolute", left: pg.x, top: pg.y, width: baseWidth, height: baseHeight, outline: selectedEntity?.id === pg.id ? "3px solid orange" : "none", border: "2px dashed rgba(99, 102, 241, 0.4)" }}>
 														{pg.items.map(it => (
-															<div key={it.id} onMouseDown={(e) => { e.stopPropagation(); setSelectedEntity({ type: 'item', id: it.id, pageId: pg.id }); setDragInfo({ id: it.id, pageId: pg.id, startX: e.clientX, startY: e.clientY, initialX: it.x, initialY: it.y, initialW: it.w, initialH: it.h, mode: "move" }); }} style={{ position: "absolute", left: it.x, top: it.y, width: it.w, height: it.type === 'panel-ref' ? baseHeight : it.h, outline: selectedEntity?.id === it.id ? "3px solid #6366f1" : "none", outlineOffset: 3, zIndex: 10 }}>
+															<div key={it.id} onMouseDown={(e) => { e.stopPropagation(); setSelectedEntity({ type: 'item', id: it.id, pageId: pg.id }); setDragInfo({ id: it.id, pageId: pg.id, startX: e.clientX, startY: e.clientY, initialX: it.x, initialY: it.y, initialWidth: it.width, initialHeight: it.height, mode: "move" }); }} style={{ position: "absolute", left: it.x, top: it.y, width: it.width, height: it.type === 'panel-ref' ? baseHeight : it.height, outline: selectedEntity?.id === it.id ? "3px solid #6366f1" : "none", outlineOffset: 3, zIndex: 10 }}>
 																{renderWidget(it, project.panels, pg.id, (id, pId) => setSelectedEntity({ type: 'item', id, pageId: pId }), selectedEntity?.id)}
 																{selectedEntity?.id === it.id && (
-																	<div onMouseDown={(e) => { e.stopPropagation(); setDragInfo({ id: it.id, pageId: pg.id, startX: e.clientX, startY: e.clientY, initialX: it.x, initialY: it.y, initialW: it.w, initialH: it.h, mode: "resize" }); }} style={{ position: "absolute", right: -6, bottom: it.type === 'panel-ref' ? "50%" : -6, width: 16, height: 16, background: "#6366f1", borderRadius: "50%", cursor: it.type === 'panel-ref' ? "ew-resize" : "nwse-resize", zIndex: 100 }} />
+																	<div onMouseDown={(e) => { e.stopPropagation(); setDragInfo({ id: it.id, pageId: pg.id, startX: e.clientX, startY: e.clientY, initialX: it.x, initialY: it.y, initialWidth: it.width, initialHeight: it.height, mode: "resize" }); }} style={{ position: "absolute", right: -6, bottom: it.type === 'panel-ref' ? "50%" : -6, width: 16, height: 16, background: "#6366f1", borderRadius: "50%", cursor: it.type === 'panel-ref' ? "ew-resize" : "nwse-resize", zIndex: 100 }} />
 																)}
 															</div>
 														))}
@@ -1303,8 +1331,8 @@ function GridTab({ isMobile, width, wifiStatus, onWifiUpdate, onSettingsUpdate }
 											<div style={{ flex: 1 }}><label style={s.formLabel}>COOR Y</label><input type="number" style={s.input} value={selectedItem.y} onChange={e => updateItem(selectedEntity.pageId!, selectedItem.id, {y: parseInt(e.target.value)||0})} /></div>
 										</div>
 										<div style={{ display: "flex", gap: "12px" }}>
-											<div style={{ flex: 1 }}><label style={s.formLabel}>W (PX)</label><input type="number" style={s.input} value={selectedItem.w} onChange={e => updateItem(selectedEntity.pageId!, selectedItem.id, {w: parseInt(e.target.value)||0})} /></div>
-											<div style={{ flex: 1 }}><label style={s.formLabel}>H (PX)</label><input type="number" style={s.input} value={selectedItem.h} onChange={e => updateItem(selectedEntity.pageId!, selectedItem.id, {h: parseInt(e.target.value)||0})} /></div>
+											<div style={{ flex: 1 }}><label style={s.formLabel}>WIDTH (PX)</label><input type="number" style={s.input} value={selectedItem.width} onChange={e => updateItem(selectedEntity.pageId!, selectedItem.id, {width: parseInt(e.target.value)||0})} /></div>
+											<div style={{ flex: 1 }}><label style={s.formLabel}>HEIGHT (PX)</label><input type="number" style={s.input} value={selectedItem.height} onChange={e => updateItem(selectedEntity.pageId!, selectedItem.id, {height: parseInt(e.target.value)||0})} /></div>
 										</div>
 									</>
 								)}
@@ -1403,7 +1431,7 @@ function GridTab({ isMobile, width, wifiStatus, onWifiUpdate, onSettingsUpdate }
 											
 											<div style={{ borderTop: "1px solid #f1f5f9", paddingTop: "15px", marginTop: "10px" }}>
 												<span style={s.formLabel}>MASTER MENU ITEMS ({pan.elements.length})</span>
-												<button onClick={() => updatePanel(pan.id, { elements: [...pan.elements, { id: `men_${Math.random().toString(36).substr(2,5)}`, name: "New Link", type: "menu-item", action: "", x:0, y:0, w:0, h:36 }] })} style={{ ...s.secondaryBtn, width: "100%", marginTop: "10px" }}>+ ADD MASTER ITEM</button>
+												<button onClick={() => updatePanel(pan.id, { elements: [...pan.elements, { id: `men_${Math.random().toString(36).substr(2,5)}`, name: "New Link", type: "menu-item", action: "", x:0, y:0, width:0, height:36 }] })} style={{ ...s.primaryBtn, width: "100%", marginTop: "10px" }}>+ ADD MASTER ITEM</button>
 												{pan.elements.map((el, idx) => (
 													<div key={el.id} style={{ border: "1px solid #f1f5f9", padding: "10px", borderRadius: "8px", marginTop: "10px", background: "#f8fafc" }}>
 														<div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -1590,7 +1618,7 @@ function GridRenderer({ project, activeScreenId }: { project: Project | null, ac
 			{activeScreen.pages.map(pg => (
 				<div key={pg.id} style={{ position: "absolute", left: pg.x, top: pg.y, width: "100%", height: "100%" }}>
 					{pg.items.map(it => (
-						<div key={it.id} style={{ position: "absolute", left: it.x, top: it.y, width: it.w, height: it.h, zIndex: 10 }}>
+						<div key={it.id} style={{ position: "absolute", left: it.x, top: it.y, width: it.width, height: it.height, zIndex: 10 }}>
 							{renderWidget(it, project.panels, pg.id, undefined, undefined)}
 						</div>
 					))}

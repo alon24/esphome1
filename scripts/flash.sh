@@ -22,7 +22,11 @@ HEADER="$ROOT_DIR/custom/version_info.h"
 
 # ── Find esphome executable ───────────────────────────────────────────────────
 if [ -z "${ESPHOME:-}" ]; then
-  if command -v esphome &>/dev/null; then
+  if docker ps --format '{{.Names}}' | grep -q "^esphome$"; then
+    # We are in a VM, but there is an esphome docker container running. Use it!
+    ESPHOME="docker exec -w /app/esphome1 esphome esphome"
+    echo "▶  Using ESPHome 2026.4.1 from docker container (esphome)"
+  elif command -v esphome &>/dev/null; then
     ESPHOME="esphome"
   elif [ -x "$ROOT_DIR/venv/bin/esphome" ]; then
     ESPHOME="$ROOT_DIR/venv/bin/esphome"

@@ -1,4 +1,4 @@
-# ESP32 Display — ESPHome + React SPA (v110-GRIDOS-ULTIMATE)
+# ESP32 Display — ESPHome + React SPA (v110-GRIDOS-ULTIMATE-V9)
 
 A professional-grade, high-fidelity media station and UI designer powered by an ESP32-S3. This project features a **Memory-Persistent Digital Twin Designer** with pixel-perfect hardware parity, standalone WiFi Access Point modes, and a resilient autonomous filesystem engine.
 
@@ -32,7 +32,7 @@ A professional-grade, high-fidelity media station and UI designer powered by an 
 ### Key Features
 - **Deterministic Restore**: The hardware consumes its own Digital Twin state from SPIFFS on every power cycle.
 - **Standalone WiFi Orchestration**: Configure SSID/Pass in the builder; hardware acts as a primary AP.
-- **Precision 1:1 Rendering**: LVGL 8.4 engine maps React widgets with absolute coordinate parity.
+- **Precision 1:1 Rendering**: LVGL 9.5.0 engine maps React widgets with absolute coordinate parity.
 - **Autonomous Mount**: Filesystem ready-checks ensure data integrity before UI initialization.
 - **mDNS Zero-Config**: Access the dashboard at `http://esp32-display.local/` or via AP IP `192.168.4.1`.
 - **SD Media Engine**: Interactive slideshow with touch navigation and remote control.
@@ -43,7 +43,7 @@ A professional-grade, high-fidelity media station and UI designer powered by an 
 
 | Tool | Version | Notes |
 |------|---------|-------|
-| ESPHome | 2026.3.2 | Pre-installed in `venv/` — no global install needed |
+| ESPHome | 2026.4.1 | Pre-installed in `venv/` — no global install needed |
 | Python | 3.12 | Required to recreate venv if needed |
 | Bun | latest | `curl -fsSL https://bun.sh/install \| bash` |
 | curl | any | Pre-installed on most systems |
@@ -271,7 +271,7 @@ esphome1/
 
 ## LVGL (on-device UI)
 
-The local touchscreen UI is built with LVGL 8.4.0 via custom C++ headers included in `device.yaml`. The React web app and LVGL display run independently.
+The local touchscreen UI is built with LVGL 9.5.0 via custom C++ headers included in `device.yaml`. The React web app and LVGL display run independently.
 
 ### Tab layout (800×480)
 

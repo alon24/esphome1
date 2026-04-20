@@ -2,11 +2,7 @@
 #include "lvgl.h"
 #include <esp_spiffs.h>
 #include "esp_log.h"
-#ifdef USE_MQTT
-#include "esphome/components/mqtt/mqtt_client.h"
-#endif
 
-using namespace esphome;
 #include "ui_helpers.h"
 #include "grid_config.h"
 #include "tab_wifi_embedded.h"
@@ -26,12 +22,33 @@ static lv_obj_t *g_home_grid_cont = nullptr;
 static void _home_render_item(lv_obj_t *parent, const GridItem &it, int offsetX = 0, int offsetY = 0);
 
 static std::map<std::string, lv_obj_t*> g_lv_screen_cache;
+static std::vector<std::string> g_lv_cache_order; // LRU order tracker
+
+static void _prune_cache_lru(const std::string& current) {
+    // Move current to front of order
+    auto it = std::find(g_lv_cache_order.begin(), g_lv_cache_order.end(), current);
+    if (it != g_lv_cache_order.end()) g_lv_cache_order.erase(it);
+    g_lv_cache_order.insert(g_lv_cache_order.begin(), current);
+
+    // Evict oldest if > 2
+    if (g_lv_cache_order.size() > 2) {
+        std::string evict_name = g_lv_cache_order.back();
+        g_lv_cache_order.pop_back();
+        if (g_lv_screen_cache.count(evict_name)) {
+            lv_obj_t* obj = g_lv_screen_cache[evict_name];
+            if (lv_obj_is_valid(obj)) lv_obj_del(obj);
+            g_lv_screen_cache.erase(evict_name);
+            ESP_LOGI("GRID", "LRU Cache Evicted: %s", evict_name.c_str());
+        }
+    }
+}
 
 void grid_config_clear_cache() {
     for (auto const& [name, obj] : g_lv_screen_cache) {
         if (lv_obj_is_valid(obj)) lv_obj_del(obj);
     }
     g_lv_screen_cache.clear();
+    g_lv_cache_order.clear();
 }
 
 void grid_config_clear_screen_cache(const std::string& name) {
@@ -39,6 +56,9 @@ void grid_config_clear_screen_cache(const std::string& name) {
         lv_obj_t* obj = g_lv_screen_cache[name];
         if (lv_obj_is_valid(obj)) lv_obj_del(obj);
         g_lv_screen_cache.erase(name);
+        
+        auto it = std::find(g_lv_cache_order.begin(), g_lv_cache_order.end(), name);
+        if (it != g_lv_cache_order.end()) g_lv_cache_order.erase(it);
     }
 }
 
@@ -77,6 +97,8 @@ void ui_refresh_grid() {
 
         if (g_current_screen == "wifi") tab_wifi_on_show();
         if (g_current_screen == "sd") tab_sd_on_show();
+
+        _prune_cache_lru(g_current_screen);
         return;
     }
 
@@ -91,7 +113,7 @@ void ui_refresh_grid() {
 
     // Support direct navigation to native screens as top-level pages
     if (g_current_screen == "wifi" || g_current_screen == "native-wifi") {
-        tab_wifi_create(scr_cont, lv_scr_act());
+        tab_wifi_create(scr_cont, lv_screen_active());
         tab_wifi_on_show();
         return;
     }
@@ -119,6 +141,8 @@ void ui_refresh_grid() {
             lv_obj_add_flag(obj, LV_OBJ_FLAG_HIDDEN);
         }
     }
+    
+    _prune_cache_lru(g_current_screen);
 }
 
 static void _item_event_cb(lv_event_t *e) {
@@ -138,6 +162,33 @@ static void _item_event_cb(lv_event_t *e) {
         if (action) free(action);
     }
 }
+
+#ifdef USE_MQTT
+struct MqttUpdateData {
+    lv_obj_t *obj;
+    std::string type;
+    std::string payload;
+};
+
+static void _mqtt_lvgl_update_async(void *arg) {
+    auto *u = (MqttUpdateData *)arg;
+    if (lv_obj_is_valid(u->obj)) {
+        if (u->type == "switch" || u->type == "checkbox") {
+            if (u->payload == "ON" || u->payload == "1" || u->payload == "true") lv_obj_add_state(u->obj, LV_STATE_CHECKED);
+            else lv_obj_clear_state(u->obj, LV_STATE_CHECKED);
+        } else if (u->type == "slider") {
+            lv_slider_set_value(u->obj, atoi(u->payload.c_str()), LV_ANIM_ON);
+        } else if (u->type == "arc") {
+            lv_arc_set_value(u->obj, atoi(u->payload.c_str()));
+        } else if (u->type == "bar") {
+            lv_bar_set_value(u->obj, atoi(u->payload.c_str()), LV_ANIM_ON);
+        } else if (u->type == "label") {
+            lv_label_set_text(u->obj, u->payload.c_str());
+        }
+    }
+    delete u;
+}
+#endif
 
 #ifdef USE_MQTT
 static void _home_item_mqtt_cb(lv_event_t *e) {
@@ -164,7 +215,7 @@ static void _home_item_mqtt_cb(lv_event_t *e) {
     }
     
     if (!val.empty()) {
-        mqtt::global_mqtt_client->publish(it->mqttTopic, val);
+        esphome::mqtt::global_mqtt_client->publish(it->mqttTopic, val);
     }
 }
 #endif
@@ -181,7 +232,7 @@ static void _home_render_item(lv_obj_t *parent, const GridItem &it, int offsetX,
         if (pDef) {
             lv_obj_t *panel_obj = lv_obj_create(parent);
             _panel_reset(panel_obj);
-            lv_obj_set_size(panel_obj, it.w, it.h);
+            lv_obj_set_size(panel_obj, it.width, it.height);
             lv_obj_set_pos(panel_obj, it.x + offsetX, it.y + offsetY);
             if (pDef->bg > 0) {
                 lv_obj_set_style_bg_color(panel_obj, lv_color_hex(pDef->bg), 0);
@@ -204,7 +255,7 @@ static void _home_render_item(lv_obj_t *parent, const GridItem &it, int offsetX,
 
     // 1. Create native widget or container
     if (it.type == "btn") {
-        obj = lv_btn_create(parent);
+        obj = lv_button_create(parent);
         lv_obj_t *lbl = lv_label_create(obj);
         lv_label_set_text(lbl, it.name.empty() ? "BTN" : it.name.c_str());
         lv_obj_center(lbl);
@@ -249,14 +300,14 @@ static void _home_render_item(lv_obj_t *parent, const GridItem &it, int offsetX,
         obj = lv_obj_create(parent);
         _panel_reset(obj);
     } else if (it.type == "menu-item") {
-        obj = lv_btn_create(parent);
+        obj = lv_button_create(parent);
         lv_obj_t *lbl = lv_label_create(obj);
         lv_label_set_text(lbl, it.name.empty() ? "MENU ITEM" : it.name.c_str());
         lv_obj_center(lbl);
         lv_obj_set_style_text_color(lbl, lv_color_hex(it.textColor), 0);
     } else if (it.type == "native-wifi") {
         obj = lv_obj_create(parent); _panel_reset(obj); lv_obj_clear_flag(obj, LV_OBJ_FLAG_SCROLLABLE);
-        tab_wifi_create(obj, lv_scr_act()); tab_wifi_on_show();
+        tab_wifi_create(obj, lv_screen_active()); tab_wifi_on_show();
     } else if (it.type == "native-system") {
         obj = lv_obj_create(parent); _panel_reset(obj); lv_obj_clear_flag(obj, LV_OBJ_FLAG_SCROLLABLE);
         tab_settings_create(obj);
@@ -282,7 +333,7 @@ static void _home_render_item(lv_obj_t *parent, const GridItem &it, int offsetX,
             lv_obj_set_size(obj, lv_pct(100), 54); // Improved touch target
         } else {
             lv_obj_set_pos(obj, it.x + offsetX, it.y + offsetY);
-            lv_obj_set_size(obj, it.w, it.h);
+            lv_obj_set_size(obj, it.width, it.height);
         }
 
         // Colors & Shape
@@ -309,15 +360,22 @@ static void _home_render_item(lv_obj_t *parent, const GridItem &it, int offsetX,
         if (!it.mqttTopic.empty()) {
             GridItem *persist_it = new GridItem(it);
             lv_obj_set_user_data(obj, persist_it);
+
+            // CRITICAL-1: Cleanup persist_it and unsubscribe on delete
+            lv_obj_add_event_cb(obj, [](lv_event_t *e) {
+                GridItem *data = (GridItem *)lv_obj_get_user_data(lv_event_get_target(e));
+                if (data) {
+                    if (esphome::mqtt::global_mqtt_client) {
+                        esphome::mqtt::global_mqtt_client->unsubscribe(data->mqttTopic);
+                    }
+                    delete data;
+                }
+            }, LV_EVENT_DELETE, nullptr);
             
-            mqtt::global_mqtt_client->subscribe(it.mqttTopic, [obj, persist_it](const std::string &topic, const std::string &payload) {
-                if (persist_it->type == "switch" || persist_it->type == "checkbox") {
-                    if (payload == "ON" || payload == "1" || payload == "true") lv_obj_add_state(obj, LV_STATE_CHECKED);
-                    else lv_obj_clear_state(obj, LV_STATE_CHECKED);
-                } else if (persist_it->type == "slider") lv_slider_set_value(obj, atoi(payload.c_str()), LV_ANIM_ON);
-                else if (persist_it->type == "arc") lv_arc_set_value(obj, atoi(payload.c_str()));
-                else if (persist_it->type == "bar") lv_bar_set_value(obj, atoi(payload.c_str()), LV_ANIM_ON);
-                else if (persist_it->type == "label") lv_label_set_text(obj, payload.c_str());
+            // CRITICAL-2: Thread safe callback via lv_async_call
+            esphome::mqtt::global_mqtt_client->subscribe(it.mqttTopic, [obj, persist_it](const std::string &topic, const std::string &payload) {
+                auto *u = new MqttUpdateData{obj, persist_it->type, payload};
+                lv_async_call(_mqtt_lvgl_update_async, u);
             });
 
             lv_obj_add_event_cb(obj, _home_item_mqtt_cb, LV_EVENT_VALUE_CHANGED, nullptr);
@@ -332,7 +390,7 @@ void tab_home_create(lv_obj_t *parent) {
     g_home_grid_cont = lv_obj_create(parent);
     lv_obj_set_size(g_home_grid_cont, 800, 416);
     _panel_reset(g_home_grid_cont);
-    lv_obj_add_flag(g_home_grid_cont, LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_SCROLL_MOMENTUM);
+    lv_obj_add_flag(g_home_grid_cont, (lv_obj_flag_t)(LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_SCROLL_MOMENTUM));
     lv_obj_set_scrollbar_mode(g_home_grid_cont, LV_SCROLLBAR_MODE_AUTO);
     
     // Pulse arrow hint at bottom

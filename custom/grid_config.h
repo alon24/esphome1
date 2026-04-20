@@ -5,6 +5,7 @@
 #include <ArduinoJson.h>
 #include <esp_spiffs.h>
 #include "esp_log.h"
+#include "system_settings.h"
 
 // ── ABSOLUTE GRID CONFIG (v92) ───────────────────────────────────────────────
 
@@ -12,8 +13,9 @@ struct GridItem {
     std::string id;
     std::string name;
     std::string type;
-    int x, y, w, h;
+    int x, y, width, height;
     uint32_t color;
+    uint32_t itemBg;            // 5.1: Added item background
     uint32_t textColor;
     std::string panelId;
     std::string action;
@@ -30,7 +32,7 @@ struct GridItem {
 struct Panel {
     std::string id;
     std::string name;
-    int w, h;
+    int width, height;
     uint32_t bg;
     std::vector<GridItem> elements;
 };
@@ -40,10 +42,12 @@ static std::vector<Panel> g_panels;
 static uint32_t g_grid_bg = 0x0e0e0e;
 static uint32_t g_grid_border_color = 0x222222;
 static int g_grid_border_width = 0;
-extern char g_active_screen[64];
+// Shared State
 static std::string g_current_screen = "main";
-char g_grid_json_cache[8192] __attribute__((weak)); 
-bool g_grid_needs_refresh = false;
+inline char g_grid_json_cache[65536] __attribute__((weak)); 
+inline bool g_grid_needs_refresh = false;
+inline bool g_grid_needs_cache_clear = false;
+inline std::string g_pending_nav_screen = "";
 static bool g_grid_clear_needed = false;
 static std::string g_grid_clear_screen = "";
 
@@ -51,8 +55,8 @@ inline std::string get_screen_path(const std::string& name) {
     std::string n = name;
     for (auto & c : n) c = tolower(c);
     if (n == "main") return "/spiffs/grid.json";
-    if (name.compare(0, 4, "scr_") == 0) return "/spiffs/" + name + ".json";
-    return "/spiffs/scr_" + name + ".json";
+    if (n.compare(0, 4, "scr_") == 0) return "/spiffs/" + n + ".json";
+    return "/spiffs/scr_" + n + ".json";
 }
 
 void ui_refresh_grid();
@@ -66,9 +70,10 @@ static void parse_grid_item(JsonObject eObj, GridItem& it) {
     it.name      = eObj["name"]      | "Item";
     it.x         = eObj["x"]         | 0;
     it.y         = eObj["y"]         | 0;
-    it.w         = eObj["w"]         | 100;
-    it.h         = eObj["h"]         | 40;
+    it.width     = eObj["width"]     | eObj["w"] | 100; // 5.1 Legacy support
+    it.height    = eObj["height"]    | eObj["h"] | 40;  // 5.1 Legacy support
     it.color     = eObj["color"]     | 0x333333;
+    it.itemBg    = eObj["itemBg"]    | 0x000000;         // 5.1 Added
     it.textColor = eObj["textColor"] | 0xFFFFFF;
     it.panelId   = eObj["panelId"]   | "";
     it.action    = eObj["action"]    | "";
@@ -123,8 +128,8 @@ void grid_panels_load() {
         Panel p;
         p.id = pObj["id"] | "";
         p.name = pObj["name"] | "";
-        p.w = pObj["w"] | 100;
-        p.h = pObj["h"] | 100;
+        p.width = pObj["width"] | pObj["w"] | 100;
+        p.height = pObj["height"] | pObj["h"] | 100;
         p.bg = pObj["bg"] | 0;
         JsonArray els = pObj["elements"].as<JsonArray>();
         for (JsonObject eObj : els) {
@@ -207,8 +212,8 @@ void grid_config_load(const char* name, bool force = false) {
     }
     
     // Cache for web UI retrieval
-    strncpy(g_grid_json_cache, buf, 8191);
-    g_grid_json_cache[8191] = '\0';
+    strncpy(g_grid_json_cache, buf, 65535);
+    g_grid_json_cache[65535] = '\0';
     free(buf);
 }
 
@@ -226,9 +231,10 @@ void grid_config_save(const char* json_str, const char* name) {
         fclose(f);
         ESP_LOGI("GRID", "Saved screen: %s", path.c_str());
     }
+    
+    // Defer UI update to main loop task to avoid Core 0/1 race condition
+    g_grid_needs_cache_clear = true;
     g_grid_needs_refresh = true;
-    grid_config_clear_screen_cache(g_current_screen);
-    grid_config_load(g_current_screen.c_str(), true);
 }
 
 void ui_navigate_to(const char* name) {
@@ -256,12 +262,43 @@ void grid_panels_save(const char* json_str) {
 void grid_list_screens(char* out, size_t max_len) {
     JsonDocument doc;
     JsonArray arr = doc["screens"].to<JsonArray>();
-    arr.add("main");
+    
+    // 5.2 Real screen listing
+    DIR *dir = opendir("/spiffs");
+    if (dir) {
+        struct dirent *e;
+        while ((e = readdir(dir)) != nullptr) {
+            std::string name(e->d_name);
+            if (name.size() > 5 && name.substr(name.size()-5) == ".json") {
+                if (name == "grid.json") arr.add("main");
+                else if (name.substr(0, 4) == "scr_") {
+                    arr.add(name.substr(4, name.size()-9).c_str()); // strip scr_ and .json
+                } else {
+                    arr.add(name.substr(0, name.size()-5).c_str()); // fallback strip .json
+                }
+            }
+        }
+        closedir(dir);
+    } else {
+        arr.add("main");
+    }
+    
     serializeJson(doc, out, max_len);
 }
 
 void grid_config_tick() {
     if (g_grid_needs_refresh) {
+        if (g_grid_needs_cache_clear) {
+            void grid_config_clear_screen_cache(const std::string& name);
+            grid_config_clear_screen_cache(g_current_screen);
+            g_grid_needs_cache_clear = false;
+            grid_config_load(g_current_screen.c_str(), true); // reload from file
+        }
+        
+        if (!g_pending_nav_screen.empty()) {
+            ui_navigate_to(g_pending_nav_screen.c_str());
+            g_pending_nav_screen = "";
+        }
         g_grid_needs_refresh = false;
         ui_refresh_grid();
     }
