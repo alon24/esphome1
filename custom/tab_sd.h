@@ -22,15 +22,6 @@ namespace esphome {
 #include "esp_log.h"
 #include <stdlib.h>
 
-#define STBI_ONLY_JPEG
-#define STBI_NO_STDIO
-#define STB_IMAGE_IMPLEMENTATION
-#define STBI_MALLOC(sz)           malloc(sz)
-#define STBI_REALLOC(p,sz)        realloc(p,sz)
-#define STBI_FREE(p)              free(p)
-#ifndef STBIDEF
-#define STBIDEF                   static inline
-#endif
 #include "stb_image.h"
 
 
@@ -54,6 +45,24 @@ static std::vector<char*> g_sd_path_pool;
 static void _sd_clear_pool() {
     for (char *p : g_sd_path_pool) free(p);
     g_sd_path_pool.clear();
+}
+
+static void _sd_on_delete(lv_event_t *e) {
+    if (g_sd_viewer) {
+        lv_obj_del(g_sd_viewer);
+        g_sd_viewer = nullptr;
+    }
+    g_sd_list_view = nullptr;
+    g_sd_img_obj = nullptr;
+    g_sd_status_lbl = nullptr;
+    g_sd_path_lbl = nullptr;
+    g_sd_tab_visible = false;
+    if (g_sd_raw_buf) { 
+        free(g_sd_raw_buf); 
+        g_sd_raw_buf = nullptr; 
+        g_sd_img_dsc.data = nullptr;
+    }
+    _sd_clear_pool();
 }
 
 static char *_sd_pool_strdup(const std::string &s) {
@@ -638,7 +647,8 @@ static void _sd_scan() {
 }
 
 // ── Create tab ────────────────────────────────────────────────────────────────
-static void tab_sd_create(lv_obj_t *parent) {
+void tab_sd_create(lv_obj_t *parent) {
+    lv_obj_add_event_cb(parent, _sd_on_delete, LV_EVENT_DELETE, nullptr);
 
     // Current path label (scrolling, replaces static title)
     g_sd_path_lbl = lv_label_create(parent);
@@ -696,7 +706,7 @@ static void tab_sd_create(lv_obj_t *parent) {
 
     // Scrollable file/dir list (occupies most of the tab)
     g_sd_list_view = lv_obj_create(parent);
-    lv_obj_set_size(g_sd_list_view, 600, 304);
+    lv_obj_set_size(g_sd_list_view, 760, 304);
     lv_obj_set_pos(g_sd_list_view, 20, 46);
     lv_obj_set_scroll_dir(g_sd_list_view, LV_DIR_VER);
     lv_obj_set_scrollbar_mode(g_sd_list_view, LV_SCROLLBAR_MODE_AUTO);
@@ -785,7 +795,7 @@ static void tab_sd_create(lv_obj_t *parent) {
 }
 
 // Called when the SD tab becomes active — scan every time
-static void tab_sd_on_show() {
+void tab_sd_on_show() {
     g_sd_tab_visible = true;
     g_sd_cur_path = SD_TAB_MOUNT;
     esphome::sd_card::g_sd_newly_mounted = false;  // consume any pending flag

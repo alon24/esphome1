@@ -9,6 +9,10 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
+#define STB_IMAGE_IMPLEMENTATION
+#define STBI_NO_THREAD_LOCALS
+#include "stb_image.h"
+
 // Sunton 8048S043 SD card SPI pins
 #define SD_CS_GPIO    GPIO_NUM_10
 #define SD_MOSI_GPIO  GPIO_NUM_11

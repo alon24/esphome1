@@ -23,66 +23,10 @@
 static lv_obj_t *g_dash_time_lbl    = nullptr;
 static lv_obj_t *g_dash_ip_lbl      = nullptr;
 static lv_obj_t *g_dash_ap_ip_lbl   = nullptr;
-static lv_obj_t *g_dash_tabs[4]     = {nullptr, nullptr, nullptr, nullptr};
-static lv_obj_t *g_dash_nav_btns[4] = {nullptr, nullptr, nullptr, nullptr};
-static int        g_dash_active_tab = 0;
+static lv_obj_t *g_dash_main_cont   = nullptr;
 
 static const char *DASH_DAYS[]   = { "Sun","Mon","Tue","Wed","Thu","Fri","Sat" };
 static const char *DASH_MONTHS[] = { "","Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec" };
-
-static void _dash_update_nav_style(int active_idx) {
-    for (int i = 0; i < 4; i++) {
-        if (!g_dash_nav_btns[i]) continue;
-        bool active = (i == active_idx);
-        uint32_t bg = active ? 0x1C2828 : DASH_SIDE_BG;
-        lv_obj_set_style_bg_color(g_dash_nav_btns[i], lv_color_hex(bg), 0);
-        lv_obj_t *lbl = lv_obj_get_child(g_dash_nav_btns[i], 0);
-        if (lbl) {
-            lv_obj_set_style_text_color(lbl, lv_color_hex(active ? 0x00CED1 : 0x888888), 0);
-        }
-    }
-}
-
-static void _dash_show_tab(int idx) {
-    g_dash_active_tab = idx;
-    for (int i = 0; i < 4; i++) {
-        if (!g_dash_tabs[i]) continue;
-        if (i == idx) lv_obj_clear_flag(g_dash_tabs[i], LV_OBJ_FLAG_HIDDEN);
-        else          lv_obj_add_flag(g_dash_tabs[i], LV_OBJ_FLAG_HIDDEN);
-    }
-    _dash_update_nav_style(idx);
-    if (idx == 2) tab_wifi_on_show();
-    else          _wifi_kb_hide();
-    if (idx == 3) tab_sd_on_show();
-    else          tab_sd_on_hide();
-}
-
-static lv_obj_t *_dash_make_nav_btn(lv_obj_t *parent, const char *sym, const char *name, int y, int idx) {
-    lv_obj_t *btn = lv_obj_create(parent);
-    lv_obj_set_size(btn, 140, 50);
-    lv_obj_set_pos(btn, 10, y);
-    lv_obj_set_style_bg_color(btn, lv_color_hex(DASH_SIDE_BG), 0);
-    lv_obj_set_style_bg_opa(btn, LV_OPA_COVER, 0);
-    lv_obj_set_style_radius(btn, 8, 0);
-    lv_obj_set_style_border_width(btn, 0, 0);
-    lv_obj_set_style_outline_width(btn, 0, 0);
-    _panel_reset(btn);
-    lv_obj_clear_flag(btn, LV_OBJ_FLAG_SCROLLABLE);
-
-    lv_obj_t *lbl = lv_label_create(btn);
-    lv_label_set_text_fmt(lbl, "%s  %s", sym, name);
-    lv_obj_set_style_text_color(lbl, lv_color_hex(0x888888), 0);
-    lv_obj_set_style_text_font(lbl, &lv_font_montserrat_18, 0);
-    lv_obj_center(lbl);
-
-    lv_obj_set_user_data(btn, (void *)(intptr_t)idx);
-    lv_obj_add_event_cb(btn, [](lv_event_t *e) {
-        lv_obj_t * target = lv_event_get_target(e);
-        int i = (int)(intptr_t)lv_obj_get_user_data(target);
-        _dash_show_tab(i);
-    }, LV_EVENT_CLICKED, nullptr);
-    return btn;
-}
 
 static void lvgl_flush_cb(lv_disp_drv_t *drv, const lv_area_t *area, lv_color_t *color_p) {
     auto &lcd = esphome::lovyan_gfx::v_lcd();
@@ -159,7 +103,10 @@ static void maindashboard_create(lv_obj_t *parent) {
     lv_obj_center(ap_icn);
     
     // Switch to WiFi Tab on click
-    lv_obj_add_event_cb(g_dash_ap_btn, [](lv_event_t *){ _dash_show_tab(2); }, LV_EVENT_CLICKED, nullptr);
+    lv_obj_add_event_cb(g_dash_ap_btn, [](lv_event_t *){ 
+        void ui_navigate_to(const char* name);
+        ui_navigate_to("wifi"); 
+    }, LV_EVENT_CLICKED, nullptr);
 
     g_dash_ap_ip_lbl = lv_label_create(header);
     lv_label_set_text(g_dash_ap_ip_lbl, "");
@@ -192,48 +139,22 @@ static void maindashboard_create(lv_obj_t *parent) {
         }
     }, 1000, g_dash_ap_btn);
 
-    // ── SIDEBAR (Left 160px, Below Header) ────────────────────────────────────
-    lv_obj_t *sidebar = _make_panel(scr, 0, 64, 160, 416, DASH_SIDE_BG);
-    lv_obj_set_style_border_width(sidebar, 0, 0);
-    lv_obj_set_style_outline_width(sidebar, 0, 0);
-    lv_obj_set_style_shadow_width(sidebar, 0, 0);
-    lv_obj_add_flag(sidebar, LV_OBJ_FLAG_SCROLLABLE);
-    lv_obj_set_scroll_dir(sidebar, LV_DIR_VER);
+    // ── CONTENT AREA (Full Width 800x416, Below Header) ────────────────────────
+    g_dash_main_cont = lv_obj_create(scr);
+    lv_obj_set_size(g_dash_main_cont, 800, 416);
+    lv_obj_set_pos(g_dash_main_cont, 0, 64);
+    _panel_reset(g_dash_main_cont);
+    lv_obj_set_style_pad_all(g_dash_main_cont, 0, 0); // Explicitly zero padding
+    lv_obj_set_style_bg_color(g_dash_main_cont, lv_color_hex(DASH_BG), 0);
+    lv_obj_set_style_bg_opa(g_dash_main_cont, LV_OPA_COVER, 0);
 
-    const char *SYMS[] = {LV_SYMBOL_HOME, LV_SYMBOL_SETTINGS, LV_SYMBOL_WIFI, LV_SYMBOL_SD_CARD};
-    const char *NAMES[] = {"HOME", "SYSTEM", "WIFI", "SD"};
-    for (int i = 0; i < 4; i++) {
-        g_dash_nav_btns[i] = _dash_make_nav_btn(sidebar, SYMS[i], NAMES[i], 20 + (i * 60), i);
-    }
-
-    // ── CONTENT AREA (Right 640x416, Below Header) ────────────────────────────
-    lv_obj_t *content = lv_obj_create(scr);
-    lv_obj_set_size(content, 640, 416);
-    lv_obj_set_pos(content, 160, 64);
-    _panel_reset(content);
-    lv_obj_set_style_pad_all(content, 0, 0); // Explicitly zero padding
-    lv_obj_set_style_bg_color(content, lv_color_hex(DASH_BG), 0);
-    lv_obj_set_style_bg_opa(content, LV_OPA_COVER, 0);
-
-    g_dash_tabs[0] = _make_panel(content, 0, 0, 640, 416, DASH_BG);
-    tab_home_create(g_dash_tabs[0]);
-    
-    g_dash_tabs[1] = _make_panel(content, 0, 0, 640, 416, DASH_BG);
-    tab_settings_create(g_dash_tabs[1]);
-
-    g_dash_tabs[2] = _make_panel(content, 0, 0, 640, 416, DASH_BG);
-    tab_wifi_create(g_dash_tabs[2], scr);
-
-    g_dash_tabs[3] = _make_panel(content, 0, 0, 640, 416, DASH_BG);
-    tab_sd_create(g_dash_tabs[3]);
-
-    _dash_show_tab(0);
+    tab_home_create(g_dash_main_cont);
 }
 
 static void dashboard_tick(int h, int m, int s, int dom, int mon, int year, int dow) {
     if (g_grid_needs_refresh) {
         g_grid_needs_refresh = false;
-        if (g_dash_tabs[0]) tab_home_create(g_dash_tabs[0]); // Re-create home tab with latest grid
+        ui_refresh_grid(); // Perform high-speed RAM cache swap without destroying the LVGL hierarchy
         ESP_LOGI("GRID", "UI Refresh triggered from editor");
     }
     if (g_dash_time_lbl && h != -1) {

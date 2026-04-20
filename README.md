@@ -130,11 +130,29 @@ Edit `secrets.yaml`:
 ```yaml
 wifi_ssid: "your-network"
 wifi_password: "your-password"
-api_password: "choose-a-password"
+api_encryption_key: "your-long-key"
 ota_password: "choose-a-password"
+
+# MQTT Setup (Optional - leave as is to keep disabled)
+mqtt_broker: "192.168.1.XX"
+mqtt_username: "user"
+mqtt_password: "password"
 ```
 
 ### 2. Flash the firmware via USB
+...
+---
+
+## 📡 MQTT & Smart Widgets
+GridOS supports bi-directional sync with Home Assistant.
+
+**To Enable MQTT:**
+1. Open `secrets.yaml` and set your real `mqtt_broker` IP.
+2. Open `device.yaml`, find the `# mqtt:` section, and uncomment it.
+3. Flash the device.
+
+**Note on DNS Errors:**
+If you see `[W][mqtt:274]: Couldn't resolve IP address for '192.168.1.XX'`, it means MQTT is enabled but the broker address in `secrets.yaml` is still the default. Comment out the `mqtt:` block in `device.yaml` to stop this spam.
 
 Connect the board via USB, then:
 
@@ -281,7 +299,8 @@ y=480  └───────────────────────�
 | `custom/maindashboard.h` | Orchestrator | Header, vertical nav, tab switching, global API pulse |
 
 ### 💎 Digital Twin Mirror
-The web dashboard features a **Blueprint Mirror** that provides real-time parity with the physical display. Drag, drop, and resize elements in your browser; they sync to the hardware with pixel-perfect accuracy.
+The web dashboard features a **Digital Twin Mirror** that provides real-time parity with the physical display. Drag, drop, and resize elements in your browser; they sync to the hardware with pixel-perfect accuracy.
+
 
 ### 🖼 Slideshow Mode
 The system includes an automatic slideshow engine that cycles through SD card images after 30s of inactivity. It can be remotely controlled via the **Director** tab in the web UI.

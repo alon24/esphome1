@@ -28,8 +28,8 @@ namespace esphome { namespace react_spa {
 #include "esp_mac.h"
 
 // Forward declarations for grid configuration
-void grid_config_save(const char* json_str);
 void grid_config_save(const char* json_str, const char* name);
+void ui_navigate_to(const char* name);
 void grid_config_load(const char* name, bool force);
 void grid_list_screens(char* out, size_t max_len);
 void slideshow_start();
@@ -130,6 +130,20 @@ class ReactSPAComponent : public Component {
         httpd_register_uri_handler(server_, &h);
     };
 
+    // CORS Preflight Handler
+    auto cors_handler = [](httpd_req_t *req) {
+        httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
+        httpd_resp_set_hdr(req, "Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+        httpd_resp_set_hdr(req, "Access-Control-Allow-Headers", "Content-Type");
+        return httpd_resp_send(req, NULL, 0);
+    };
+    reg("/api/*", HTTP_OPTIONS, cors_handler);
+    reg("/upload", HTTP_OPTIONS, cors_handler);
+
+
+    static const httpd_uri_t uri_files = { .uri = "/api/files", .method = HTTP_GET, .handler = wifi_file_list_handler, .user_ctx = NULL };
+    httpd_register_uri_handler(server_, &uri_files);
+
     ESP_LOGI(TAG, "Starting HTTP server on port %d", port_);
 
     reg("/upload", HTTP_POST, upload_handler);
@@ -180,7 +194,9 @@ class ReactSPAComponent : public Component {
         httpd_req_recv(req, body, total);
         body[total] = '\0';
         ::grid_config_save(body, name);
+        ::ui_navigate_to(name); // Navigate to the screen we just synced
         free(body);
+        httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
         return httpd_resp_sendstr(req, "{\"status\":\"ok\"}");
     });
 
@@ -191,6 +207,7 @@ class ReactSPAComponent : public Component {
         body[total] = '\0';
         grid_panels_save(body);
         free(body);
+        httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
         return httpd_resp_sendstr(req, "{\"status\":\"ok\"}");
     });
 
@@ -343,6 +360,7 @@ class ReactSPAComponent : public Component {
     
     ESP_LOGI(TAG, "Upload complete: %s", target_path);
     g_spa_cache_dirty = true; // Force reload on next request
+    httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
     return httpd_resp_sendstr(req, "{\"status\":\"ok\"}");
   }
 
@@ -439,6 +457,39 @@ class ReactSPAComponent : public Component {
     }
     free(recs); httpd_resp_sendstr_chunk(req, "]}");
     return httpd_resp_send_chunk(req, nullptr, 0);
+  }
+
+  static esp_err_t wifi_file_list_handler(httpd_req_t *req) {
+    size_t total = 0, used = 0;
+    esp_spiffs_info(NULL, &total, &used);
+    
+    DIR* dir = opendir("/spiffs");
+    if (!dir) return httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "FS Fail");
+    
+    char* send_buf = (char*)malloc(4096);
+    int pos = snprintf(send_buf, 4096, "{\"stats\":{\"used\":%u,\"total\":%u},\"files\":[", (unsigned int)used, (unsigned int)total);
+    
+    struct dirent* entry;
+    bool first = true;
+    while ((entry = readdir(dir)) != NULL) {
+        if (entry->d_type == DT_REG) {
+            struct stat st;
+            std::string path = "/spiffs/" + std::string(entry->d_name);
+            int size = 0;
+            if (stat(path.c_str(), &st) == 0) size = (int)st.st_size;
+            
+            pos += snprintf(send_buf + pos, 4096 - pos, "%s{\"name\":\"%s\",\"size\":%d}", 
+                           first ? "" : ",", entry->d_name, size);
+            first = false;
+        }
+    }
+    closedir(dir);
+    snprintf(send_buf + pos, 4096 - pos, "]}");
+    
+    httpd_resp_set_type(req, "application/json");
+    esp_err_t res = httpd_resp_sendstr(req, send_buf);
+    free(send_buf);
+    return res;
   }
 
   static esp_err_t sd_list_handler(httpd_req_t *req) {

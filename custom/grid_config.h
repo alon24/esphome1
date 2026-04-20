@@ -1,6 +1,7 @@
 #pragma once
 #include <vector>
 #include <string>
+#include <map>
 #include <ArduinoJson.h>
 #include <esp_spiffs.h>
 #include "esp_log.h"
@@ -21,12 +22,16 @@ struct GridItem {
     int borderWidth;
     int radius;
     std::string orientation;
+    std::string component;      // A1: used when type == "component"
+    std::string mqttTopic;      // NEW: MQTT Binding
+    std::vector<GridItem> children;
 };
 
 struct Panel {
     std::string id;
     std::string name;
     int w, h;
+    uint32_t bg;
     std::vector<GridItem> elements;
 };
 
@@ -39,13 +44,54 @@ extern char g_active_screen[64];
 static std::string g_current_screen = "main";
 char g_grid_json_cache[8192] __attribute__((weak)); 
 bool g_grid_needs_refresh = false;
+static bool g_grid_clear_needed = false;
+static std::string g_grid_clear_screen = "";
 
 inline std::string get_screen_path(const std::string& name) {
-    if (name == "main") return "/spiffs/grid.json";
+    std::string n = name;
+    for (auto & c : n) c = tolower(c);
+    if (n == "main") return "/spiffs/grid.json";
+    if (name.compare(0, 4, "scr_") == 0) return "/spiffs/" + name + ".json";
     return "/spiffs/scr_" + name + ".json";
 }
 
 void ui_refresh_grid();
+extern void grid_config_clear_cache();
+extern void grid_config_clear_screen_cache(const std::string& name);
+extern bool grid_config_has_screen_cache(const std::string& name);
+
+static void parse_grid_item(JsonObject eObj, GridItem& it) {
+    it.id        = eObj["id"]        | "";
+    it.type      = eObj["type"]      | "label";
+    it.name      = eObj["name"]      | "Item";
+    it.x         = eObj["x"]         | 0;
+    it.y         = eObj["y"]         | 0;
+    it.w         = eObj["w"]         | 100;
+    it.h         = eObj["h"]         | 40;
+    it.color     = eObj["color"]     | 0x333333;
+    it.textColor = eObj["textColor"] | 0xFFFFFF;
+    it.panelId   = eObj["panelId"]   | "";
+    it.action    = eObj["action"]    | "";
+    it.value     = eObj["value"]     | 0;
+    it.min       = eObj["min"]       | 0;
+    it.max       = eObj["max"]       | 100;
+    it.options   = eObj["options"]   | "";
+    it.borderWidth = eObj["borderWidth"] | 0;
+    it.radius    = eObj["radius"]    | 0;
+    it.orientation = eObj["orientation"] | "v";
+    it.component   = eObj["component"]   | "";  // A2: smart component id
+    it.mqttTopic   = eObj["mqttTopic"]   | "";  // NEW
+    
+    it.children.clear();
+    if (eObj["children"].is<JsonArray>()) {
+        JsonArray childArr = eObj["children"].as<JsonArray>();
+        for (JsonObject cObj : childArr) {
+            GridItem child;
+            parse_grid_item(cObj, child);
+            it.children.push_back(child);
+        }
+    }
+}
 
 void grid_panels_load() {
     FILE* f = fopen("/spiffs/panels.json", "r");
@@ -79,21 +125,11 @@ void grid_panels_load() {
         p.name = pObj["name"] | "";
         p.w = pObj["w"] | 100;
         p.h = pObj["h"] | 100;
+        p.bg = pObj["bg"] | 0;
         JsonArray els = pObj["elements"].as<JsonArray>();
         for (JsonObject eObj : els) {
             GridItem it;
-            it.id = eObj["id"] | "";
-            it.type = eObj["type"] | "label";
-            it.name = eObj["name"] | "Item";
-            it.x = eObj["x"] | 0;
-            it.y = eObj["y"] | 0;
-            it.w = eObj["w"] | 50;
-            it.h = eObj["h"] | 20;
-            it.color = eObj["color"] | 0x333333;
-            it.textColor = eObj["textColor"] | 0xFFFFFF;
-            it.borderWidth = eObj["borderWidth"] | 0;
-            it.radius = eObj["radius"] | 0;
-            it.orientation = eObj["orientation"] | "v";
+            parse_grid_item(eObj, it);
             p.elements.push_back(it);
         }
         g_panels.push_back(p);
@@ -165,24 +201,7 @@ void grid_config_load(const char* name, bool force = false) {
     ESP_LOGI("GRID", "Parsing %d items (bg: %06X, border: %06X, width: %d)", (int)array.size(), (unsigned int)g_grid_bg, (unsigned int)g_grid_border_color, g_grid_border_width);
     for (JsonObject v : array) {
         GridItem it;
-        it.id        = v["id"]        | "";
-        it.name      = v["name"]      | "";
-        it.type      = v["type"]      | "";
-        it.x         = v["x"]         | 0;
-        it.y         = v["y"]         | 0;
-        it.w         = v["w"]         | 100;
-        it.h         = v["h"]         | 40;
-        it.color     = v["color"]     | 0x333333;
-        it.textColor = v["textColor"] | 0xFFFFFF;
-        it.panelId   = v["panelId"]   | "";
-        it.action    = v["action"]    | "";
-        it.value     = v["value"]     | 0;
-        it.min       = v["min"]       | 0;
-        it.max       = v["max"]       | 100;
-        it.options   = v["options"]   | "";
-        it.borderWidth = v["borderWidth"] | 0;
-        it.radius    = v["radius"]    | 0;
-        it.orientation = v["orientation"] | "v";
+        parse_grid_item(v, it);
         g_grid_items.push_back(it);
         ESP_LOGI("GRID", "  Loaded [%s] %s", it.type.c_str(), it.name.c_str());
     }
@@ -208,7 +227,18 @@ void grid_config_save(const char* json_str, const char* name) {
         ESP_LOGI("GRID", "Saved screen: %s", path.c_str());
     }
     g_grid_needs_refresh = true;
+    grid_config_clear_screen_cache(g_current_screen);
     grid_config_load(g_current_screen.c_str(), true);
+}
+
+void ui_navigate_to(const char* name) {
+    if (name && strlen(name) > 0) {
+        g_current_screen = name;
+        strncpy(g_active_screen, name, 63);
+        ESP_LOGI("GRID", "Navigating to: %s (forcing reload)", name);
+    }
+    g_grid_needs_refresh = true;
+    grid_config_load(g_current_screen.c_str(), true); // Always force reload from disk
 }
 
 void grid_panels_save(const char* json_str) {
@@ -220,6 +250,7 @@ void grid_panels_save(const char* json_str) {
     }
     grid_panels_load(); // Immediately reload
     g_grid_needs_refresh = true;
+    g_grid_clear_needed = true;
 }
 
 void grid_list_screens(char* out, size_t max_len) {

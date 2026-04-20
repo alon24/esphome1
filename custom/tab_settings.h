@@ -17,6 +17,12 @@ static lv_obj_t *g_set_ip_val         = nullptr;
 static lv_obj_t *g_set_uptime_val     = nullptr;
 static lv_obj_t *g_set_ssid_val       = nullptr;
 
+static void _settings_on_delete(lv_event_t *e) {
+    g_set_ip_val = nullptr;
+    g_set_uptime_val = nullptr;
+    g_set_ssid_val = nullptr;
+}
+
 static lv_obj_t *_settings_row(lv_obj_t *parent, const char *label, const char *value, int y, uint32_t bg) {
     lv_obj_t *lbl = lv_label_create(parent);
     lv_label_set_text(lbl, label);
@@ -29,9 +35,10 @@ static lv_obj_t *_settings_row(lv_obj_t *parent, const char *label, const char *
     return val;
 }
 
-static void tab_settings_create(lv_obj_t *parent) {
+void tab_settings_create(lv_obj_t *parent) {
+    lv_obj_add_event_cb(parent, _settings_on_delete, LV_EVENT_DELETE, nullptr);
 
-    lv_obj_t *card = _make_card(parent, 10, 10, 620, 396, TAB_SETTINGS_CARD);
+    lv_obj_t *card = _make_card(parent, 10, 10, 780, 396, TAB_SETTINGS_CARD);
     _section_hdr(card, "SYSTEM INFORMATION", 0, 0, TAB_SETTINGS_CARD);
 
     _settings_row(card, "Firmware", FW_VERSION_STR, 40, TAB_SETTINGS_CARD);

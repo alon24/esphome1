@@ -31,6 +31,24 @@ static lv_obj_t *g_wifi_ap_ssid_ta = nullptr;  // AP SSID
 static lv_obj_t *g_wifi_ap_pass_ta = nullptr;  // AP Password
 static lv_obj_t *g_wifi_ap_ip_lbl   = nullptr;  // AP IP Status
 
+static void _wifi_on_delete(lv_event_t *e) {
+    if (g_wifi_keyboard) {
+        lv_obj_del(g_wifi_keyboard);
+        g_wifi_keyboard = nullptr;
+    }
+    g_wifi_list = nullptr;
+    g_wifi_ssid_ta = nullptr;
+    g_wifi_pass_ta = nullptr;
+    g_wifi_status_lbl = nullptr;
+    g_wifi_scan_btn = nullptr;
+    g_wifi_scan_lbl = nullptr;
+    g_wifi_active_ta = nullptr;
+    g_wifi_ap_sw = nullptr;
+    g_wifi_ap_ssid_ta = nullptr;
+    g_wifi_ap_pass_ta = nullptr;
+    g_wifi_ap_ip_lbl = nullptr;
+}
+
 // ── Keyboard show/hide ────────────────────────────────────────────────────────
 
 static void _wifi_kb_show(lv_obj_t *ta) {
@@ -50,17 +68,31 @@ static void _wifi_kb_hide() {
 
 // ── Network list population (own version using lv_obj_create, not lv_btn) ────
 static void _wifi_populate_list(lv_obj_t *list, lv_obj_t *ssid_ta) {
+    ESP_LOGI("WIFI", "Starting scan...");
     wifi_scan_config_t cfg = {};
     cfg.show_hidden = 0;
-    esp_wifi_scan_start(&cfg, true);   // blocking ~2-3 s
+    esp_err_t err = esp_wifi_scan_start(&cfg, true);   // blocking ~2-3 s
+    if (err != ESP_OK) {
+        ESP_LOGE("WIFI", "esp_wifi_scan_start failed: %d", err);
+        return;
+    }
+    ESP_LOGI("WIFI", "Scan finished.");
 
     uint16_t count = 0;
     esp_wifi_scan_get_ap_num(&count);
+    ESP_LOGI("WIFI", "Found %d networks.", count);
     if (count > 24) count = 24;
 
     wifi_ap_record_t *recs = (wifi_ap_record_t *)malloc(count * sizeof(wifi_ap_record_t));
-    if (!recs) return;
+    if (!recs) {
+        ESP_LOGE("WIFI", "Failed to allocate memory for scan records!");
+        return;
+    }
     esp_wifi_scan_get_ap_records(&count, recs);
+
+    for (int i = 0; i < (int)count; i++) {
+        ESP_LOGI("WIFI", "  [%d] SSID: %s, RSSI: %d", i, (char*)recs[i].ssid, recs[i].rssi);
+    }
 
     lv_obj_clean(list);
 
@@ -83,6 +115,7 @@ static void _wifi_populate_list(lv_obj_t *list, lv_obj_t *ssid_ta) {
         lv_obj_set_style_pad_all(row, 0, LV_STATE_DEFAULT);
         _panel_reset(row);
         lv_obj_clear_flag(row, LV_OBJ_FLAG_SCROLLABLE);
+        lv_obj_add_flag(row, LV_OBJ_FLAG_CLICKABLE);
 
         // Signal bars (5 vertical bars)
         int bars = _rssi_bars(recs[i].rssi);
@@ -145,6 +178,7 @@ static void _wifi_populate_list(lv_obj_t *list, lv_obj_t *ssid_ta) {
     }
 
     free(recs);
+    ESP_LOGI("WIFI", "List populated.");
 }
 
 // ── Button helper ─────────────────────────────────────────────────────────────
@@ -162,6 +196,7 @@ static lv_obj_t *_wifi_btn(lv_obj_t *parent, const char *text,
     lv_obj_set_style_pad_all(btn, 0, LV_STATE_DEFAULT);
     _panel_reset(btn);
     lv_obj_clear_flag(btn, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_add_flag(btn, LV_OBJ_FLAG_CLICKABLE);
 
     lv_obj_t *lbl = lv_label_create(btn);
     lv_label_set_text(lbl, text);
@@ -172,13 +207,15 @@ static lv_obj_t *_wifi_btn(lv_obj_t *parent, const char *text,
     lv_obj_set_style_text_align(lbl, LV_TEXT_ALIGN_CENTER, LV_STATE_DEFAULT);
     lv_obj_set_style_pad_top(lbl, (h - 20) / 2, LV_STATE_DEFAULT);
     lv_obj_set_pos(lbl, 0, 0);
+    lv_obj_clear_flag(lbl, LV_OBJ_FLAG_CLICKABLE);
 
     return btn;
 }
 
 // ── Main create ───────────────────────────────────────────────────────────────
 // parent = content area (800×352), root = full-screen root (800×480)
-static void tab_wifi_create(lv_obj_t *parent, lv_obj_t *root) {
+void tab_wifi_create(lv_obj_t *parent, lv_obj_t *root) {
+    lv_obj_add_event_cb(parent, _wifi_on_delete, LV_EVENT_DELETE, nullptr);
 
     // ── Left: network list ────────────────────────────────────────────────────
     lv_obj_t *left = _make_panel(parent, 0, 0, 260, 352, TAB_WIFI_LIST_BG);
@@ -201,6 +238,7 @@ static void tab_wifi_create(lv_obj_t *parent, lv_obj_t *root) {
     lv_obj_set_style_pad_all(g_wifi_list, 4, LV_STATE_DEFAULT);
     lv_obj_set_style_radius(g_wifi_list, 0, LV_STATE_DEFAULT);
     _panel_reset(g_wifi_list);
+    lv_obj_add_flag(g_wifi_list, LV_OBJ_FLAG_SCROLLABLE);
     // Scrollable: keep default
 
     // Empty state label
@@ -225,7 +263,7 @@ static void tab_wifi_create(lv_obj_t *parent, lv_obj_t *root) {
     _panel_reset(div);
 
     // ── Right: connect panel (tall — parent handles scroll) ───────────────────
-    lv_obj_t *right = _make_panel(parent, 261, 0, 379, 520, TAB_WIFI_BG);
+    lv_obj_t *right = _make_panel(parent, 261, 0, 539, 520, TAB_WIFI_BG);
 
     // SSID section
     lv_obj_t *ssid_hdr = lv_label_create(right);
@@ -320,11 +358,13 @@ static void tab_wifi_create(lv_obj_t *parent, lv_obj_t *root) {
     // ── Buttons row ───────────────────────────────────────────────────────────
     g_wifi_scan_btn = _wifi_btn(right, "SCAN",    10, 165, 170, 44, 0x1a3a1a, 0x00CC44);
     lv_obj_t *conn_btn = _wifi_btn(right, "CONN", 185, 165, 165, 44, 0x003050, 0x47EAED);
+    lv_obj_add_flag(conn_btn, LV_OBJ_FLAG_CLICKABLE);
 
     // Keep a pointer to scan button's label to change text during scan
     g_wifi_scan_lbl = lv_obj_get_child(g_wifi_scan_btn, 0);
 
     lv_obj_add_event_cb(g_wifi_scan_btn, [](lv_event_t *) {
+        ESP_LOGI("WIFI", "Scan button clicked!");
         _wifi_kb_hide();
         lv_label_set_text(g_wifi_scan_lbl, "SCANNING...");
         lv_refr_now(NULL);  // show "SCANNING..." before blocking
@@ -466,7 +506,7 @@ static void tab_wifi_create(lv_obj_t *parent, lv_obj_t *root) {
 }
 
 // Called from maindashboard when wifi tab is shown.
-static void tab_wifi_on_show() {
+void tab_wifi_on_show() {
     if (g_wifi_status_lbl)
         lv_label_set_text(g_wifi_status_lbl, "Reading saved credentials...");
     

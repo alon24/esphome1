@@ -43,6 +43,8 @@ extern volatile bool g_sd_newly_mounted;
 
 // Free functions implemented in sd_card.cpp — declared here for consumers
 // that can include this header directly.
+namespace esphome {
 bool sd_card_is_mounted();
 bool sd_card_do_mount();
-void sd_card_do_unmount();
+bool sd_card_do_unmount();
+} // namespace esphome
