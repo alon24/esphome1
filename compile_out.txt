@@ -1,0 +1,490 @@
+▶  Firmware version: v543 (was v542)
+▶  Compiling device.yaml (v543)...
+INFO ESPHome 2026.3.1
+INFO Reading configuration device.yaml...
+INFO Generating C++ source...
+INFO Using user-provided CONFIG_LWIP_MAX_SOCKETS: 16
+WARNING CORE.using_esp_idf was deprecated in 2026.1, will change behavior in 2026.6. ESP32 Arduino builds on top of ESP-IDF, so ESP-IDF features are available in both frameworks. Use CORE.is_esp32 and/or CORE.using_arduino instead.
+INFO Compiling app... Build path: /root/claude-dev/projects/esphome1/.esphome/build/esp32-display
+Processing esp32-display (board: esp32-s3-devkitc-1; framework: espidf; platform: https://github.com/pioarduino/platform-espressif32/releases/download/55.03.37/platform-espressif32.zip)
+--------------------------------------------------------------------------------
+HARDWARE: ESP32S3 240MHz, 320KB RAM, 16MB Flash
+ - contrib-piohome @ 3.4.4 
+ - framework-espidf @ 3.50503.0 (5.5.3) 
+ - tool-cmake @ 4.0.3 
+ - tool-esp-rom-elfs @ 2024.10.11 
+ - tool-esptoolpy @ 5.1.2 
+ - tool-ninja @ 1.13.1 
+ - tool-scons @ 4.40801.0 (4.8.1) 
+ - toolchain-xtensa-esp-elf @ 14.2.0+20251107
+Reading CMake configuration...
+Dependency Graph
+|-- LovyanGFX @ 1.2.19
+|-- ArduinoJson @ 7.3.0
+|-- lvgl @ 8.4.0
+Compiling .pioenvs/esp32-display/src/main.cpp.o
+Linking .pioenvs/esp32-display/firmware.elf
+                            Memory Type Usage Summary                             
+┏━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━┳━━━━━━━━━━┳━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━┓
+┃ Memory Type/Section ┃ Used [bytes] ┃ Used [%] ┃ Remain [bytes] ┃ Total [bytes] ┃
+┡━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━╇━━━━━━━━━━╇━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━┩
+│ Flash Code          │       943672 │          │                │               │
+│    .text            │       943672 │          │                │               │
+│ Flash Data          │       303012 │          │                │               │
+│    .rodata          │       302756 │          │                │               │
+│    .appdesc         │          256 │          │                │               │
+│ DIRAM               │       112139 │    32.81 │         229621 │        341760 │
+│    .text            │        61923 │    18.12 │                │               │
+│    .bss             │        29416 │     8.61 │                │               │
+│    .data            │        20716 │     6.06 │                │               │
+│    .noinit          │           84 │     0.02 │                │               │
+│ IRAM                │        16384 │    100.0 │              0 │         16384 │
+│    .text            │        15356 │    93.73 │                │               │
+│    .vectors         │         1028 │     6.27 │                │               │
+│ RTC SLOW            │          164 │      2.0 │           8028 │          8192 │
+│    .data            │          164 │      2.0 │                │               │
+└─────────────────────┴──────────────┴──────────┴────────────────┴───────────────┘
+Total image size: 1345871 bytes (.bin may be padded larger)
+Note: The reported total sizes may be smaller than those in the technical reference manual due to reserved memory and application configuration. The total flash size available for the application is not included by default, as it cannot be reliably determined due to the presence of other data like the bootloader, partition table, and application partition size.
+RAM:   [==        ]  15.3% (used 50216 bytes from 327680 bytes)
+Flash: [==        ]  20.5% (used 1345451 bytes from 6553600 bytes)
+Building .pioenvs/esp32-display/firmware.bin
+Creating ESP32S3 image...
+Successfully created ESP32S3 image.
+merge_factory_bin([".pioenvs/esp32-display/firmware.bin"], [".pioenvs/esp32-display/firmware.elf"])
+Info: bootloader.bin not found - skipping
+Info: partition-table.bin not found - skipping
+Info: ota_data_initial.bin not found - skipping
+Info: esp32-display.bin not found - skipping
+Using FLASH_EXTRA_IMAGES from PlatformIO environment
+Merging binaries into /root/claude-dev/projects/esphome1/.esphome/build/esp32-display/.pioenvs/esp32-display/firmware.factory.bin
+Merging binaries with esptool
+SHA digest in image updated.
+Wrote 0x1589e0 bytes to file '/root/claude-dev/projects/esphome1/.esphome/build/esp32-display/.pioenvs/esp32-display/firmware.factory.bin', ready to flash to offset 0x0.
+Successfully created /root/claude-dev/projects/esphome1/.esphome/build/esp32-display/.pioenvs/esp32-display/firmware.factory.bin
+esp32_copy_ota_bin([".pioenvs/esp32-display/firmware.bin"], [".pioenvs/esp32-display/firmware.elf"])
+Copied firmware to /root/claude-dev/projects/esphome1/.esphome/build/esp32-display/.pioenvs/esp32-display/firmware.ota.bin
+========================= [SUCCESS] Took 22.69 seconds =========================
+INFO Build Info: config_hash=0xca85312d build_time_str=2026-04-17 07:12:32 +0000
+INFO Successfully compiled program.
+▶  USB detected — flashing via serial...
+▶  Uploading v543 to /dev/ttyUSB0...
+INFO ESPHome 2026.3.1
+INFO Reading configuration device.yaml...
+esptool v5.2.0
+Serial port /dev/ttyUSB0:
+Connecting....
+Connected to ESP32-S3 on /dev/ttyUSB0:
+Chip type:          ESP32-S3 (QFN56) (revision v0.2)
+Features:           Wi-Fi, BT 5 (LE), Dual Core + LP Core, 240MHz, Embedded PSRAM 8MB (AP_3v3)
+Crystal frequency:  40MHz
+MAC:                dc:da:0c:57:f5:dc
+
+Uploading stub flasher...
+Running stub flasher...
+Stub flasher running.
+Changing baud rate to 921600...
+Changed.
+
+Configuring flash size...
+Auto-detected flash size: 16MB
+Flash will be erased from 0x00010000 to 0x00158fff...
+Compressed 1346016 bytes to 882998...
+Writing at 0x00010000 [                              ]   0.0% 0/882998 bytes... Writing at 0x0001b904 [                              ]   1.9% 16384/882998 bytes... Writing at 0x00028353 [>                             ]   3.7% 32768/882998 bytes... Writing at 0x0002fec5 [>                             ]   5.6% 49152/882998 bytes... Writing at 0x00037ea1 [=>                            ]   7.4% 65536/882998 bytes... Writing at 0x0004053e [=>                            ]   9.3% 81920/882998 bytes... Writing at 0x00049784 [==>                           ]  11.1% 98304/882998 bytes... Writing at 0x000535c3 [==>                           ]  13.0% 114688/882998 bytes... Writing at 0x0005df68 [===>                          ]  14.8% 131072/882998 bytes... Writing at 0x000643b2 [====>                         ]  16.7% 147456/882998 bytes... Writing at 0x000695be [====>                         ]  18.6% 163840/882998 bytes... Writing at 0x0006eb32 [=====>                        ]  20.4% 180224/882998 bytes... Writing at 0x00073d50 [=====>                        ]  22.3% 196608/882998 bytes... Writing at 0x00078f11 [======>                       ]  24.1% 212992/882998 bytes... Writing at 0x0007e5bf [======>                       ]  26.0% 229376/882998 bytes... Writing at 0x00083f3f [=======>                      ]  27.8% 245760/882998 bytes... Writing at 0x00089228 [=======>                      ]  29.7% 262144/882998 bytes... Writing at 0x0008e5fa [========>                     ]  31.5% 278528/882998 bytes... Writing at 0x000938ad [=========>                    ]  33.4% 294912/882998 bytes... Writing at 0x00098cc5 [=========>                    ]  35.3% 311296/882998 bytes... Writing at 0x0009df39 [==========>                   ]  37.1% 327680/882998 bytes... Writing at 0x000a39fd [==========>                   ]  39.0% 344064/882998 bytes... Writing at 0x000a9403 [===========>                  ]  40.8% 360448/882998 bytes... Writing at 0x000ae6e6 [===========>                  ]  42.7% 376832/882998 bytes... Writing at 0x000b3ca7 [============>                 ]  44.5% 393216/882998 bytes... Writing at 0x000b8ff6 [============>                 ]  46.4% 409600/882998 bytes... Writing at 0x000beb95 [=============>                ]  48.2% 425984/882998 bytes... Writing at 0x000c4137 [==============>               ]  50.1% 442368/882998 bytes... Writing at 0x000ca02d [==============>               ]  52.0% 458752/882998 bytes... Writing at 0x000cf3c4 [===============>              ]  53.8% 475136/882998 bytes... Writing at 0x000d4495 [===============>              ]  55.7% 491520/882998 bytes... Writing at 0x000d9816 [================>             ]  57.5% 507904/882998 bytes... Writing at 0x000dec90 [================>             ]  59.4% 524288/882998 bytes... Writing at 0x000e420e [=================>            ]  61.2% 540672/882998 bytes... Writing at 0x000e92e2 [=================>            ]  63.1% 557056/882998 bytes... Writing at 0x000ee511 [==================>           ]  64.9% 573440/882998 bytes... Writing at 0x000f3b30 [===================>          ]  66.8% 589824/882998 bytes... Writing at 0x000f8f3c [===================>          ]  68.7% 606208/882998 bytes... Writing at 0x000fe041 [====================>         ]  70.5% 622592/882998 bytes... Writing at 0x00103132 [====================>         ]  72.4% 638976/882998 bytes... Writing at 0x00108b76 [=====================>        ]  74.2% 655360/882998 bytes... Writing at 0x0010e15b [=====================>        ]  76.1% 671744/882998 bytes... Writing at 0x00113669 [======================>       ]  77.9% 688128/882998 bytes... Writing at 0x00118c4e [======================>       ]  79.8% 704512/882998 bytes... Writing at 0x0011e739 [=======================>      ]  81.6% 720896/882998 bytes... Writing at 0x00124073 [========================>     ]  83.5% 737280/882998 bytes... Writing at 0x001297a1 [========================>     ]  85.4% 753664/882998 bytes... Writing at 0x0012f708 [=========================>    ]  87.2% 770048/882998 bytes... Writing at 0x00136069 [=========================>    ]  89.1% 786432/882998 bytes... Writing at 0x0013c6d8 [==========================>   ]  90.9% 802816/882998 bytes... Writing at 0x00141d96 [==========================>   ]  92.8% 819200/882998 bytes... Writing at 0x00147ce6 [===========================>  ]  94.6% 835584/882998 bytes... Writing at 0x0014db80 [===========================>  ]  96.5% 851968/882998 bytes... Writing at 0x00153822 [============================> ]  98.3% 868352/882998 bytes... Writing at 0x001589e0 [==============================] 100.0% 882998/882998 bytes... 
+Wrote 1346016 bytes (882998 compressed) at 0x00010000 in 14.0 seconds (770.6 kbit/s).
+Verifying written data...
+Hash of data verified.
+SHA digest in image updated.
+Flash will be erased from 0x00000000 to 0x00005fff...
+Compressed 20912 bytes to 13417...
+Writing at 0x00000000 [                              ]   0.0% 0/13417 bytes... Writing at 0x000051b0 [==============================] 100.0% 13417/13417 bytes... 
+Wrote 20912 bytes (13417 compressed) at 0x00000000 in 0.5 seconds (343.4 kbit/s).
+Verifying written data...
+Hash of data verified.
+Flash will be erased from 0x00008000 to 0x00008fff...
+Compressed 3072 bytes to 129...
+Writing at 0x00008000 [                              ]   0.0% 0/129 bytes... Writing at 0x00008c00 [==============================] 100.0% 129/129 bytes... 
+Wrote 3072 bytes (129 compressed) at 0x00008000 in 0.0 seconds (533.6 kbit/s).
+Verifying written data...
+Hash of data verified.
+Flash will be erased from 0x0000e000 to 0x0000ffff...
+Compressed 8192 bytes to 31...
+Writing at 0x0000e000 [                              ]   0.0% 0/31 bytes... Writing at 0x00010000 [==============================] 100.0% 31/31 bytes... 
+Wrote 8192 bytes (31 compressed) at 0x0000e000 in 0.1 seconds (751.5 kbit/s).
+Verifying written data...
+Hash of data verified.
+
+Hard resetting via RTS pin...
+INFO Successfully uploaded program.
+✔  Upload complete (USB)
+▶  Skipping version verification (USB or SKIP_VERIFY set)
+▶  Showing logs (Ctrl+C to exit)...
+INFO ESPHome 2026.3.1
+INFO Reading configuration device.yaml...
+INFO Starting log output from /dev/ttyUSB0 with baud rate 115200
+[09:42:08.986][I][logger:120]: Log initialized
+[09:42:08.988][I][app:089]: Running through setup()
+[09:42:08.995][I][i2c.idf:205]: Performing bus recovery
+[09:42:09.025][E][sd_card:173]: CRITICAL: Long Filename (LFN) support appears DISABLED in SDK!
+[09:42:09.035][I][sd_card:175]: SD card component initialising (SPI: CLK=12 MOSI=11 MISO=13 CS=10)
+[09:42:09.097][I][sd_card:090]: SD card mounted successfully at /sdcard
+[09:42:09.097]Name: USD00
+[09:42:09.097]Type: SDHC
+[09:42:09.102]Speed: 10.00 MHz (limit: 10.00 MHz)
+[09:42:09.102]Size: 30255MB
+[09:42:09.107]CSD: ver=2, sector_size=512, capacity=61962240 read_bl_len=9
+[09:42:09.110]SSR: bus_width=1
+[09:42:09.113][I][sd_card:091]: Card Name: USD00
+[09:42:09.120][I][sd_card:117]: Mounted /sdcard and verified structure
+[09:42:09.140][I][sd_card:127]: SD Card Base Write Test (a.txt): SUCCESS!
+[09:42:09.158][I][sd_card:134]: LFN disabled, testing short directory creation...
+[09:42:09.374][I][sd_card:138]: Short directory creation SUCCESS!
+[09:42:09.456][I][lovyan_gfx:028]: Setting up LovyanGFX (Handover to ESP-IDF driver_ng)...
+[09:42:09.465][I][lovyan_gfx:033]: Touch driver DETACHED for I2C driver_ng compatibility.
+[09:42:09.561][I][lovyan_gfx:040]: LovyanGFX Display initialized with SwapBytes=ON.
+[09:42:09.712][I][SYS:063]: Settings loaded from Flash to RTC: screen=main, ss=OFF, ap_on=YES
+[09:42:09.771][I][GRID:150]: Loaded 1036 bytes from /spiffs/grid.json
+[09:42:09.776][I][GRID:165]: Parsing 4 items (bg: 0D110E, border: BC1A1A, width: 2)
+[09:42:09.782][I][GRID:187]:   Loaded [nav-menu] New nav-menu
+[09:42:09.788][I][GRID:187]:   Loaded [border] New border
+[09:42:09.790][I][GRID:187]:   Loaded [roller] New roller
+[09:42:09.796][I][GRID:187]:   Loaded [nav-menu] New nav-menu
+[09:42:09.805][I][WIFI:150]: Applying AP Settings: active=YES, SSID=GRIDOS_AP
+[09:42:09.808][E][WIFI:183]: FAILED to set AP config: 12289
+[09:42:09.813][I][WIFI:187]: AP Mode Applied. Current active state: 1
+[09:42:09.821][I][SYS:051]: Persistent AP Mode Active on Boot: GRIDOS_AP
+[09:42:09.826][I][GRID:021]: Refreshing UI (Items: 4, Panels: 0)
+[09:42:09.868][I][react_spa:108]: Dynamic SPA active: /spiffs/app-v80-1776410041.gz
+[09:42:10.060][I][react_spa:238]: SPA Cached in PSRAM: 56961 bytes from /spiffs/app-v80-1776410041.gz
+[09:42:10.065][I][react_spa:136]: Starting HTTP server on port 80
+[09:42:10.068][I][app:138]: setup() finished successfully!
+[09:42:10.076][I][WIFI:150]: Applying AP Settings: active=YES, SSID=GRIDOS_AP
+[09:42:10.082][I][WIFI:185]: AP config set successfully: GRIDOS_AP
+[09:42:10.088][I][WIFI:187]: AP Mode Applied. Current active state: 1
+[09:42:10.093][W][component:404]: wifi set Warning flag: scanning for networks
+[09:42:10.220][W][component:520]: lvgl took a long time for an operation (149 ms), max is 30 ms
+[09:42:10.227][I][app:231]: ESPHome version 2026.3.1 compiled on 2026-04-17 07:12:32 +0000
+[09:42:10.235][I][app:238]: ESP32 Chip: ESP32-S3 rev0.2, 2 core(s)
+[09:42:13.083][I][wifi:1417]: - 'freak' (D2:9C:25:9F:06:E2) ▂▄▆█
+[09:42:13.097][I][wifi:1081]: Connecting to 'freak' (D2:9C:25:9F:06:E2) (priority 0, attempt 1/2 in phase SCAN_CONNECTING)...
+[09:42:14.072][I][main:178]: --- LIVE HEARTBEAT ---
+[09:42:14.145][I][wifi:107]: IP ADDRESS ASSIGNED: 10.100.102.46
+[09:42:14.151][I][wifi:1551]: Connected
+[09:42:14.155][W][component:429]: wifi cleared Warning flag
+[09:42:15.077][I][WIFI:150]: Applying AP Settings: active=YES, SSID=GRIDOS_AP
+[09:42:15.083][I][WIFI:185]: AP config set successfully: GRIDOS_AP
+[09:42:15.089][I][WIFI:187]: AP Mode Applied. Current active state: 1
+[09:42:19.084][I][main:178]: --- LIVE HEARTBEAT ---
+[09:42:24.097][I][main:178]: --- LIVE HEARTBEAT ---
+[09:42:29.098][I][main:178]: --- LIVE HEARTBEAT ---
+[09:42:34.105][I][main:178]: --- LIVE HEARTBEAT ---
+[09:42:39.108][I][main:178]: --- LIVE HEARTBEAT ---
+[09:42:40.112][I][main:178]: --- LIVE HEARTBEAT ---
+[09:42:45.124][I][main:178]: --- LIVE HEARTBEAT ---
+[09:42:50.126][I][main:178]: --- LIVE HEARTBEAT ---
+[09:42:55.128][I][main:178]: --- LIVE HEARTBEAT ---
+[09:43:00.135][I][main:178]: --- LIVE HEARTBEAT ---
+[09:43:05.142][I][main:178]: --- LIVE HEARTBEAT ---
+[09:43:08.996][I][safe_mode:091]: Boot seems successful; resetting boot loop counter
+[09:43:10.161][I][main:178]: --- LIVE HEARTBEAT ---
+[09:43:15.175][I][main:178]: --- LIVE HEARTBEAT ---
+[09:43:20.184][I][main:178]: --- LIVE HEARTBEAT ---
+[09:43:25.191][I][main:178]: --- LIVE HEARTBEAT ---
+[09:43:30.207][I][main:178]: --- LIVE HEARTBEAT ---
+[09:43:35.211][I][main:178]: --- LIVE HEARTBEAT ---
+[09:43:40.226][I][main:178]: --- LIVE HEARTBEAT ---
+[09:43:45.232][I][main:178]: --- LIVE HEARTBEAT ---
+[09:43:50.239][I][main:178]: --- LIVE HEARTBEAT ---
+[09:43:55.249][I][main:178]: --- LIVE HEARTBEAT ---
+[09:44:00.253][I][main:178]: --- LIVE HEARTBEAT ---
+[09:44:05.259][I][main:178]: --- LIVE HEARTBEAT ---
+[09:44:10.267][I][main:178]: --- LIVE HEARTBEAT ---
+[09:44:15.276][I][main:178]: --- LIVE HEARTBEAT ---
+[09:44:20.286][I][main:178]: --- LIVE HEARTBEAT ---
+[09:44:25.294][I][main:178]: --- LIVE HEARTBEAT ---
+[09:44:30.305][I][main:178]: --- LIVE HEARTBEAT ---
+[09:44:35.313][I][main:178]: --- LIVE HEARTBEAT ---
+[09:44:40.317][I][main:178]: --- LIVE HEARTBEAT ---
+[09:44:45.330][I][main:178]: --- LIVE HEARTBEAT ---
+[09:44:50.336][I][main:178]: --- LIVE HEARTBEAT ---
+[09:44:55.347][I][main:178]: --- LIVE HEARTBEAT ---
+[09:45:00.355][I][main:178]: --- LIVE HEARTBEAT ---
+[09:45:05.358][I][main:178]: --- LIVE HEARTBEAT ---
+[09:45:10.371][I][main:178]: --- LIVE HEARTBEAT ---
+[09:45:15.379][I][main:178]: --- LIVE HEARTBEAT ---
+[09:45:20.391][I][main:178]: --- LIVE HEARTBEAT ---
+[09:45:25.404][I][main:178]: --- LIVE HEARTBEAT ---
+[09:45:30.410][I][main:178]: --- LIVE HEARTBEAT ---
+[09:45:35.422][I][main:178]: --- LIVE HEARTBEAT ---
+[09:45:40.433][I][main:178]: --- LIVE HEARTBEAT ---
+[09:45:45.442][I][main:178]: --- LIVE HEARTBEAT ---
+[09:45:50.455][I][main:178]: --- LIVE HEARTBEAT ---
+[09:45:55.464][I][main:178]: --- LIVE HEARTBEAT ---
+[09:46:00.471][I][main:178]: --- LIVE HEARTBEAT ---
+[09:46:05.475][I][main:178]: --- LIVE HEARTBEAT ---
+[09:46:10.486][I][main:178]: --- LIVE HEARTBEAT ---
+[09:46:15.494][I][main:178]: --- LIVE HEARTBEAT ---
+[09:46:20.502][I][main:178]: --- LIVE HEARTBEAT ---
+[09:46:25.517][I][main:178]: --- LIVE HEARTBEAT ---
+[09:46:30.531][I][main:178]: --- LIVE HEARTBEAT ---
+[09:46:35.537][I][main:178]: --- LIVE HEARTBEAT ---
+[09:46:40.548][I][main:178]: --- LIVE HEARTBEAT ---
+[09:46:45.556][I][main:178]: --- LIVE HEARTBEAT ---
+[09:46:50.568][I][main:178]: --- LIVE HEARTBEAT ---
+[09:46:55.582][I][main:178]: --- LIVE HEARTBEAT ---
+[09:47:00.584][I][main:178]: --- LIVE HEARTBEAT ---
+[09:47:05.589][I][main:178]: --- LIVE HEARTBEAT ---
+[09:47:10.590][I][main:178]: --- LIVE HEARTBEAT ---
+[09:47:15.592][I][main:178]: --- LIVE HEARTBEAT ---
+[09:47:20.595][I][main:178]: --- LIVE HEARTBEAT ---
+[09:47:25.602][I][main:178]: --- LIVE HEARTBEAT ---
+[09:47:30.612][I][main:178]: --- LIVE HEARTBEAT ---
+[09:47:35.623][I][main:178]: --- LIVE HEARTBEAT ---
+[09:47:40.633][I][main:178]: --- LIVE HEARTBEAT ---
+[09:47:45.645][I][main:178]: --- LIVE HEARTBEAT ---
+[09:47:50.656][I][main:178]: --- LIVE HEARTBEAT ---
+[09:47:55.668][I][main:178]: --- LIVE HEARTBEAT ---
+[09:48:00.671][I][main:178]: --- LIVE HEARTBEAT ---
+[09:48:05.680][I][main:178]: --- LIVE HEARTBEAT ---
+[09:48:10.688][I][main:178]: --- LIVE HEARTBEAT ---
+[09:48:15.695][I][main:178]: --- LIVE HEARTBEAT ---
+[09:48:20.702][I][main:178]: --- LIVE HEARTBEAT ---
+[09:48:25.713][I][main:178]: --- LIVE HEARTBEAT ---
+[09:48:30.721][I][main:178]: --- LIVE HEARTBEAT ---
+[09:48:35.729][I][main:178]: --- LIVE HEARTBEAT ---
+[09:48:40.739][I][main:178]: --- LIVE HEARTBEAT ---
+[09:48:45.751][I][main:178]: --- LIVE HEARTBEAT ---
+[09:48:50.761][I][main:178]: --- LIVE HEARTBEAT ---
+[09:48:55.772][I][main:178]: --- LIVE HEARTBEAT ---
+[09:49:00.781][I][main:178]: --- LIVE HEARTBEAT ---
+[09:49:05.791][I][main:178]: --- LIVE HEARTBEAT ---
+[09:49:10.806][I][main:178]: --- LIVE HEARTBEAT ---
+[09:49:15.811][I][main:178]: --- LIVE HEARTBEAT ---
+[09:49:20.820][I][main:178]: --- LIVE HEARTBEAT ---
+[09:49:25.830][I][main:178]: --- LIVE HEARTBEAT ---
+[09:49:30.843][I][main:178]: --- LIVE HEARTBEAT ---
+[09:49:35.851][I][main:178]: --- LIVE HEARTBEAT ---
+[09:49:40.855][I][main:178]: --- LIVE HEARTBEAT ---
+[09:49:45.864][I][main:178]: --- LIVE HEARTBEAT ---
+[09:49:50.870][I][main:178]: --- LIVE HEARTBEAT ---
+[09:49:55.877][I][main:178]: --- LIVE HEARTBEAT ---
+[09:50:00.892][I][main:178]: --- LIVE HEARTBEAT ---
+[09:50:05.899][I][main:178]: --- LIVE HEARTBEAT ---
+[09:50:10.914][I][main:178]: --- LIVE HEARTBEAT ---
+[09:50:15.922][I][main:178]: --- LIVE HEARTBEAT ---
+[09:50:20.926][I][main:178]: --- LIVE HEARTBEAT ---
+[09:50:25.937][I][main:178]: --- LIVE HEARTBEAT ---
+[09:50:30.943][I][main:178]: --- LIVE HEARTBEAT ---
+[09:50:35.955][I][main:178]: --- LIVE HEARTBEAT ---
+[09:50:40.957][I][main:178]: --- LIVE HEARTBEAT ---
+[09:50:45.968][I][main:178]: --- LIVE HEARTBEAT ---
+[09:50:50.971][I][main:178]: --- LIVE HEARTBEAT ---
+[09:50:55.975][I][main:178]: --- LIVE HEARTBEAT ---
+[09:51:00.986][I][main:178]: --- LIVE HEARTBEAT ---
+[09:51:05.989][I][main:178]: --- LIVE HEARTBEAT ---
+[09:51:10.995][I][main:178]: --- LIVE HEARTBEAT ---
+[09:51:16.001][I][main:178]: --- LIVE HEARTBEAT ---
+[09:51:21.006][I][main:178]: --- LIVE HEARTBEAT ---
+[09:51:26.010][I][main:178]: --- LIVE HEARTBEAT ---
+[09:51:31.016][I][main:178]: --- LIVE HEARTBEAT ---
+[09:51:35.023][I][main:178]: --- LIVE HEARTBEAT ---
+[09:51:40.029][I][main:178]: --- LIVE HEARTBEAT ---
+[09:51:45.042][I][main:178]: --- LIVE HEARTBEAT ---
+[09:51:50.042][I][main:178]: --- LIVE HEARTBEAT ---
+[09:51:55.049][I][main:178]: --- LIVE HEARTBEAT ---
+[09:52:00.066][I][main:178]: --- LIVE HEARTBEAT ---
+[09:52:05.073][I][main:178]: --- LIVE HEARTBEAT ---
+[09:52:10.084][I][main:178]: --- LIVE HEARTBEAT ---
+[09:52:15.094][I][main:178]: --- LIVE HEARTBEAT ---
+[09:52:20.105][I][main:178]: --- LIVE HEARTBEAT ---
+[09:52:25.112][I][main:178]: --- LIVE HEARTBEAT ---
+[09:52:30.114][I][main:178]: --- LIVE HEARTBEAT ---
+[09:52:35.123][I][main:178]: --- LIVE HEARTBEAT ---
+[09:52:40.131][I][main:178]: --- LIVE HEARTBEAT ---
+[09:52:45.135][I][main:178]: --- LIVE HEARTBEAT ---
+[09:52:50.153][I][main:178]: --- LIVE HEARTBEAT ---
+[09:52:55.163][I][main:178]: --- LIVE HEARTBEAT ---
+[09:53:00.175][I][main:178]: --- LIVE HEARTBEAT ---
+[09:53:05.191][I][main:178]: --- LIVE HEARTBEAT ---
+[09:53:10.207][I][main:178]: --- LIVE HEARTBEAT ---
+[09:53:15.218][I][main:178]: --- LIVE HEARTBEAT ---
+[09:53:20.227][I][main:178]: --- LIVE HEARTBEAT ---
+[09:53:25.235][I][main:178]: --- LIVE HEARTBEAT ---
+[09:53:30.240][I][main:178]: --- LIVE HEARTBEAT ---
+[09:53:35.257][I][main:178]: --- LIVE HEARTBEAT ---
+[09:53:40.272][I][main:178]: --- LIVE HEARTBEAT ---
+[09:53:45.280][I][main:178]: --- LIVE HEARTBEAT ---
+[09:53:50.297][I][main:178]: --- LIVE HEARTBEAT ---
+[09:53:55.306][I][main:178]: --- LIVE HEARTBEAT ---
+[09:54:00.317][I][main:178]: --- LIVE HEARTBEAT ---
+[09:54:05.331][I][main:178]: --- LIVE HEARTBEAT ---
+[09:54:10.342][I][main:178]: --- LIVE HEARTBEAT ---
+[09:54:15.347][I][main:178]: --- LIVE HEARTBEAT ---
+[09:54:20.357][I][main:178]: --- LIVE HEARTBEAT ---
+[09:54:25.361][I][main:178]: --- LIVE HEARTBEAT ---
+[09:54:30.379][I][main:178]: --- LIVE HEARTBEAT ---
+[09:54:35.389][I][main:178]: --- LIVE HEARTBEAT ---
+[09:54:40.399][I][main:178]: --- LIVE HEARTBEAT ---
+[09:54:45.415][I][main:178]: --- LIVE HEARTBEAT ---
+[09:54:50.424][I][main:178]: --- LIVE HEARTBEAT ---
+[09:54:55.435][I][main:178]: --- LIVE HEARTBEAT ---
+[09:55:00.445][I][main:178]: --- LIVE HEARTBEAT ---
+[09:55:05.458][I][main:178]: --- LIVE HEARTBEAT ---
+[09:55:10.468][I][main:178]: --- LIVE HEARTBEAT ---
+[09:55:15.478][I][main:178]: --- LIVE HEARTBEAT ---
+[09:55:20.492][I][main:178]: --- LIVE HEARTBEAT ---
+[09:55:25.498][I][main:178]: --- LIVE HEARTBEAT ---
+[09:55:30.511][I][main:178]: --- LIVE HEARTBEAT ---
+[09:55:35.518][I][main:178]: --- LIVE HEARTBEAT ---
+[09:55:40.531][I][main:178]: --- LIVE HEARTBEAT ---
+[09:55:45.541][I][main:178]: --- LIVE HEARTBEAT ---
+[09:55:50.549][I][main:178]: --- LIVE HEARTBEAT ---
+[09:55:55.561][I][main:178]: --- LIVE HEARTBEAT ---
+[09:56:00.571][I][main:178]: --- LIVE HEARTBEAT ---
+[09:56:05.583][I][main:178]: --- LIVE HEARTBEAT ---
+[09:56:10.592][I][main:178]: --- LIVE HEARTBEAT ---
+[09:56:15.602][I][main:178]: --- LIVE HEARTBEAT ---
+[09:56:20.612][I][main:178]: --- LIVE HEARTBEAT ---
+[09:56:25.627][I][main:178]: --- LIVE HEARTBEAT ---
+[09:56:30.638][I][main:178]: --- LIVE HEARTBEAT ---
+[09:56:35.649][I][main:178]: --- LIVE HEARTBEAT ---
+[09:56:40.664][I][main:178]: --- LIVE HEARTBEAT ---
+[09:56:45.672][I][main:178]: --- LIVE HEARTBEAT ---
+[09:56:50.683][I][main:178]: --- LIVE HEARTBEAT ---
+[09:56:55.695][I][main:178]: --- LIVE HEARTBEAT ---
+[09:57:00.710][I][main:178]: --- LIVE HEARTBEAT ---
+[09:57:05.723][I][main:178]: --- LIVE HEARTBEAT ---
+[09:57:10.741][I][main:178]: --- LIVE HEARTBEAT ---
+[09:57:15.749][I][main:178]: --- LIVE HEARTBEAT ---
+[09:57:20.756][I][main:178]: --- LIVE HEARTBEAT ---
+[09:57:25.764][I][main:178]: --- LIVE HEARTBEAT ---
+[09:57:30.773][I][main:178]: --- LIVE HEARTBEAT ---
+[09:57:35.783][I][main:178]: --- LIVE HEARTBEAT ---
+[09:57:40.794][I][main:178]: --- LIVE HEARTBEAT ---
+[09:57:45.811][I][main:178]: --- LIVE HEARTBEAT ---
+[09:57:50.819][I][main:178]: --- LIVE HEARTBEAT ---
+[09:57:55.824][I][main:178]: --- LIVE HEARTBEAT ---
+[09:58:00.832][I][main:178]: --- LIVE HEARTBEAT ---
+[09:58:01.749][I][react_spa:274][httpd]: Serving SPA for URI: / (Buffer: 56961)
+[09:58:02.021][I][react_spa:274][httpd]: Serving SPA for URI: /favicon.ico (Buffer: 56961)
+[09:58:02.977][I][react_spa:274][httpd]: Serving SPA for URI: / (Buffer: 56961)
+[09:58:03.089][I][react_spa:274][httpd]: Serving SPA for URI: /favicon.ico (Buffer: 56961)
+[09:58:05.845][I][main:178]: --- LIVE HEARTBEAT ---
+[09:58:10.855][I][main:178]: --- LIVE HEARTBEAT ---
+[09:58:15.859][I][main:178]: --- LIVE HEARTBEAT ---
+[09:58:20.871][I][main:178]: --- LIVE HEARTBEAT ---
+[09:58:25.880][I][main:178]: --- LIVE HEARTBEAT ---
+[09:58:30.895][I][main:178]: --- LIVE HEARTBEAT ---
+[09:58:35.908][I][main:178]: --- LIVE HEARTBEAT ---
+[09:58:40.912][I][main:178]: --- LIVE HEARTBEAT ---
+[09:58:45.924][I][main:178]: --- LIVE HEARTBEAT ---
+[09:58:50.933][I][main:178]: --- LIVE HEARTBEAT ---
+[09:58:55.944][I][main:178]: --- LIVE HEARTBEAT ---
+[09:59:00.947][I][main:178]: --- LIVE HEARTBEAT ---
+[09:59:05.958][I][main:178]: --- LIVE HEARTBEAT ---
+[09:59:10.964][I][main:178]: --- LIVE HEARTBEAT ---
+[09:59:15.971][I][main:178]: --- LIVE HEARTBEAT ---
+[09:59:20.981][I][main:178]: --- LIVE HEARTBEAT ---
+[09:59:25.986][I][main:178]: --- LIVE HEARTBEAT ---
+[09:59:31.002][I][main:178]: --- LIVE HEARTBEAT ---
+[09:59:35.015][I][main:178]: --- LIVE HEARTBEAT ---
+[09:59:40.028][I][main:178]: --- LIVE HEARTBEAT ---
+[09:59:45.032][I][main:178]: --- LIVE HEARTBEAT ---
+[09:59:50.050][I][main:178]: --- LIVE HEARTBEAT ---
+[09:59:55.060][I][main:178]: --- LIVE HEARTBEAT ---
+[10:00:00.067][I][main:178]: --- LIVE HEARTBEAT ---
+[10:00:05.076][I][main:178]: --- LIVE HEARTBEAT ---
+[10:00:10.095][I][main:178]: --- LIVE HEARTBEAT ---
+[10:00:15.104][I][main:178]: --- LIVE HEARTBEAT ---
+[10:00:20.119][I][main:178]: --- LIVE HEARTBEAT ---
+[10:00:25.130][I][main:178]: --- LIVE HEARTBEAT ---
+[10:00:30.143][I][main:178]: --- LIVE HEARTBEAT ---
+[10:00:35.153][I][main:178]: --- LIVE HEARTBEAT ---
+[10:00:40.167][I][main:178]: --- LIVE HEARTBEAT ---
+[10:00:45.178][I][main:178]: --- LIVE HEARTBEAT ---
+[10:00:50.191][I][main:178]: --- LIVE HEARTBEAT ---
+[10:00:55.203][I][main:178]: --- LIVE HEARTBEAT ---
+[10:01:00.212][I][main:178]: --- LIVE HEARTBEAT ---
+[10:01:05.218][I][main:178]: --- LIVE HEARTBEAT ---
+[10:01:10.229][I][main:178]: --- LIVE HEARTBEAT ---
+[10:01:15.235][I][main:178]: --- LIVE HEARTBEAT ---
+[10:01:20.249][I][main:178]: --- LIVE HEARTBEAT ---
+[10:01:25.252][I][main:178]: --- LIVE HEARTBEAT ---
+[10:01:30.269][I][main:178]: --- LIVE HEARTBEAT ---
+[10:01:35.281][I][main:178]: --- LIVE HEARTBEAT ---
+[10:01:40.298][I][main:178]: --- LIVE HEARTBEAT ---
+[10:01:45.305][I][main:178]: --- LIVE HEARTBEAT ---
+[10:01:50.311][I][main:178]: --- LIVE HEARTBEAT ---
+[10:01:55.322][I][main:178]: --- LIVE HEARTBEAT ---
+[10:02:00.330][I][main:178]: --- LIVE HEARTBEAT ---
+[10:02:05.341][I][main:178]: --- LIVE HEARTBEAT ---
+[10:02:10.354][I][main:178]: --- LIVE HEARTBEAT ---
+[10:02:15.359][I][main:178]: --- LIVE HEARTBEAT ---
+[10:02:20.367][I][main:178]: --- LIVE HEARTBEAT ---
+[10:02:25.380][I][main:178]: --- LIVE HEARTBEAT ---
+[10:02:30.394][I][main:178]: --- LIVE HEARTBEAT ---
+[10:02:35.403][I][main:178]: --- LIVE HEARTBEAT ---
+[10:02:40.418][I][main:178]: --- LIVE HEARTBEAT ---
+[10:02:45.426][I][main:178]: --- LIVE HEARTBEAT ---
+[10:02:50.444][I][main:178]: --- LIVE HEARTBEAT ---
+[10:02:55.460][I][main:178]: --- LIVE HEARTBEAT ---
+[10:03:00.476][I][main:178]: --- LIVE HEARTBEAT ---
+[10:03:05.480][I][main:178]: --- LIVE HEARTBEAT ---
+[10:03:10.494][I][main:178]: --- LIVE HEARTBEAT ---
+[10:03:15.501][I][main:178]: --- LIVE HEARTBEAT ---
+[10:03:20.512][I][main:178]: --- LIVE HEARTBEAT ---
+[10:03:25.519][I][main:178]: --- LIVE HEARTBEAT ---
+[10:03:30.530][I][main:178]: --- LIVE HEARTBEAT ---
+[10:03:35.541][I][main:178]: --- LIVE HEARTBEAT ---
+[10:03:40.550][I][main:178]: --- LIVE HEARTBEAT ---
+[10:03:45.567][I][main:178]: --- LIVE HEARTBEAT ---
+[10:03:50.578][I][main:178]: --- LIVE HEARTBEAT ---
+[10:03:55.591][I][main:178]: --- LIVE HEARTBEAT ---
+[10:04:00.600][I][main:178]: --- LIVE HEARTBEAT ---
+[10:04:05.611][I][main:178]: --- LIVE HEARTBEAT ---
+[10:04:10.618][I][main:178]: --- LIVE HEARTBEAT ---
+[10:04:15.634][I][main:178]: --- LIVE HEARTBEAT ---
+[10:04:20.649][I][main:178]: --- LIVE HEARTBEAT ---
+[10:04:25.661][I][main:178]: --- LIVE HEARTBEAT ---
+[10:04:30.678][I][main:178]: --- LIVE HEARTBEAT ---
+[10:04:35.693][I][main:178]: --- LIVE HEARTBEAT ---
+[10:04:40.700][I][main:178]: --- LIVE HEARTBEAT ---
+[10:04:45.718][I][main:178]: --- LIVE HEARTBEAT ---
+[10:04:50.728][I][main:178]: --- LIVE HEARTBEAT ---
+[10:04:55.744][I][main:178]: --- LIVE HEARTBEAT ---
+[10:05:00.750][I][main:178]: --- LIVE HEARTBEAT ---
+[10:05:05.762][I][main:178]: --- LIVE HEARTBEAT ---
+[10:05:10.769][I][main:178]: --- LIVE HEARTBEAT ---
+[10:05:15.782][I][main:178]: --- LIVE HEARTBEAT ---
+[10:05:20.792][I][main:178]: --- LIVE HEARTBEAT ---
+[10:05:25.803][I][main:178]: --- LIVE HEARTBEAT ---
+[10:05:30.813][I][main:178]: --- LIVE HEARTBEAT ---
+[10:05:35.825][I][main:178]: --- LIVE HEARTBEAT ---
+[10:05:40.834][I][main:178]: --- LIVE HEARTBEAT ---
+[10:05:45.843][I][main:178]: --- LIVE HEARTBEAT ---
+[10:05:50.852][I][main:178]: --- LIVE HEARTBEAT ---
+[10:05:55.863][I][main:178]: --- LIVE HEARTBEAT ---
+[10:06:00.872][I][main:178]: --- LIVE HEARTBEAT ---
+[10:06:05.880][I][main:178]: --- LIVE HEARTBEAT ---
+[10:06:10.893][I][main:178]: --- LIVE HEARTBEAT ---
+[10:06:15.898][I][main:178]: --- LIVE HEARTBEAT ---
+[10:06:20.914][I][main:178]: --- LIVE HEARTBEAT ---
+[10:06:25.923][I][main:178]: --- LIVE HEARTBEAT ---
+[10:06:30.939][I][main:178]: --- LIVE HEARTBEAT ---
+[10:06:35.953][I][main:178]: --- LIVE HEARTBEAT ---
+[10:06:40.958][I][main:178]: --- LIVE HEARTBEAT ---
+[10:06:45.977][I][main:178]: --- LIVE HEARTBEAT ---
+[10:06:50.982][I][main:178]: --- LIVE HEARTBEAT ---
+[10:06:55.995][I][main:178]: --- LIVE HEARTBEAT ---
+[10:07:01.010][I][main:178]: --- LIVE HEARTBEAT ---
+[10:07:05.021][I][main:178]: --- LIVE HEARTBEAT ---
+[10:07:10.031][I][main:178]: --- LIVE HEARTBEAT ---
+[10:07:15.040][I][main:178]: --- LIVE HEARTBEAT ---
+[10:07:20.054][I][main:178]: --- LIVE HEARTBEAT ---
+[10:07:25.062][I][main:178]: --- LIVE HEARTBEAT ---
+[10:07:30.074][I][main:178]: --- LIVE HEARTBEAT ---
+[10:07:35.081][I][main:178]: --- LIVE HEARTBEAT ---
+[10:07:40.092][I][main:178]: --- LIVE HEARTBEAT ---
+[10:07:45.103][I][main:178]: --- LIVE HEARTBEAT ---
+[10:07:50.111][I][main:178]: --- LIVE HEARTBEAT ---
+./scripts/flash.sh: line 107: 1992440 Killed                  $ESPHOME logs "$CONFIG" --device "$DEVICE"

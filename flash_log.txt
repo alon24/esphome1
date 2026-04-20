@@ -1,0 +1,2645 @@
+▶  Firmware version: v630 (was v629)
+▶  Compiling device.yaml (v630)...
+INFO ESPHome 2026.3.1
+INFO Reading configuration device.yaml...
+INFO Generating C++ source...
+INFO Using user-provided CONFIG_LWIP_MAX_SOCKETS: 16
+WARNING CORE.using_esp_idf was deprecated in 2026.1, will change behavior in 2026.6. ESP32 Arduino builds on top of ESP-IDF, so ESP-IDF features are available in both frameworks. Use CORE.is_esp32 and/or CORE.using_arduino instead.
+INFO Compiling app... Build path: /root/claude-dev/projects/esphome1/.esphome/build/esp32-display
+Processing esp32-display (board: esp32-s3-devkitc-1; framework: espidf; platform: https://github.com/pioarduino/platform-espressif32/releases/download/55.03.37/platform-espressif32.zip)
+--------------------------------------------------------------------------------
+HARDWARE: ESP32S3 240MHz, 320KB RAM, 16MB Flash
+ - contrib-piohome @ 3.4.4 
+ - framework-espidf @ 3.50503.0 (5.5.3) 
+ - tool-cmake @ 4.0.3 
+ - tool-esp-rom-elfs @ 2024.10.11 
+ - tool-esptoolpy @ 5.1.2 
+ - tool-ninja @ 1.13.1 
+ - tool-scons @ 4.40801.0 (4.8.1) 
+ - toolchain-xtensa-esp-elf @ 14.2.0+20251107
+Reading CMake configuration...
+Dependency Graph
+|-- LovyanGFX @ 1.2.19
+|-- ArduinoJson @ 7.3.0
+|-- lvgl @ 8.4.0
+Compiling .pioenvs/esp32-display/src/main.cpp.o
+Linking .pioenvs/esp32-display/firmware.elf
+                            Memory Type Usage Summary                             
+┏━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━┳━━━━━━━━━━┳━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━┓
+┃ Memory Type/Section ┃ Used [bytes] ┃ Used [%] ┃ Remain [bytes] ┃ Total [bytes] ┃
+┡━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━╇━━━━━━━━━━╇━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━┩
+│ Flash Code          │       977744 │          │                │               │
+│    .text            │       977744 │          │                │               │
+│ Flash Data          │       306992 │          │                │               │
+│    .rodata          │       306736 │          │                │               │
+│    .appdesc         │          256 │          │                │               │
+│ DIRAM               │       112395 │    32.89 │         229365 │        341760 │
+│    .text            │        61923 │    18.12 │                │               │
+│    .bss             │        29528 │     8.64 │                │               │
+│    .data            │        20860 │      6.1 │                │               │
+│    .noinit          │           84 │     0.02 │                │               │
+│ IRAM                │        16384 │    100.0 │              0 │         16384 │
+│    .text            │        15356 │    93.73 │                │               │
+│    .vectors         │         1028 │     6.27 │                │               │
+│ RTC SLOW            │          164 │      2.0 │           8028 │          8192 │
+│    .data            │          164 │      2.0 │                │               │
+└─────────────────────┴──────────────┴──────────┴────────────────┴───────────────┘
+Total image size: 1384067 bytes (.bin may be padded larger)
+Note: The reported total sizes may be smaller than those in the technical reference manual due to reserved memory and application configuration. The total flash size available for the application is not included by default, as it cannot be reliably determined due to the presence of other data like the bootloader, partition table, and application partition size.
+RAM:   [==        ]  15.4% (used 50472 bytes from 327680 bytes)
+Flash: [==        ]  21.1% (used 1383647 bytes from 6553600 bytes)
+Building .pioenvs/esp32-display/firmware.bin
+Creating ESP32S3 image...
+Successfully created ESP32S3 image.
+merge_factory_bin([".pioenvs/esp32-display/firmware.bin"], [".pioenvs/esp32-display/firmware.elf"])
+Info: bootloader.bin not found - skipping
+Info: partition-table.bin not found - skipping
+Info: ota_data_initial.bin not found - skipping
+Info: esp32-display.bin not found - skipping
+Using FLASH_EXTRA_IMAGES from PlatformIO environment
+Merging binaries into /root/claude-dev/projects/esphome1/.esphome/build/esp32-display/.pioenvs/esp32-display/firmware.factory.bin
+Merging binaries with esptool
+SHA digest in image updated.
+Wrote 0x161f10 bytes to file '/root/claude-dev/projects/esphome1/.esphome/build/esp32-display/.pioenvs/esp32-display/firmware.factory.bin', ready to flash to offset 0x0.
+Successfully created /root/claude-dev/projects/esphome1/.esphome/build/esp32-display/.pioenvs/esp32-display/firmware.factory.bin
+esp32_copy_ota_bin([".pioenvs/esp32-display/firmware.bin"], [".pioenvs/esp32-display/firmware.elf"])
+Copied firmware to /root/claude-dev/projects/esphome1/.esphome/build/esp32-display/.pioenvs/esp32-display/firmware.ota.bin
+========================= [SUCCESS] Took 17.73 seconds =========================
+INFO Build Info: config_hash=0xac3a657f build_time_str=2026-04-18 20:22:00 +0000
+INFO Successfully compiled program.
+▶  USB detected — flashing via serial...
+ 2595719▶  Uploading v630 to /dev/ttyUSB0...
+INFO ESPHome 2026.3.1
+INFO Reading configuration device.yaml...
+esptool v5.2.0
+Serial port /dev/ttyUSB0:
+Connecting....
+Connected to ESP32-S3 on /dev/ttyUSB0:
+Chip type:          ESP32-S3 (QFN56) (revision v0.2)
+Features:           Wi-Fi, BT 5 (LE), Dual Core + LP Core, 240MHz, Embedded PSRAM 8MB (AP_3v3)
+Crystal frequency:  40MHz
+MAC:                dc:da:0c:57:f5:dc
+
+Uploading stub flasher...
+Running stub flasher...
+Stub flasher running.
+Changing baud rate to 921600...
+Changed.
+
+Configuring flash size...
+Auto-detected flash size: 16MB
+Flash will be erased from 0x00010000 to 0x00161fff...
+Compressed 1384208 bytes to 910485...
+Writing at 0x00010000 [                              ]   0.0% 0/910485 bytes... Writing at 0x0001b6e4 [                              ]   1.8% 16384/910485 bytes... Writing at 0x000282b5 [>                             ]   3.6% 32768/910485 bytes... Writing at 0x0003065b [>                             ]   5.4% 49152/910485 bytes... Writing at 0x0003805e [=>                            ]   7.2% 65536/910485 bytes... Writing at 0x000407f6 [=>                            ]   9.0% 81920/910485 bytes... Writing at 0x00049e94 [==>                           ]  10.8% 98304/910485 bytes... Writing at 0x000537fd [==>                           ]  12.6% 114688/910485 bytes... Writing at 0x0005e164 [===>                          ]  14.4% 131072/910485 bytes... Writing at 0x000648d8 [===>                          ]  16.2% 147456/910485 bytes... Writing at 0x00069838 [====>                         ]  18.0% 163840/910485 bytes... Writing at 0x0006ec6a [====>                         ]  19.8% 180224/910485 bytes... Writing at 0x00073fc6 [=====>                        ]  21.6% 196608/910485 bytes... Writing at 0x00079594 [======>                       ]  23.4% 212992/910485 bytes... Writing at 0x0007e907 [======>                       ]  25.2% 229376/910485 bytes... Writing at 0x00083e71 [=======>                      ]  27.0% 245760/910485 bytes... Writing at 0x000896c4 [=======>                      ]  28.8% 262144/910485 bytes... Writing at 0x0008e98f [========>                     ]  30.6% 278528/910485 bytes... Writing at 0x00093f81 [========>                     ]  32.4% 294912/910485 bytes... Writing at 0x0009904d [=========>                    ]  34.2% 311296/910485 bytes... Writing at 0x0009e66a [=========>                    ]  36.0% 327680/910485 bytes... Writing at 0x000a3fde [==========>                   ]  37.8% 344064/910485 bytes... Writing at 0x000a933c [==========>                   ]  39.6% 360448/910485 bytes... Writing at 0x000ae9da [===========>                  ]  41.4% 376832/910485 bytes... Writing at 0x000b4110 [===========>                  ]  43.2% 393216/910485 bytes... Writing at 0x000b9749 [============>                 ]  45.0% 409600/910485 bytes... Writing at 0x000bea4a [=============>                ]  46.8% 425984/910485 bytes... Writing at 0x000c423e [=============>                ]  48.6% 442368/910485 bytes... Writing at 0x000c9a91 [==============>               ]  50.4% 458752/910485 bytes... Writing at 0x000cf6ab [==============>               ]  52.2% 475136/910485 bytes... Writing at 0x000d4f01 [===============>              ]  54.0% 491520/910485 bytes... Writing at 0x000d9f25 [===============>              ]  55.8% 507904/910485 bytes... Writing at 0x000df413 [================>             ]  57.6% 524288/910485 bytes... Writing at 0x000e475c [================>             ]  59.4% 540672/910485 bytes... Writing at 0x000e9da2 [=================>            ]  61.2% 557056/910485 bytes... Writing at 0x000eedb5 [=================>            ]  63.0% 573440/910485 bytes... Writing at 0x000f3f91 [==================>           ]  64.8% 589824/910485 bytes... Writing at 0x000f948e [==================>           ]  66.6% 606208/910485 bytes... Writing at 0x000fead2 [===================>          ]  68.4% 622592/910485 bytes... Writing at 0x00103bcd [====================>         ]  70.2% 638976/910485 bytes... Writing at 0x00108bb4 [====================>         ]  72.0% 655360/910485 bytes... Writing at 0x0010e3a9 [=====================>        ]  73.8% 671744/910485 bytes... Writing at 0x00113bc6 [=====================>        ]  75.6% 688128/910485 bytes... Writing at 0x0011912e [======================>       ]  77.4% 704512/910485 bytes... Writing at 0x0011e461 [======================>       ]  79.2% 720896/910485 bytes... Writing at 0x00123a77 [=======================>      ]  81.0% 737280/910485 bytes... Writing at 0x00129a11 [=======================>      ]  82.8% 753664/910485 bytes... Writing at 0x0012ef70 [========================>     ]  84.6% 770048/910485 bytes... Writing at 0x001348e4 [========================>     ]  86.4% 786432/910485 bytes... Writing at 0x0013b2f0 [=========================>    ]  88.2% 802816/910485 bytes... Writing at 0x00141917 [=========================>    ]  90.0% 819200/910485 bytes... Writing at 0x001474f5 [==========================>   ]  91.8% 835584/910485 bytes... Writing at 0x0014cffe [===========================>  ]  93.6% 851968/910485 bytes... Writing at 0x00153263 [===========================>  ]  95.4% 868352/910485 bytes... Writing at 0x00159003 [============================> ]  97.2% 884736/910485 bytes... Writing at 0x0015e75e [============================> ]  99.0% 901120/910485 bytes... Writing at 0x00161f10 [==============================] 100.0% 910485/910485 bytes... 
+Wrote 1384208 bytes (910485 compressed) at 0x00010000 in 14.2 seconds (778.9 kbit/s).
+Verifying written data...
+Hash of data verified.
+SHA digest in image updated.
+Flash will be erased from 0x00000000 to 0x00005fff...
+Compressed 20912 bytes to 13412...
+Writing at 0x00000000 [                              ]   0.0% 0/13412 bytes... Writing at 0x000051b0 [==============================] 100.0% 13412/13412 bytes... 
+Wrote 20912 bytes (13412 compressed) at 0x00000000 in 0.5 seconds (347.0 kbit/s).
+Verifying written data...
+Hash of data verified.
+Flash will be erased from 0x00008000 to 0x00008fff...
+Compressed 3072 bytes to 129...
+Writing at 0x00008000 [                              ]   0.0% 0/129 bytes... Writing at 0x00008c00 [==============================] 100.0% 129/129 bytes... 
+Wrote 3072 bytes (129 compressed) at 0x00008000 in 0.0 seconds (527.0 kbit/s).
+Verifying written data...
+Hash of data verified.
+Flash will be erased from 0x0000e000 to 0x0000ffff...
+Compressed 8192 bytes to 31...
+Writing at 0x0000e000 [                              ]   0.0% 0/31 bytes... Writing at 0x00010000 [==============================] 100.0% 31/31 bytes... 
+Wrote 8192 bytes (31 compressed) at 0x0000e000 in 0.1 seconds (769.2 kbit/s).
+Verifying written data...
+Hash of data verified.
+
+Hard resetting via RTS pin...
+INFO Successfully uploaded program.
+✔  Upload complete (USB)
+▶  Skipping version verification (USB or SKIP_VERIFY set)
+▶  Showing logs (Ctrl+C to exit)...
+INFO ESPHome 2026.3.1
+INFO Reading configuration device.yaml...
+INFO Starting log output from /dev/ttyUSB0 with baud rate 115200
+[09:31:57.866][I][logger:120]: Log initialized
+[09:31:57.869][I][app:089]: Running through setup()
+[09:31:57.875][I][i2c.idf:205]: Performing bus recovery
+[09:31:57.905][E][sd_card:177]: CRITICAL: Long Filename (LFN) support appears DISABLED in SDK!
+[09:31:57.916][I][sd_card:179]: SD card component initialising (SPI: CLK=12 MOSI=11 MISO=13 CS=10)
+[09:31:57.976][I][sd_card:094]: SD card mounted successfully at /sdcard
+[09:31:57.976]Name: USD00
+[09:31:57.976]Type: SDHC
+[09:31:57.982]Speed: 10.00 MHz (limit: 10.00 MHz)
+[09:31:57.982]Size: 30255MB
+[09:31:57.987]CSD: ver=2, sector_size=512, capacity=61962240 read_bl_len=9
+[09:31:57.990]SSR: bus_width=1
+[09:31:57.993][I][sd_card:095]: Card Name: USD00
+[09:31:57.999][I][sd_card:121]: Mounted /sdcard and verified structure
+[09:31:58.443][I][sd_card:131]: SD Card Base Write Test (a.txt): SUCCESS!
+[09:31:58.691][I][sd_card:138]: LFN disabled, testing short directory creation...
+[09:31:59.752][I][sd_card:142]: Short directory creation SUCCESS!
+[09:31:59.834][I][lovyan_gfx:028]: Setting up LovyanGFX (Handover to ESP-IDF driver_ng)...
+[09:31:59.842][I][lovyan_gfx:033]: Touch driver DETACHED for I2C driver_ng compatibility.
+[09:31:59.939][I][lovyan_gfx:040]: LovyanGFX Display initialized with SwapBytes=ON.
+[09:32:00.085][I][SYS:063]: Settings loaded from Flash to RTC: screen=main, ss=OFF, ap_on=YES
+[09:32:00.147][I][GRID:136]: [PANELS] Loaded master: Navigation 1 (3 elements)
+[09:32:00.152][I][GRID:186]: Loaded 1179 bytes from /spiffs/grid.json
+[09:32:00.158][I][GRID:201]: Parsing 5 items (bg: 0E0E12, border: 222222, width: 0)
+[09:32:00.163][I][GRID:206]:   Loaded [arc] New arc
+[09:32:00.169][I][GRID:206]:   Loaded [slider] New slider
+[09:32:00.172][I][GRID:206]:   Loaded [roller] New roller
+[09:32:00.177][I][GRID:206]:   Loaded [panel-ref] New panel-ref
+[09:32:00.183][I][GRID:206]:   Loaded [bar] New bar
+[09:32:00.188][I][WIFI:150]: Applying AP Settings: active=YES, SSID=GRIDOS_AP
+[09:32:00.194][E][WIFI:183]: FAILED to set AP config: 12289
+[09:32:00.199][I][WIFI:187]: AP Mode Applied. Current active state: 1
+[09:32:00.205][I][SYS:051]: Persistent AP Mode Active on Boot: GRIDOS_AP
+[09:32:00.211][I][GRID:108]: Building new screen: main
+[09:32:00.266][I][react_spa:108]: Dynamic SPA active: /spiffs/app-v80-1776543127.gz
+[09:32:00.461][I][react_spa:252]: SPA Cached in PSRAM: 63261 bytes from /spiffs/app-v80-1776543127.gz
+[09:32:00.467][I][react_spa:147]: Starting HTTP server on port 80
+[09:32:00.470][I][app:138]: setup() finished successfully!
+[09:32:00.478][I][WIFI:150]: Applying AP Settings: active=YES, SSID=GRIDOS_AP
+[09:32:00.484][I][WIFI:185]: AP config set successfully: GRIDOS_AP
+[09:32:00.489][I][WIFI:187]: AP Mode Applied. Current active state: 1
+[09:32:00.495][W][component:404]: wifi set Warning flag: scanning for networks
+[09:32:00.660][W][component:520]: lvgl took a long time for an operation (188 ms), max is 30 ms
+[09:32:00.668][I][app:231]: ESPHome version 2026.3.1 compiled on 2026-04-18 20:22:00 +0000
+[09:32:00.675][I][app:238]: ESP32 Chip: ESP32-S3 rev0.2, 2 core(s)
+[09:32:03.465][I][main:200]: --- LIVE HEARTBEAT ---
+[09:32:03.473][I][wifi:1417]: - 'freak' (D2:9C:25:9F:06:E2) ▂▄▆█
+[09:32:03.487][I][wifi:1081]: Connecting to 'freak' (D2:9C:25:9F:06:E2) (priority 0, attempt 1/2 in phase SCAN_CONNECTING)...
+[09:32:03.525][W][component:520]: wifi took a long time for an operation (51 ms), max is 30 ms
+[09:32:04.573][I][wifi:129]: IP ADDRESS ASSIGNED: 10.100.102.46
+[09:32:04.578][I][wifi:1551]: Connected
+[09:32:04.586][W][component:429]: wifi cleared Warning flag
+[09:32:05.477][I][WIFI:150]: Applying AP Settings: active=YES, SSID=GRIDOS_AP
+[09:32:05.483][I][WIFI:185]: AP config set successfully: GRIDOS_AP
+[09:32:05.489][I][WIFI:187]: AP Mode Applied. Current active state: 1
+[09:32:08.483][I][main:200]: --- LIVE HEARTBEAT ---
+[09:32:13.492][I][main:200]: --- LIVE HEARTBEAT ---
+[09:32:18.495][I][main:200]: --- LIVE HEARTBEAT ---
+[09:32:23.506][I][main:200]: --- LIVE HEARTBEAT ---
+[09:32:28.518][I][main:200]: --- LIVE HEARTBEAT ---
+[09:32:35.532][I][main:200]: --- LIVE HEARTBEAT ---
+[09:32:40.539][I][main:200]: --- LIVE HEARTBEAT ---
+[09:32:45.550][I][main:200]: --- LIVE HEARTBEAT ---
+[09:32:50.558][I][main:200]: --- LIVE HEARTBEAT ---
+[09:32:55.567][I][main:200]: --- LIVE HEARTBEAT ---
+[09:32:57.874][I][safe_mode:091]: Boot seems successful; resetting boot loop counter
+[09:33:00.574][I][main:200]: --- LIVE HEARTBEAT ---
+[09:33:05.583][I][main:200]: --- LIVE HEARTBEAT ---
+[09:33:10.587][I][main:200]: --- LIVE HEARTBEAT ---
+[09:33:15.590][I][main:200]: --- LIVE HEARTBEAT ---
+[09:33:20.595][I][main:200]: --- LIVE HEARTBEAT ---
+[09:33:25.599][I][main:200]: --- LIVE HEARTBEAT ---
+[09:33:30.604][I][main:200]: --- LIVE HEARTBEAT ---
+[09:33:35.613][I][main:200]: --- LIVE HEARTBEAT ---
+[09:33:40.614][I][main:200]: --- LIVE HEARTBEAT ---
+[09:33:45.622][I][main:200]: --- LIVE HEARTBEAT ---
+[09:33:50.629][I][main:200]: --- LIVE HEARTBEAT ---
+[09:33:55.634][I][main:200]: --- LIVE HEARTBEAT ---
+[09:34:00.643][I][main:200]: --- LIVE HEARTBEAT ---
+[09:34:05.652][I][main:200]: --- LIVE HEARTBEAT ---
+[09:34:10.666][I][main:200]: --- LIVE HEARTBEAT ---
+[09:34:15.669][I][main:200]: --- LIVE HEARTBEAT ---
+[09:34:20.678][I][main:200]: --- LIVE HEARTBEAT ---
+[09:34:25.689][I][main:200]: --- LIVE HEARTBEAT ---
+[09:34:30.694][I][main:200]: --- LIVE HEARTBEAT ---
+[09:34:35.703][I][main:200]: --- LIVE HEARTBEAT ---
+[09:34:40.711][I][main:200]: --- LIVE HEARTBEAT ---
+[09:34:45.719][I][main:200]: --- LIVE HEARTBEAT ---
+[09:34:50.726][I][main:200]: --- LIVE HEARTBEAT ---
+[09:34:55.734][I][main:200]: --- LIVE HEARTBEAT ---
+[09:35:00.741][I][main:200]: --- LIVE HEARTBEAT ---
+[09:35:05.749][I][main:200]: --- LIVE HEARTBEAT ---
+[09:35:10.753][I][main:200]: --- LIVE HEARTBEAT ---
+[09:35:15.763][I][main:200]: --- LIVE HEARTBEAT ---
+[09:35:20.774][I][main:200]: --- LIVE HEARTBEAT ---
+[09:35:25.778][I][main:200]: --- LIVE HEARTBEAT ---
+[09:35:30.785][I][main:200]: --- LIVE HEARTBEAT ---
+[09:35:35.791][I][main:200]: --- LIVE HEARTBEAT ---
+[09:35:40.793][I][main:200]: --- LIVE HEARTBEAT ---
+[09:35:45.798][I][main:200]: --- LIVE HEARTBEAT ---
+[09:35:50.804][I][main:200]: --- LIVE HEARTBEAT ---
+[09:35:55.810][I][main:200]: --- LIVE HEARTBEAT ---
+[09:36:00.812][I][main:200]: --- LIVE HEARTBEAT ---
+[09:36:05.817][I][main:200]: --- LIVE HEARTBEAT ---
+[09:36:10.824][I][main:200]: --- LIVE HEARTBEAT ---
+[09:36:15.830][I][main:200]: --- LIVE HEARTBEAT ---
+[09:36:20.838][I][main:200]: --- LIVE HEARTBEAT ---
+[09:36:25.841][I][main:200]: --- LIVE HEARTBEAT ---
+[09:36:30.853][I][main:200]: --- LIVE HEARTBEAT ---
+[09:36:35.861][I][main:200]: --- LIVE HEARTBEAT ---
+[09:36:40.871][I][main:200]: --- LIVE HEARTBEAT ---
+[09:36:45.883][I][main:200]: --- LIVE HEARTBEAT ---
+[09:36:50.889][I][main:200]: --- LIVE HEARTBEAT ---
+[09:36:55.896][I][main:200]: --- LIVE HEARTBEAT ---
+[09:37:00.902][I][main:200]: --- LIVE HEARTBEAT ---
+[09:37:05.906][I][main:200]: --- LIVE HEARTBEAT ---
+[09:37:10.913][I][main:200]: --- LIVE HEARTBEAT ---
+[09:37:15.915][I][main:200]: --- LIVE HEARTBEAT ---
+[09:37:20.921][I][main:200]: --- LIVE HEARTBEAT ---
+[09:37:25.931][I][main:200]: --- LIVE HEARTBEAT ---
+[09:37:30.950][I][main:200]: --- LIVE HEARTBEAT ---
+[09:37:35.961][I][main:200]: --- LIVE HEARTBEAT ---
+[09:37:40.975][I][main:200]: --- LIVE HEARTBEAT ---
+[09:37:45.977][I][main:200]: --- LIVE HEARTBEAT ---
+[09:37:50.991][I][main:200]: --- LIVE HEARTBEAT ---
+[09:37:56.004][I][main:200]: --- LIVE HEARTBEAT ---
+[09:38:00.013][I][main:200]: --- LIVE HEARTBEAT ---
+[09:38:05.022][I][main:200]: --- LIVE HEARTBEAT ---
+[09:38:10.025][I][main:200]: --- LIVE HEARTBEAT ---
+[09:38:15.030][I][main:200]: --- LIVE HEARTBEAT ---
+[09:38:20.044][I][main:200]: --- LIVE HEARTBEAT ---
+[09:38:25.054][I][main:200]: --- LIVE HEARTBEAT ---
+[09:38:30.062][I][main:200]: --- LIVE HEARTBEAT ---
+[09:38:35.078][I][main:200]: --- LIVE HEARTBEAT ---
+[09:38:40.085][I][main:200]: --- LIVE HEARTBEAT ---
+[09:38:45.091][I][main:200]: --- LIVE HEARTBEAT ---
+[09:38:50.098][I][main:200]: --- LIVE HEARTBEAT ---
+[09:38:55.107][I][main:200]: --- LIVE HEARTBEAT ---
+[09:39:00.112][I][main:200]: --- LIVE HEARTBEAT ---
+[09:39:05.124][I][main:200]: --- LIVE HEARTBEAT ---
+[09:39:10.136][I][main:200]: --- LIVE HEARTBEAT ---
+[09:39:15.149][I][main:200]: --- LIVE HEARTBEAT ---
+[09:39:20.152][I][main:200]: --- LIVE HEARTBEAT ---
+[09:39:25.158][I][main:200]: --- LIVE HEARTBEAT ---
+[09:39:30.168][I][main:200]: --- LIVE HEARTBEAT ---
+[09:39:35.176][I][main:200]: --- LIVE HEARTBEAT ---
+[09:39:40.178][I][main:200]: --- LIVE HEARTBEAT ---
+[09:39:45.191][I][main:200]: --- LIVE HEARTBEAT ---
+[09:39:50.200][I][main:200]: --- LIVE HEARTBEAT ---
+[09:39:55.208][I][main:200]: --- LIVE HEARTBEAT ---
+[09:40:00.217][I][main:200]: --- LIVE HEARTBEAT ---
+[09:40:05.226][I][main:200]: --- LIVE HEARTBEAT ---
+[09:40:10.234][I][main:200]: --- LIVE HEARTBEAT ---
+[09:40:15.243][I][main:200]: --- LIVE HEARTBEAT ---
+[09:40:20.252][I][main:200]: --- LIVE HEARTBEAT ---
+[09:40:25.266][I][main:200]: --- LIVE HEARTBEAT ---
+[09:40:30.274][I][main:200]: --- LIVE HEARTBEAT ---
+[09:40:35.280][I][main:200]: --- LIVE HEARTBEAT ---
+[09:40:40.294][I][main:200]: --- LIVE HEARTBEAT ---
+[09:40:45.313][I][main:200]: --- LIVE HEARTBEAT ---
+[09:40:50.321][I][main:200]: --- LIVE HEARTBEAT ---
+[09:40:55.331][I][main:200]: --- LIVE HEARTBEAT ---
+[09:41:00.351][I][main:200]: --- LIVE HEARTBEAT ---
+[09:41:05.360][I][main:200]: --- LIVE HEARTBEAT ---
+[09:41:10.367][I][main:200]: --- LIVE HEARTBEAT ---
+[09:41:15.378][I][main:200]: --- LIVE HEARTBEAT ---
+[09:41:20.397][I][main:200]: --- LIVE HEARTBEAT ---
+[09:41:25.412][I][main:200]: --- LIVE HEARTBEAT ---
+[09:41:30.422][I][main:200]: --- LIVE HEARTBEAT ---
+[09:41:35.431][I][main:200]: --- LIVE HEARTBEAT ---
+[09:41:40.445][I][main:200]: --- LIVE HEARTBEAT ---
+[09:41:45.455][I][main:200]: --- LIVE HEARTBEAT ---
+[09:41:50.460][I][main:200]: --- LIVE HEARTBEAT ---
+[09:41:55.477][I][main:200]: --- LIVE HEARTBEAT ---
+[09:42:00.494][I][main:200]: --- LIVE HEARTBEAT ---
+[09:42:05.505][I][main:200]: --- LIVE HEARTBEAT ---
+[09:42:10.517][I][main:200]: --- LIVE HEARTBEAT ---
+[09:42:15.524][I][main:200]: --- LIVE HEARTBEAT ---
+[09:42:20.535][I][main:200]: --- LIVE HEARTBEAT ---
+[09:42:25.550][I][main:200]: --- LIVE HEARTBEAT ---
+[09:42:30.557][I][main:200]: --- LIVE HEARTBEAT ---
+[09:42:35.570][I][main:200]: --- LIVE HEARTBEAT ---
+[09:42:40.583][I][main:200]: --- LIVE HEARTBEAT ---
+[09:42:45.594][I][main:200]: --- LIVE HEARTBEAT ---
+[09:42:50.604][I][main:200]: --- LIVE HEARTBEAT ---
+[09:42:55.618][I][main:200]: --- LIVE HEARTBEAT ---
+[09:43:00.626][I][main:200]: --- LIVE HEARTBEAT ---
+[09:43:05.639][I][main:200]: --- LIVE HEARTBEAT ---
+[09:43:10.650][I][main:200]: --- LIVE HEARTBEAT ---
+[09:43:15.661][I][main:200]: --- LIVE HEARTBEAT ---
+[09:43:20.675][I][main:200]: --- LIVE HEARTBEAT ---
+[09:43:25.680][I][main:200]: --- LIVE HEARTBEAT ---
+[09:43:30.691][I][main:200]: --- LIVE HEARTBEAT ---
+[09:43:35.707][I][main:200]: --- LIVE HEARTBEAT ---
+[09:43:40.718][I][main:200]: --- LIVE HEARTBEAT ---
+[09:43:45.741][I][main:200]: --- LIVE HEARTBEAT ---
+[09:43:50.756][I][main:200]: --- LIVE HEARTBEAT ---
+[09:43:55.765][I][main:200]: --- LIVE HEARTBEAT ---
+[09:44:00.775][I][main:200]: --- LIVE HEARTBEAT ---
+[09:44:05.783][I][main:200]: --- LIVE HEARTBEAT ---
+[09:44:10.792][I][main:200]: --- LIVE HEARTBEAT ---
+[09:44:15.794][I][main:200]: --- LIVE HEARTBEAT ---
+[09:44:20.801][I][main:200]: --- LIVE HEARTBEAT ---
+[09:44:25.807][I][main:200]: --- LIVE HEARTBEAT ---
+[09:44:30.817][I][main:200]: --- LIVE HEARTBEAT ---
+[09:44:35.830][I][main:200]: --- LIVE HEARTBEAT ---
+[09:44:40.842][I][main:200]: --- LIVE HEARTBEAT ---
+[09:44:45.854][I][main:200]: --- LIVE HEARTBEAT ---
+[09:44:50.861][I][main:200]: --- LIVE HEARTBEAT ---
+[09:44:55.868][I][main:200]: --- LIVE HEARTBEAT ---
+[09:45:00.879][I][main:200]: --- LIVE HEARTBEAT ---
+[09:45:05.882][I][main:200]: --- LIVE HEARTBEAT ---
+[09:45:10.898][I][main:200]: --- LIVE HEARTBEAT ---
+[09:45:15.912][I][main:200]: --- LIVE HEARTBEAT ---
+[09:45:20.927][I][main:200]: --- LIVE HEARTBEAT ---
+[09:45:25.941][I][main:200]: --- LIVE HEARTBEAT ---
+[09:45:30.948][I][main:200]: --- LIVE HEARTBEAT ---
+[09:45:35.959][I][main:200]: --- LIVE HEARTBEAT ---
+[09:45:40.976][I][main:200]: --- LIVE HEARTBEAT ---
+[09:45:45.996][I][main:200]: --- LIVE HEARTBEAT ---
+[09:45:50.998][I][main:200]: --- LIVE HEARTBEAT ---
+[09:45:56.007][I][main:200]: --- LIVE HEARTBEAT ---
+[09:46:05.024][I][main:200]: --- LIVE HEARTBEAT ---
+[09:46:10.035][I][main:200]: --- LIVE HEARTBEAT ---
+[09:46:15.045][I][main:200]: --- LIVE HEARTBEAT ---
+[09:46:20.049][I][main:200]: --- LIVE HEARTBEAT ---
+[09:46:25.064][I][main:200]: --- LIVE HEARTBEAT ---
+[09:46:30.073][I][main:200]: --- LIVE HEARTBEAT ---
+[09:46:35.086][I][main:200]: --- LIVE HEARTBEAT ---
+[09:46:40.091][I][main:200]: --- LIVE HEARTBEAT ---
+[09:46:45.104][I][main:200]: --- LIVE HEARTBEAT ---
+[09:46:50.115][I][main:200]: --- LIVE HEARTBEAT ---
+[09:46:55.123][I][main:200]: --- LIVE HEARTBEAT ---
+[09:47:00.138][I][main:200]: --- LIVE HEARTBEAT ---
+[09:47:05.151][I][main:200]: --- LIVE HEARTBEAT ---
+[09:47:10.163][I][main:200]: --- LIVE HEARTBEAT ---
+[09:47:15.171][I][main:200]: --- LIVE HEARTBEAT ---
+[09:47:20.183][I][main:200]: --- LIVE HEARTBEAT ---
+[09:47:25.192][I][main:200]: --- LIVE HEARTBEAT ---
+[09:47:30.203][I][main:200]: --- LIVE HEARTBEAT ---
+[09:47:35.209][I][main:200]: --- LIVE HEARTBEAT ---
+[09:47:40.221][I][main:200]: --- LIVE HEARTBEAT ---
+[09:47:45.233][I][main:200]: --- LIVE HEARTBEAT ---
+[09:47:50.241][I][main:200]: --- LIVE HEARTBEAT ---
+[09:47:55.243][I][main:200]: --- LIVE HEARTBEAT ---
+[09:48:00.258][I][main:200]: --- LIVE HEARTBEAT ---
+[09:48:05.269][I][main:200]: --- LIVE HEARTBEAT ---
+[09:48:10.280][I][main:200]: --- LIVE HEARTBEAT ---
+[09:48:15.285][I][main:200]: --- LIVE HEARTBEAT ---
+[09:48:20.298][I][main:200]: --- LIVE HEARTBEAT ---
+[09:48:25.311][I][main:200]: --- LIVE HEARTBEAT ---
+[09:48:30.324][I][main:200]: --- LIVE HEARTBEAT ---
+[09:48:35.333][I][main:200]: --- LIVE HEARTBEAT ---
+[09:48:40.341][I][main:200]: --- LIVE HEARTBEAT ---
+[09:48:45.347][I][main:200]: --- LIVE HEARTBEAT ---
+[09:48:50.363][I][main:200]: --- LIVE HEARTBEAT ---
+[09:48:55.380][I][main:200]: --- LIVE HEARTBEAT ---
+[09:49:00.391][I][main:200]: --- LIVE HEARTBEAT ---
+[09:49:05.400][I][main:200]: --- LIVE HEARTBEAT ---
+[09:49:10.406][I][main:200]: --- LIVE HEARTBEAT ---
+[09:49:15.418][I][main:200]: --- LIVE HEARTBEAT ---
+[09:49:20.428][I][main:200]: --- LIVE HEARTBEAT ---
+[09:49:25.443][I][main:200]: --- LIVE HEARTBEAT ---
+[09:49:30.454][I][main:200]: --- LIVE HEARTBEAT ---
+[09:49:35.460][I][main:200]: --- LIVE HEARTBEAT ---
+[09:49:40.468][I][main:200]: --- LIVE HEARTBEAT ---
+[09:49:45.485][I][main:200]: --- LIVE HEARTBEAT ---
+[09:49:50.497][I][main:200]: --- LIVE HEARTBEAT ---
+[09:49:55.507][I][main:200]: --- LIVE HEARTBEAT ---
+[09:50:00.518][I][main:200]: --- LIVE HEARTBEAT ---
+[09:50:05.528][I][main:200]: --- LIVE HEARTBEAT ---
+[09:50:10.542][I][main:200]: --- LIVE HEARTBEAT ---
+[09:50:15.553][I][main:200]: --- LIVE HEARTBEAT ---
+[09:50:20.554][I][main:200]: --- LIVE HEARTBEAT ---
+[09:50:25.561][I][main:200]: --- LIVE HEARTBEAT ---
+[09:50:30.571][I][main:200]: --- LIVE HEARTBEAT ---
+[09:50:35.581][I][main:200]: --- LIVE HEARTBEAT ---
+[09:50:40.595][I][main:200]: --- LIVE HEARTBEAT ---
+[09:50:45.603][I][main:200]: --- LIVE HEARTBEAT ---
+[09:50:50.614][I][main:200]: --- LIVE HEARTBEAT ---
+[09:50:55.629][I][main:200]: --- LIVE HEARTBEAT ---
+[09:51:00.642][I][main:200]: --- LIVE HEARTBEAT ---
+[09:51:05.651][I][main:200]: --- LIVE HEARTBEAT ---
+[09:51:10.658][I][main:200]: --- LIVE HEARTBEAT ---
+[09:51:15.674][I][main:200]: --- LIVE HEARTBEAT ---
+[09:51:20.688][I][main:200]: --- LIVE HEARTBEAT ---
+[09:51:25.691][I][main:200]: --- LIVE HEARTBEAT ---
+[09:51:30.704][I][main:200]: --- LIVE HEARTBEAT ---
+[09:51:35.717][I][main:200]: --- LIVE HEARTBEAT ---
+[09:51:40.731][I][main:200]: --- LIVE HEARTBEAT ---
+[09:51:45.748][I][main:200]: --- LIVE HEARTBEAT ---
+[09:51:50.764][I][main:200]: --- LIVE HEARTBEAT ---
+[09:51:55.772][I][main:200]: --- LIVE HEARTBEAT ---
+[09:51:55.940][I][GRID:129]: UI Action: scr:scr_2
+[09:51:55.946][I][GRID:238]: Navigating to: scr_2 (forcing reload)
+[09:51:55.951][I][GRID:136]: [PANELS] Loaded master: Navigation 1 (3 elements)
+[09:51:55.957][I][GRID:186]: Loaded 576 bytes from /spiffs/scr_2.json
+[09:51:55.965][I][GRID:201]: Parsing 2 items (bg: 0E0E12, border: 222222, width: 0)
+[09:51:55.971][I][GRID:206]:   Loaded [panel-ref] New panel-ref
+[09:51:55.976][I][GRID:206]:   Loaded [component] 📡 WiFi
+[09:51:56.777][I][GRID:108]: Building new screen: scr_2
+[09:51:56.787][I][WIFI:263]: Embedded create: 640x350
+[09:51:56.880][W][component:520]: interval took a long time for an operation (100 ms), max is 30 ms
+[09:51:56.887][W][component:520]: wifi took a long time for an operation (101 ms), max is 30 ms
+[09:51:57.884][I][WIFI:402]: Embedded scan button clicked!
+[09:51:57.907][I][WIFI:088]: Starting manual synchronous scan...
+[09:52:00.808][I][WIFI:094]: Scan finished, found 4 networks
+[09:52:00.873][I][WIFI:226]: List populated with 4 items
+[09:52:00.986][W][component:520]: lvgl took a long time for an operation (3101 ms), max is 30 ms
+[09:52:00.992][I][main:200]: --- LIVE HEARTBEAT ---
+[09:52:00.999][W][wifi_esp32:863]: esp_wifi_scan_get_ap_record failed: ESP_FAIL
+[09:52:06.002][I][main:200]: --- LIVE HEARTBEAT ---
+[09:52:11.010][I][main:200]: --- LIVE HEARTBEAT ---
+[09:52:15.020][I][main:200]: --- LIVE HEARTBEAT ---
+[09:52:20.119][I][main:200]: --- LIVE HEARTBEAT ---
+[09:52:25.147][I][main:200]: --- LIVE HEARTBEAT ---
+[09:52:30.190][I][main:200]: --- LIVE HEARTBEAT ---
+[09:52:35.205][I][main:200]: --- LIVE HEARTBEAT ---
+[09:52:40.218][I][main:200]: --- LIVE HEARTBEAT ---
+
+[09:52:41.932]--- WIFI CONNECT START ---
+[09:52:41.934]Target SSID: [Moti1]
+[09:52:41.937]Pass length: 14
+[09:52:42.049]SUCCESS: esp_wifi_connect command issued.
+[09:52:42.053]--- WIFI CONNECT PKT SENT ---
+[09:52:42.064][W][lvgl:000]: lv_draw_sw_letter: lv_draw_letter: glyph dsc. not found for U+2014 	(in lv_draw_sw_letter.c line #105)
+[09:52:42.072][W][wifi_esp32:781]: Disconnected ssid='freak' bssid=D2:9C:25:9F:06:E2 reason='Association Leave'
+[09:52:42.078][W][wifi:781]: Connection lost; reconnecting
+[09:52:42.086][W][component:404]: wifi set Warning flag: scanning for networks
+[09:52:42.089][W][wifi:1437]: No networks found
+[09:52:42.100][I][wifi:1081]: Connecting to 'freak' (any) (priority 0, attempt 1/1 in phase RETRY_HIDDEN)...
+[09:52:42.108][W][wifi_esp32:781]: Disconnected ssid='Moti1' bssid=00:00:00:00:00:00 reason='Unspecified'
+[09:52:42.114][W][wifi:1636]: Connecting to network failed (callback)
+[09:52:42.119][W][wifi:715]: Restarting adapter
+[09:52:42.602][W][wifi:1653]: Connecting to network failed
+[09:52:45.224][I][main:200]: --- LIVE HEARTBEAT ---
+[09:52:45.619][I][wifi:1417]: - 'freak' (D2:9C:25:9F:06:E2) ▂▄▆█
+[09:52:45.633][I][wifi:1081]: Connecting to 'freak' (D2:9C:25:9F:06:E2) (priority 0, attempt 1/2 in phase SCAN_CONNECTING)...
+[09:52:46.719][I][wifi:129]: IP ADDRESS ASSIGNED: 10.100.102.46
+[09:52:46.724][I][wifi:1551]: Connected
+[09:52:46.729][W][component:429]: wifi cleared Warning flag
+[09:52:47.234][I][WIFI:150]: Applying AP Settings: active=YES, SSID=GRIDOS_AP
+[09:52:47.240][I][WIFI:185]: AP config set successfully: GRIDOS_AP
+[09:52:47.246][I][WIFI:187]: AP Mode Applied. Current active state: 1
+[09:52:50.234][I][main:200]: --- LIVE HEARTBEAT ---
+[09:52:55.245][I][main:200]: --- LIVE HEARTBEAT ---
+[09:52:55.475][I][GRID:129]: UI Action: scr:main
+[09:52:55.480][I][GRID:238]: Navigating to: main (forcing reload)
+[09:52:55.485][I][GRID:136]: [PANELS] Loaded master: Navigation 1 (3 elements)
+[09:52:55.491][I][GRID:186]: Loaded 1179 bytes from /spiffs/grid.json
+[09:52:55.499][I][GRID:201]: Parsing 5 items (bg: 0E0E12, border: 222222, width: 0)
+[09:52:55.502][I][GRID:206]:   Loaded [arc] New arc
+[09:52:55.507][I][GRID:206]:   Loaded [slider] New slider
+[09:52:55.513][I][GRID:206]:   Loaded [roller] New roller
+[09:52:55.519][I][GRID:206]:   Loaded [panel-ref] New panel-ref
+[09:52:55.523][I][GRID:206]:   Loaded [bar] New bar
+[09:52:56.041][I][GRID:129]: UI Action: scr:scr_2
+[09:52:56.047][I][GRID:238]: Navigating to: scr_2 (forcing reload)
+[09:52:56.053][I][GRID:136]: [PANELS] Loaded master: Navigation 1 (3 elements)
+[09:52:56.058][I][GRID:186]: Loaded 576 bytes from /spiffs/scr_2.json
+[09:52:56.066][I][GRID:201]: Parsing 2 items (bg: 0E0E12, border: 222222, width: 0)
+[09:52:56.072][I][GRID:206]:   Loaded [panel-ref] New panel-ref
+[09:52:56.077][I][GRID:206]:   Loaded [component] 📡 WiFi
+[09:52:56.393][W][lvgl:000]: lv_draw_sw_letter: lv_draw_letter: glyph dsc. not found for U+2014 	(in lv_draw_sw_letter.c line #105)
+[09:52:57.454][I][GRID:129]: UI Action: scr:scr_3
+[09:52:57.460][I][GRID:238]: Navigating to: scr_3 (forcing reload)
+[09:52:57.465][I][GRID:136]: [PANELS] Loaded master: Navigation 1 (3 elements)
+[09:52:57.471][I][GRID:186]: Loaded 579 bytes from /spiffs/scr_3.json
+[09:52:57.479][I][GRID:201]: Parsing 2 items (bg: 0E0E12, border: 222222, width: 0)
+[09:52:57.485][I][GRID:206]:   Loaded [panel-ref] New panel-ref
+[09:52:57.490][I][GRID:206]:   Loaded [component] 💾 SD Card
+[09:52:58.245][I][GRID:129]: UI Action: scr:scr_2
+[09:52:58.251][I][GRID:238]: Navigating to: scr_2 (forcing reload)
+[09:52:58.256][I][GRID:136]: [PANELS] Loaded master: Navigation 1 (3 elements)
+[09:52:58.262][I][GRID:186]: Loaded 576 bytes from /spiffs/scr_2.json
+[09:52:58.271][I][GRID:201]: Parsing 2 items (bg: 0E0E12, border: 222222, width: 0)
+[09:52:58.276][I][GRID:206]:   Loaded [panel-ref] New panel-ref
+[09:52:58.281][I][GRID:206]:   Loaded [component] 📡 WiFi
+[09:52:58.419][W][lvgl:000]: lv_draw_sw_letter: lv_draw_letter: glyph dsc. not found for U+2014 	(in lv_draw_sw_letter.c line #105)
+[09:52:59.358][I][GRID:129]: UI Action: scr:scr_3
+[09:52:59.364][I][GRID:238]: Navigating to: scr_3 (forcing reload)
+[09:52:59.369][I][GRID:136]: [PANELS] Loaded master: Navigation 1 (3 elements)
+[09:52:59.375][I][GRID:186]: Loaded 579 bytes from /spiffs/scr_3.json
+[09:52:59.384][I][GRID:201]: Parsing 2 items (bg: 0E0E12, border: 222222, width: 0)
+[09:52:59.389][I][GRID:206]:   Loaded [panel-ref] New panel-ref
+[09:52:59.394][I][GRID:206]:   Loaded [component] 💾 SD Card
+[09:53:00.267][I][GRID:108]: Building new screen: scr_3
+[09:53:00.275][I][SD:291]: Embedded create: 640x350 (BG: FFFFFFFF)
+[09:53:00.304][I][SD:164]: Scanning: /sdcard
+[09:53:00.311][I][SD:188]: Found 6 items
+[09:53:00.384][I][main:200]: --- LIVE HEARTBEAT ---
+[09:53:00.393][W][component:520]: interval took a long time for an operation (120 ms), max is 30 ms
+[09:53:00.402][W][component:520]: wifi took a long time for an operation (120 ms), max is 30 ms
+[09:53:00.653][I][GRID:129]: UI Action: scr:scr_3
+[09:53:00.659][I][GRID:238]: Navigating to: scr_3 (forcing reload)
+[09:53:00.664][I][GRID:136]: [PANELS] Loaded master: Navigation 1 (3 elements)
+[09:53:00.670][I][GRID:186]: Loaded 579 bytes from /spiffs/scr_3.json
+[09:53:00.678][I][GRID:201]: Parsing 2 items (bg: 0E0E12, border: 222222, width: 0)
+[09:53:00.684][I][GRID:206]:   Loaded [panel-ref] New panel-ref
+[09:53:00.689][I][GRID:206]:   Loaded [component] 💾 SD Card
+[09:53:01.712][I][GRID:129]: UI Action: scr:main
+[09:53:01.717][I][GRID:238]: Navigating to: main (forcing reload)
+[09:53:01.723][I][GRID:136]: [PANELS] Loaded master: Navigation 1 (3 elements)
+[09:53:01.728][I][GRID:186]: Loaded 1179 bytes from /spiffs/grid.json
+[09:53:01.737][I][GRID:201]: Parsing 5 items (bg: 0E0E12, border: 222222, width: 0)
+[09:53:01.739][I][GRID:206]:   Loaded [arc] New arc
+[09:53:01.745][I][GRID:206]:   Loaded [slider] New slider
+[09:53:01.750][I][GRID:206]:   Loaded [roller] New roller
+[09:53:01.756][I][GRID:206]:   Loaded [panel-ref] New panel-ref
+[09:53:01.760][I][GRID:206]:   Loaded [bar] New bar
+[09:53:03.463][I][GRID:129]: UI Action: scr:scr_3
+[09:53:03.468][I][GRID:238]: Navigating to: scr_3 (forcing reload)
+[09:53:03.474][I][GRID:136]: [PANELS] Loaded master: Navigation 1 (3 elements)
+[09:53:03.479][I][GRID:186]: Loaded 579 bytes from /spiffs/scr_3.json
+[09:53:03.488][I][GRID:201]: Parsing 2 items (bg: 0E0E12, border: 222222, width: 0)
+[09:53:03.493][I][GRID:206]:   Loaded [panel-ref] New panel-ref
+[09:53:03.499][I][GRID:206]:   Loaded [component] 💾 SD Card
+[09:53:05.278][I][main:200]: --- LIVE HEARTBEAT ---
+[09:53:10.283][I][main:200]: --- LIVE HEARTBEAT ---
+[09:53:11.514][I][SD:164]: Scanning: /sdcard/CONV
+[09:53:11.518][I][SD:188]: Found 2 items
+[09:53:15.289][I][main:200]: --- LIVE HEARTBEAT ---
+[09:53:15.612][I][SD:164]: Scanning: /sdcard
+[09:53:15.617][I][SD:188]: Found 6 items
+[09:53:20.293][I][main:200]: --- LIVE HEARTBEAT ---
+[09:53:25.303][I][main:200]: --- LIVE HEARTBEAT ---
+[09:53:29.667][I][GRID:129]: UI Action: scr:scr_2
+[09:53:29.673][I][GRID:238]: Navigating to: scr_2 (forcing reload)
+[09:53:29.678][I][GRID:136]: [PANELS] Loaded master: Navigation 1 (3 elements)
+[09:53:29.683][I][GRID:186]: Loaded 576 bytes from /spiffs/scr_2.json
+[09:53:29.692][I][GRID:201]: Parsing 2 items (bg: 0E0E12, border: 222222, width: 0)
+[09:53:29.697][I][GRID:206]:   Loaded [panel-ref] New panel-ref
+[09:53:29.702][I][GRID:206]:   Loaded [component] 📡 WiFi
+[09:53:30.108][I][GRID:129]: UI Action: scr:scr_3
+[09:53:30.113][I][GRID:238]: Navigating to: scr_3 (forcing reload)
+[09:53:30.119][I][GRID:136]: [PANELS] Loaded master: Navigation 1 (3 elements)
+[09:53:30.124][I][GRID:186]: Loaded 579 bytes from /spiffs/scr_3.json
+[09:53:30.133][I][GRID:201]: Parsing 2 items (bg: 0E0E12, border: 222222, width: 0)
+[09:53:30.138][I][GRID:206]:   Loaded [panel-ref] New panel-ref
+[09:53:30.144][I][GRID:206]:   Loaded [component] 💾 SD Card
+[09:53:30.319][I][main:200]: --- LIVE HEARTBEAT ---
+[09:53:35.333][I][main:200]: --- LIVE HEARTBEAT ---
+[09:53:40.342][I][main:200]: --- LIVE HEARTBEAT ---
+[09:53:45.352][I][main:200]: --- LIVE HEARTBEAT ---
+[09:53:50.364][I][main:200]: --- LIVE HEARTBEAT ---
+[09:53:55.373][I][main:200]: --- LIVE HEARTBEAT ---
+[09:54:00.383][I][main:200]: --- LIVE HEARTBEAT ---
+[09:54:05.397][I][main:200]: --- LIVE HEARTBEAT ---
+[09:54:10.410][I][main:200]: --- LIVE HEARTBEAT ---
+[09:54:15.418][I][main:200]: --- LIVE HEARTBEAT ---
+[09:54:20.426][I][main:200]: --- LIVE HEARTBEAT ---
+[09:54:25.440][I][main:200]: --- LIVE HEARTBEAT ---
+[09:54:30.456][I][main:200]: --- LIVE HEARTBEAT ---
+[09:54:35.463][I][main:200]: --- LIVE HEARTBEAT ---
+[09:54:40.473][I][main:200]: --- LIVE HEARTBEAT ---
+[09:54:45.486][I][main:200]: --- LIVE HEARTBEAT ---
+[09:54:50.495][I][main:200]: --- LIVE HEARTBEAT ---
+[09:54:55.507][I][main:200]: --- LIVE HEARTBEAT ---
+[09:55:00.520][I][main:200]: --- LIVE HEARTBEAT ---
+[09:55:05.530][I][main:200]: --- LIVE HEARTBEAT ---
+[09:55:10.538][I][main:200]: --- LIVE HEARTBEAT ---
+[09:55:15.545][I][main:200]: --- LIVE HEARTBEAT ---
+[09:55:20.553][I][main:200]: --- LIVE HEARTBEAT ---
+[09:55:25.564][I][main:200]: --- LIVE HEARTBEAT ---
+[09:55:30.579][I][main:200]: --- LIVE HEARTBEAT ---
+[09:55:35.587][I][main:200]: --- LIVE HEARTBEAT ---
+[09:55:40.597][I][main:200]: --- LIVE HEARTBEAT ---
+[09:55:45.609][I][main:200]: --- LIVE HEARTBEAT ---
+[09:55:50.622][I][main:200]: --- LIVE HEARTBEAT ---
+[09:55:55.631][I][main:200]: --- LIVE HEARTBEAT ---
+[09:56:00.638][I][main:200]: --- LIVE HEARTBEAT ---
+[09:56:05.647][I][main:200]: --- LIVE HEARTBEAT ---
+[09:56:10.659][I][main:200]: --- LIVE HEARTBEAT ---
+[09:56:15.677][I][main:200]: --- LIVE HEARTBEAT ---
+[09:56:20.687][I][main:200]: --- LIVE HEARTBEAT ---
+[09:56:25.693][I][main:200]: --- LIVE HEARTBEAT ---
+[09:56:30.704][I][main:200]: --- LIVE HEARTBEAT ---
+[09:56:35.718][I][main:200]: --- LIVE HEARTBEAT ---
+[09:56:40.733][I][main:200]: --- LIVE HEARTBEAT ---
+[09:56:45.748][I][main:200]: --- LIVE HEARTBEAT ---
+[09:56:50.759][I][main:200]: --- LIVE HEARTBEAT ---
+[09:56:55.763][I][main:200]: --- LIVE HEARTBEAT ---
+[09:57:00.776][I][main:200]: --- LIVE HEARTBEAT ---
+[09:57:05.788][I][main:200]: --- LIVE HEARTBEAT ---
+[09:57:10.803][I][main:200]: --- LIVE HEARTBEAT ---
+[09:57:15.812][I][main:200]: --- LIVE HEARTBEAT ---
+[09:57:20.821][I][main:200]: --- LIVE HEARTBEAT ---
+[09:57:25.832][I][main:200]: --- LIVE HEARTBEAT ---
+[09:57:30.844][I][main:200]: --- LIVE HEARTBEAT ---
+[09:57:35.858][I][main:200]: --- LIVE HEARTBEAT ---
+[09:57:40.873][I][main:200]: --- LIVE HEARTBEAT ---
+[09:57:45.887][I][main:200]: --- LIVE HEARTBEAT ---
+[09:57:50.901][I][main:200]: --- LIVE HEARTBEAT ---
+[09:57:55.906][I][main:200]: --- LIVE HEARTBEAT ---
+[09:58:00.919][I][main:200]: --- LIVE HEARTBEAT ---
+[09:58:05.932][I][main:200]: --- LIVE HEARTBEAT ---
+[09:58:10.937][I][main:200]: --- LIVE HEARTBEAT ---
+[09:58:15.948][I][main:200]: --- LIVE HEARTBEAT ---
+[09:58:20.957][I][main:200]: --- LIVE HEARTBEAT ---
+[09:58:25.965][I][main:200]: --- LIVE HEARTBEAT ---
+[09:58:30.975][I][main:200]: --- LIVE HEARTBEAT ---
+[09:58:35.987][I][main:200]: --- LIVE HEARTBEAT ---
+[09:58:40.997][I][main:200]: --- LIVE HEARTBEAT ---
+[09:58:46.009][I][main:200]: --- LIVE HEARTBEAT ---
+[09:58:51.018][I][main:200]: --- LIVE HEARTBEAT ---
+[09:58:55.025][I][main:200]: --- LIVE HEARTBEAT ---
+[09:59:00.040][I][main:200]: --- LIVE HEARTBEAT ---
+[09:59:05.054][I][main:200]: --- LIVE HEARTBEAT ---
+[09:59:10.065][I][main:200]: --- LIVE HEARTBEAT ---
+[09:59:15.074][I][main:200]: --- LIVE HEARTBEAT ---
+[09:59:20.089][I][main:200]: --- LIVE HEARTBEAT ---
+[09:59:25.102][I][main:200]: --- LIVE HEARTBEAT ---
+[09:59:30.111][I][main:200]: --- LIVE HEARTBEAT ---
+[09:59:35.118][I][main:200]: --- LIVE HEARTBEAT ---
+[09:59:40.130][I][main:200]: --- LIVE HEARTBEAT ---
+[09:59:45.146][I][main:200]: --- LIVE HEARTBEAT ---
+[09:59:50.162][I][main:200]: --- LIVE HEARTBEAT ---
+[09:59:55.168][I][main:200]: --- LIVE HEARTBEAT ---
+[10:00:00.181][I][main:200]: --- LIVE HEARTBEAT ---
+[10:00:05.193][I][main:200]: --- LIVE HEARTBEAT ---
+[10:00:10.203][I][main:200]: --- LIVE HEARTBEAT ---
+[10:00:15.217][I][main:200]: --- LIVE HEARTBEAT ---
+[10:00:20.234][I][main:200]: --- LIVE HEARTBEAT ---
+[10:00:25.244][I][main:200]: --- LIVE HEARTBEAT ---
+[10:00:30.248][I][main:200]: --- LIVE HEARTBEAT ---
+[10:00:35.255][I][main:200]: --- LIVE HEARTBEAT ---
+[10:00:40.264][I][main:200]: --- LIVE HEARTBEAT ---
+[10:00:45.276][I][main:200]: --- LIVE HEARTBEAT ---
+[10:00:50.284][I][main:200]: --- LIVE HEARTBEAT ---
+[10:00:55.291][I][main:200]: --- LIVE HEARTBEAT ---
+[10:01:00.306][I][main:200]: --- LIVE HEARTBEAT ---
+[10:01:05.314][I][main:200]: --- LIVE HEARTBEAT ---
+[10:01:10.323][I][main:200]: --- LIVE HEARTBEAT ---
+[10:01:15.338][I][main:200]: --- LIVE HEARTBEAT ---
+[10:01:20.347][I][main:200]: --- LIVE HEARTBEAT ---
+[10:01:25.357][I][main:200]: --- LIVE HEARTBEAT ---
+[10:01:30.368][I][main:200]: --- LIVE HEARTBEAT ---
+[10:01:35.381][I][main:200]: --- LIVE HEARTBEAT ---
+[10:01:40.396][I][main:200]: --- LIVE HEARTBEAT ---
+[10:01:45.408][I][main:200]: --- LIVE HEARTBEAT ---
+[10:01:50.413][I][main:200]: --- LIVE HEARTBEAT ---
+[10:01:55.421][I][main:200]: --- LIVE HEARTBEAT ---
+[10:02:00.433][I][main:200]: --- LIVE HEARTBEAT ---
+[10:02:05.440][I][main:200]: --- LIVE HEARTBEAT ---
+[10:02:10.453][I][main:200]: --- LIVE HEARTBEAT ---
+[10:02:15.467][I][main:200]: --- LIVE HEARTBEAT ---
+[10:02:20.479][I][main:200]: --- LIVE HEARTBEAT ---
+[10:02:25.488][I][main:200]: --- LIVE HEARTBEAT ---
+[10:02:30.501][I][main:200]: --- LIVE HEARTBEAT ---
+[10:02:35.515][I][main:200]: --- LIVE HEARTBEAT ---
+[10:02:40.527][I][main:200]: --- LIVE HEARTBEAT ---
+[10:02:45.541][I][main:200]: --- LIVE HEARTBEAT ---
+[10:02:50.551][I][main:200]: --- LIVE HEARTBEAT ---
+[10:02:55.562][I][main:200]: --- LIVE HEARTBEAT ---
+[10:03:00.573][I][main:200]: --- LIVE HEARTBEAT ---
+[10:03:05.585][I][main:200]: --- LIVE HEARTBEAT ---
+[10:03:10.593][I][main:200]: --- LIVE HEARTBEAT ---
+[10:03:15.600][I][main:200]: --- LIVE HEARTBEAT ---
+[10:03:20.612][I][main:200]: --- LIVE HEARTBEAT ---
+[10:03:25.622][I][main:200]: --- LIVE HEARTBEAT ---
+[10:03:30.634][I][main:200]: --- LIVE HEARTBEAT ---
+[10:03:35.640][I][main:200]: --- LIVE HEARTBEAT ---
+[10:03:40.643][I][main:200]: --- LIVE HEARTBEAT ---
+[10:03:45.650][I][main:200]: --- LIVE HEARTBEAT ---
+[10:03:50.659][I][main:200]: --- LIVE HEARTBEAT ---
+[10:03:55.667][I][main:200]: --- LIVE HEARTBEAT ---
+[10:04:00.671][I][main:200]: --- LIVE HEARTBEAT ---
+[10:04:05.677][I][main:200]: --- LIVE HEARTBEAT ---
+[10:04:10.691][I][main:200]: --- LIVE HEARTBEAT ---
+[10:04:15.703][I][main:200]: --- LIVE HEARTBEAT ---
+[10:04:20.711][I][main:200]: --- LIVE HEARTBEAT ---
+[10:04:25.723][I][main:200]: --- LIVE HEARTBEAT ---
+[10:04:30.731][I][main:200]: --- LIVE HEARTBEAT ---
+[10:04:35.740][I][main:200]: --- LIVE HEARTBEAT ---
+[10:04:40.746][I][main:200]: --- LIVE HEARTBEAT ---
+[10:04:45.758][I][main:200]: --- LIVE HEARTBEAT ---
+[10:04:50.770][I][main:200]: --- LIVE HEARTBEAT ---
+[10:04:55.786][I][main:200]: --- LIVE HEARTBEAT ---
+[10:05:00.796][I][main:200]: --- LIVE HEARTBEAT ---
+[10:05:05.804][I][main:200]: --- LIVE HEARTBEAT ---
+[10:05:10.814][I][main:200]: --- LIVE HEARTBEAT ---
+[10:05:15.829][I][main:200]: --- LIVE HEARTBEAT ---
+[10:05:20.835][I][main:200]: --- LIVE HEARTBEAT ---
+[10:05:25.850][I][main:200]: --- LIVE HEARTBEAT ---
+[10:05:30.864][I][main:200]: --- LIVE HEARTBEAT ---
+[10:05:35.882][I][main:200]: --- LIVE HEARTBEAT ---
+[10:05:40.893][I][main:200]: --- LIVE HEARTBEAT ---
+[10:05:45.903][I][main:200]: --- LIVE HEARTBEAT ---
+[10:05:50.907][I][main:200]: --- LIVE HEARTBEAT ---
+[10:05:55.922][I][main:200]: --- LIVE HEARTBEAT ---
+[10:06:00.932][I][main:200]: --- LIVE HEARTBEAT ---
+[10:06:05.938][I][main:200]: --- LIVE HEARTBEAT ---
+[10:06:10.946][I][main:200]: --- LIVE HEARTBEAT ---
+[10:06:15.949][I][main:200]: --- LIVE HEARTBEAT ---
+[10:06:20.956][I][main:200]: --- LIVE HEARTBEAT ---
+[10:06:25.963][I][main:200]: --- LIVE HEARTBEAT ---
+[10:06:30.976][I][main:200]: --- LIVE HEARTBEAT ---
+[10:06:35.981][I][main:200]: --- LIVE HEARTBEAT ---
+[10:06:40.986][I][main:200]: --- LIVE HEARTBEAT ---
+[10:06:45.996][I][main:200]: --- LIVE HEARTBEAT ---
+[10:06:51.009][I][main:200]: --- LIVE HEARTBEAT ---
+[10:06:55.015][I][main:200]: --- LIVE HEARTBEAT ---
+[10:07:00.026][I][main:200]: --- LIVE HEARTBEAT ---
+[10:07:05.039][I][main:200]: --- LIVE HEARTBEAT ---
+[10:07:10.046][I][main:200]: --- LIVE HEARTBEAT ---
+[10:07:15.054][I][main:200]: --- LIVE HEARTBEAT ---
+[10:07:20.066][I][main:200]: --- LIVE HEARTBEAT ---
+[10:07:25.074][I][main:200]: --- LIVE HEARTBEAT ---
+[10:07:30.088][I][main:200]: --- LIVE HEARTBEAT ---
+[10:07:35.101][I][main:200]: --- LIVE HEARTBEAT ---
+[10:07:40.110][I][main:200]: --- LIVE HEARTBEAT ---
+[10:07:45.123][I][main:200]: --- LIVE HEARTBEAT ---
+[10:07:50.136][I][main:200]: --- LIVE HEARTBEAT ---
+[10:07:55.144][I][main:200]: --- LIVE HEARTBEAT ---
+[10:08:00.154][I][main:200]: --- LIVE HEARTBEAT ---
+[10:08:05.163][I][main:200]: --- LIVE HEARTBEAT ---
+[10:08:10.177][I][main:200]: --- LIVE HEARTBEAT ---
+[10:08:15.188][I][main:200]: --- LIVE HEARTBEAT ---
+[10:08:20.203][I][main:200]: --- LIVE HEARTBEAT ---
+[10:08:25.214][I][main:200]: --- LIVE HEARTBEAT ---
+[10:08:30.221][I][main:200]: --- LIVE HEARTBEAT ---
+[10:08:35.227][I][main:200]: --- LIVE HEARTBEAT ---
+[10:08:40.239][I][main:200]: --- LIVE HEARTBEAT ---
+[10:08:45.248][I][main:200]: --- LIVE HEARTBEAT ---
+[10:08:50.255][I][main:200]: --- LIVE HEARTBEAT ---
+[10:08:55.265][I][main:200]: --- LIVE HEARTBEAT ---
+[10:09:00.275][I][main:200]: --- LIVE HEARTBEAT ---
+[10:09:05.286][I][main:200]: --- LIVE HEARTBEAT ---
+[10:09:10.291][I][main:200]: --- LIVE HEARTBEAT ---
+[10:09:15.297][I][main:200]: --- LIVE HEARTBEAT ---
+[10:09:20.310][I][main:200]: --- LIVE HEARTBEAT ---
+[10:09:25.320][I][main:200]: --- LIVE HEARTBEAT ---
+[10:09:30.330][I][main:200]: --- LIVE HEARTBEAT ---
+[10:09:35.344][I][main:200]: --- LIVE HEARTBEAT ---
+[10:09:40.353][I][main:200]: --- LIVE HEARTBEAT ---
+[10:09:45.363][I][main:200]: --- LIVE HEARTBEAT ---
+[10:09:50.371][I][main:200]: --- LIVE HEARTBEAT ---
+[10:09:55.386][I][main:200]: --- LIVE HEARTBEAT ---
+[10:10:00.398][I][main:200]: --- LIVE HEARTBEAT ---
+[10:10:05.408][I][main:200]: --- LIVE HEARTBEAT ---
+[10:10:10.419][I][main:200]: --- LIVE HEARTBEAT ---
+[10:10:15.426][I][main:200]: --- LIVE HEARTBEAT ---
+[10:10:20.433][I][main:200]: --- LIVE HEARTBEAT ---
+[10:10:25.446][I][main:200]: --- LIVE HEARTBEAT ---
+[10:10:30.458][I][main:200]: --- LIVE HEARTBEAT ---
+[10:10:35.463][I][main:200]: --- LIVE HEARTBEAT ---
+[10:10:40.476][I][main:200]: --- LIVE HEARTBEAT ---
+[10:10:45.490][I][main:200]: --- LIVE HEARTBEAT ---
+[10:10:50.501][I][main:200]: --- LIVE HEARTBEAT ---
+[10:10:55.510][I][main:200]: --- LIVE HEARTBEAT ---
+[10:11:00.523][I][main:200]: --- LIVE HEARTBEAT ---
+[10:11:05.533][I][main:200]: --- LIVE HEARTBEAT ---
+[10:11:10.544][I][main:200]: --- LIVE HEARTBEAT ---
+[10:11:15.556][I][main:200]: --- LIVE HEARTBEAT ---
+[10:11:20.565][I][main:200]: --- LIVE HEARTBEAT ---
+[10:11:25.573][I][main:200]: --- LIVE HEARTBEAT ---
+[10:11:30.581][I][main:200]: --- LIVE HEARTBEAT ---
+[10:11:35.593][I][main:200]: --- LIVE HEARTBEAT ---
+[10:11:40.599][I][main:200]: --- LIVE HEARTBEAT ---
+[10:11:45.608][I][main:200]: --- LIVE HEARTBEAT ---
+[10:11:50.616][I][main:200]: --- LIVE HEARTBEAT ---
+[10:11:55.627][I][main:200]: --- LIVE HEARTBEAT ---
+[10:12:00.633][I][main:200]: --- LIVE HEARTBEAT ---
+[10:12:05.647][I][main:200]: --- LIVE HEARTBEAT ---
+[10:12:10.658][I][main:200]: --- LIVE HEARTBEAT ---
+[10:12:15.674][I][main:200]: --- LIVE HEARTBEAT ---
+[10:12:20.694][I][main:200]: --- LIVE HEARTBEAT ---
+[10:12:25.704][I][main:200]: --- LIVE HEARTBEAT ---
+[10:12:30.711][I][main:200]: --- LIVE HEARTBEAT ---
+[10:12:35.722][I][main:200]: --- LIVE HEARTBEAT ---
+[10:12:40.734][I][main:200]: --- LIVE HEARTBEAT ---
+[10:12:45.742][I][main:200]: --- LIVE HEARTBEAT ---
+[10:12:50.757][I][main:200]: --- LIVE HEARTBEAT ---
+[10:12:55.768][I][main:200]: --- LIVE HEARTBEAT ---
+[10:13:00.774][I][main:200]: --- LIVE HEARTBEAT ---
+[10:13:05.786][I][main:200]: --- LIVE HEARTBEAT ---
+[10:13:10.798][I][main:200]: --- LIVE HEARTBEAT ---
+[10:13:15.812][I][main:200]: --- LIVE HEARTBEAT ---
+[10:13:20.822][I][main:200]: --- LIVE HEARTBEAT ---
+[10:13:25.837][I][main:200]: --- LIVE HEARTBEAT ---
+[10:13:30.854][I][main:200]: --- LIVE HEARTBEAT ---
+[10:13:35.868][I][main:200]: --- LIVE HEARTBEAT ---
+[10:13:40.879][I][main:200]: --- LIVE HEARTBEAT ---
+[10:13:45.889][I][main:200]: --- LIVE HEARTBEAT ---
+[10:13:50.901][I][main:200]: --- LIVE HEARTBEAT ---
+[10:13:55.912][I][main:200]: --- LIVE HEARTBEAT ---
+[10:14:00.925][I][main:200]: --- LIVE HEARTBEAT ---
+[10:14:05.937][I][main:200]: --- LIVE HEARTBEAT ---
+[10:14:10.951][I][main:200]: --- LIVE HEARTBEAT ---
+[10:14:15.961][I][main:200]: --- LIVE HEARTBEAT ---
+[10:14:20.972][I][main:200]: --- LIVE HEARTBEAT ---
+[10:14:25.984][I][main:200]: --- LIVE HEARTBEAT ---
+[10:14:30.994][I][main:200]: --- LIVE HEARTBEAT ---
+[10:14:36.008][I][main:200]: --- LIVE HEARTBEAT ---
+[10:14:41.016][I][main:200]: --- LIVE HEARTBEAT ---
+[10:14:45.022][I][main:200]: --- LIVE HEARTBEAT ---
+[10:14:50.033][I][main:200]: --- LIVE HEARTBEAT ---
+[10:14:55.042][I][main:200]: --- LIVE HEARTBEAT ---
+[10:15:00.050][I][main:200]: --- LIVE HEARTBEAT ---
+[10:15:05.061][I][main:200]: --- LIVE HEARTBEAT ---
+[10:15:10.070][I][main:200]: --- LIVE HEARTBEAT ---
+[10:15:15.084][I][main:200]: --- LIVE HEARTBEAT ---
+[10:15:20.096][I][main:200]: --- LIVE HEARTBEAT ---
+[10:15:25.110][I][main:200]: --- LIVE HEARTBEAT ---
+[10:15:30.118][I][main:200]: --- LIVE HEARTBEAT ---
+[10:15:35.129][I][main:200]: --- LIVE HEARTBEAT ---
+[10:15:40.139][I][main:200]: --- LIVE HEARTBEAT ---
+[10:15:45.152][I][main:200]: --- LIVE HEARTBEAT ---
+[10:15:50.159][I][main:200]: --- LIVE HEARTBEAT ---
+[10:15:55.167][I][main:200]: --- LIVE HEARTBEAT ---
+[10:16:00.181][I][main:200]: --- LIVE HEARTBEAT ---
+[10:16:05.190][I][main:200]: --- LIVE HEARTBEAT ---
+[10:16:10.205][I][main:200]: --- LIVE HEARTBEAT ---
+[10:16:15.219][I][main:200]: --- LIVE HEARTBEAT ---
+[10:16:20.229][I][main:200]: --- LIVE HEARTBEAT ---
+[10:16:25.237][I][main:200]: --- LIVE HEARTBEAT ---
+[10:16:30.248][I][main:200]: --- LIVE HEARTBEAT ---
+[10:16:35.257][I][main:200]: --- LIVE HEARTBEAT ---
+[10:16:40.261][I][main:200]: --- LIVE HEARTBEAT ---
+[10:16:45.275][I][main:200]: --- LIVE HEARTBEAT ---
+[10:16:50.282][I][main:200]: --- LIVE HEARTBEAT ---
+[10:16:55.292][I][main:200]: --- LIVE HEARTBEAT ---
+[10:17:00.301][I][main:200]: --- LIVE HEARTBEAT ---
+[10:17:05.315][I][main:200]: --- LIVE HEARTBEAT ---
+[10:17:10.326][I][main:200]: --- LIVE HEARTBEAT ---
+[10:17:15.332][I][main:200]: --- LIVE HEARTBEAT ---
+[10:17:20.340][I][main:200]: --- LIVE HEARTBEAT ---
+[10:17:25.346][I][main:200]: --- LIVE HEARTBEAT ---
+[10:17:30.354][I][main:200]: --- LIVE HEARTBEAT ---
+[10:17:35.360][I][main:200]: --- LIVE HEARTBEAT ---
+[10:17:40.372][I][main:200]: --- LIVE HEARTBEAT ---
+[10:17:45.385][I][main:200]: --- LIVE HEARTBEAT ---
+[10:17:50.393][I][main:200]: --- LIVE HEARTBEAT ---
+[10:17:55.404][I][main:200]: --- LIVE HEARTBEAT ---
+[10:18:00.413][I][main:200]: --- LIVE HEARTBEAT ---
+[10:18:05.420][I][main:200]: --- LIVE HEARTBEAT ---
+[10:18:10.429][I][main:200]: --- LIVE HEARTBEAT ---
+[10:18:15.441][I][main:200]: --- LIVE HEARTBEAT ---
+[10:18:20.453][I][main:200]: --- LIVE HEARTBEAT ---
+[10:18:25.466][I][main:200]: --- LIVE HEARTBEAT ---
+[10:18:30.473][I][main:200]: --- LIVE HEARTBEAT ---
+[10:18:35.484][I][main:200]: --- LIVE HEARTBEAT ---
+[10:18:40.490][I][main:200]: --- LIVE HEARTBEAT ---
+[10:18:45.498][I][main:200]: --- LIVE HEARTBEAT ---
+[10:18:50.510][I][main:200]: --- LIVE HEARTBEAT ---
+[10:18:55.513][I][main:200]: --- LIVE HEARTBEAT ---
+[10:19:00.521][I][main:200]: --- LIVE HEARTBEAT ---
+[10:19:05.531][I][main:200]: --- LIVE HEARTBEAT ---
+[10:19:10.540][I][main:200]: --- LIVE HEARTBEAT ---
+[10:19:15.552][I][main:200]: --- LIVE HEARTBEAT ---
+[10:19:20.561][I][main:200]: --- LIVE HEARTBEAT ---
+[10:19:25.572][I][main:200]: --- LIVE HEARTBEAT ---
+[10:19:30.585][I][main:200]: --- LIVE HEARTBEAT ---
+[10:19:35.600][I][main:200]: --- LIVE HEARTBEAT ---
+[10:19:40.607][I][main:200]: --- LIVE HEARTBEAT ---
+[10:19:45.619][I][main:200]: --- LIVE HEARTBEAT ---
+[10:19:50.628][I][main:200]: --- LIVE HEARTBEAT ---
+[10:19:55.634][I][main:200]: --- LIVE HEARTBEAT ---
+[10:20:00.638][I][main:200]: --- LIVE HEARTBEAT ---
+[10:20:05.645][I][main:200]: --- LIVE HEARTBEAT ---
+[10:20:10.649][I][main:200]: --- LIVE HEARTBEAT ---
+[10:20:15.658][I][main:200]: --- LIVE HEARTBEAT ---
+[10:20:20.671][I][main:200]: --- LIVE HEARTBEAT ---
+[10:20:25.682][I][main:200]: --- LIVE HEARTBEAT ---
+[10:20:30.690][I][main:200]: --- LIVE HEARTBEAT ---
+[10:20:35.701][I][main:200]: --- LIVE HEARTBEAT ---
+[10:20:40.716][I][main:200]: --- LIVE HEARTBEAT ---
+[10:20:45.732][I][main:200]: --- LIVE HEARTBEAT ---
+[10:20:50.744][I][main:200]: --- LIVE HEARTBEAT ---
+[10:20:55.755][I][main:200]: --- LIVE HEARTBEAT ---
+[10:21:00.769][I][main:200]: --- LIVE HEARTBEAT ---
+[10:21:05.785][I][main:200]: --- LIVE HEARTBEAT ---
+[10:21:10.796][I][main:200]: --- LIVE HEARTBEAT ---
+[10:21:15.806][I][main:200]: --- LIVE HEARTBEAT ---
+[10:21:20.819][I][main:200]: --- LIVE HEARTBEAT ---
+[10:21:25.830][I][main:200]: --- LIVE HEARTBEAT ---
+[10:21:30.842][I][main:200]: --- LIVE HEARTBEAT ---
+[10:21:35.854][I][main:200]: --- LIVE HEARTBEAT ---
+[10:21:40.867][I][main:200]: --- LIVE HEARTBEAT ---
+[10:21:45.878][I][main:200]: --- LIVE HEARTBEAT ---
+[10:21:50.888][I][main:200]: --- LIVE HEARTBEAT ---
+[10:21:55.899][I][main:200]: --- LIVE HEARTBEAT ---
+[10:22:00.912][I][main:200]: --- LIVE HEARTBEAT ---
+[10:22:05.922][I][main:200]: --- LIVE HEARTBEAT ---
+[10:22:10.931][I][main:200]: --- LIVE HEARTBEAT ---
+[10:22:15.939][I][main:200]: --- LIVE HEARTBEAT ---
+[10:22:20.946][I][main:200]: --- LIVE HEARTBEAT ---
+[10:22:25.962][I][main:200]: --- LIVE HEARTBEAT ---
+[10:22:30.975][I][main:200]: --- LIVE HEARTBEAT ---
+[10:22:35.987][I][main:200]: --- LIVE HEARTBEAT ---
+[10:22:41.000][I][main:200]: --- LIVE HEARTBEAT ---
+[10:22:46.011][I][main:200]: --- LIVE HEARTBEAT ---
+[10:22:50.019][I][main:200]: --- LIVE HEARTBEAT ---
+[10:22:55.037][I][main:200]: --- LIVE HEARTBEAT ---
+[10:23:00.049][I][main:200]: --- LIVE HEARTBEAT ---
+[10:23:05.056][I][main:200]: --- LIVE HEARTBEAT ---
+[10:23:10.065][I][main:200]: --- LIVE HEARTBEAT ---
+[10:23:15.081][I][main:200]: --- LIVE HEARTBEAT ---
+[10:23:20.094][I][main:200]: --- LIVE HEARTBEAT ---
+[10:23:25.104][I][main:200]: --- LIVE HEARTBEAT ---
+[10:23:30.120][I][main:200]: --- LIVE HEARTBEAT ---
+[10:23:35.137][I][main:200]: --- LIVE HEARTBEAT ---
+[10:23:40.146][I][main:200]: --- LIVE HEARTBEAT ---
+[10:23:45.154][I][main:200]: --- LIVE HEARTBEAT ---
+[10:23:50.166][I][main:200]: --- LIVE HEARTBEAT ---
+[10:23:55.183][I][main:200]: --- LIVE HEARTBEAT ---
+[10:24:00.197][I][main:200]: --- LIVE HEARTBEAT ---
+[10:24:05.205][I][main:200]: --- LIVE HEARTBEAT ---
+[10:24:10.218][I][main:200]: --- LIVE HEARTBEAT ---
+[10:24:15.232][I][main:200]: --- LIVE HEARTBEAT ---
+[10:24:20.249][I][main:200]: --- LIVE HEARTBEAT ---
+[10:24:25.261][I][main:200]: --- LIVE HEARTBEAT ---
+[10:24:30.277][I][main:200]: --- LIVE HEARTBEAT ---
+[10:24:35.285][I][main:200]: --- LIVE HEARTBEAT ---
+[10:24:40.295][I][main:200]: --- LIVE HEARTBEAT ---
+[10:24:45.311][I][main:200]: --- LIVE HEARTBEAT ---
+[10:24:50.323][I][main:200]: --- LIVE HEARTBEAT ---
+[10:24:55.333][I][main:200]: --- LIVE HEARTBEAT ---
+[10:25:00.344][I][main:200]: --- LIVE HEARTBEAT ---
+[10:25:05.354][I][main:200]: --- LIVE HEARTBEAT ---
+[10:25:10.363][I][main:200]: --- LIVE HEARTBEAT ---
+[10:25:15.377][I][main:200]: --- LIVE HEARTBEAT ---
+[10:25:20.387][I][main:200]: --- LIVE HEARTBEAT ---
+[10:25:25.401][I][main:200]: --- LIVE HEARTBEAT ---
+[10:25:30.413][I][main:200]: --- LIVE HEARTBEAT ---
+[10:25:35.427][I][main:200]: --- LIVE HEARTBEAT ---
+[10:25:40.433][I][main:200]: --- LIVE HEARTBEAT ---
+[10:25:45.441][I][main:200]: --- LIVE HEARTBEAT ---
+[10:25:50.450][I][main:200]: --- LIVE HEARTBEAT ---
+[10:25:55.458][I][main:200]: --- LIVE HEARTBEAT ---
+[10:26:00.471][I][main:200]: --- LIVE HEARTBEAT ---
+[10:26:05.478][I][main:200]: --- LIVE HEARTBEAT ---
+[10:26:10.484][I][main:200]: --- LIVE HEARTBEAT ---
+[10:26:15.495][I][main:200]: --- LIVE HEARTBEAT ---
+[10:26:20.507][I][main:200]: --- LIVE HEARTBEAT ---
+[10:26:25.523][I][main:200]: --- LIVE HEARTBEAT ---
+[10:26:30.533][I][main:200]: --- LIVE HEARTBEAT ---
+[10:26:35.551][I][main:200]: --- LIVE HEARTBEAT ---
+[10:26:40.561][I][main:200]: --- LIVE HEARTBEAT ---
+[10:26:45.573][I][main:200]: --- LIVE HEARTBEAT ---
+[10:26:50.587][I][main:200]: --- LIVE HEARTBEAT ---
+[10:26:55.595][I][main:200]: --- LIVE HEARTBEAT ---
+[10:27:00.610][I][main:200]: --- LIVE HEARTBEAT ---
+[10:27:05.624][I][main:200]: --- LIVE HEARTBEAT ---
+[10:27:10.637][I][main:200]: --- LIVE HEARTBEAT ---
+[10:27:15.642][I][main:200]: --- LIVE HEARTBEAT ---
+[10:27:20.655][I][main:200]: --- LIVE HEARTBEAT ---
+[10:27:25.664][I][main:200]: --- LIVE HEARTBEAT ---
+[10:27:30.676][I][main:200]: --- LIVE HEARTBEAT ---
+[10:27:35.688][I][main:200]: --- LIVE HEARTBEAT ---
+[10:27:40.696][I][main:200]: --- LIVE HEARTBEAT ---
+[10:27:45.703][I][main:200]: --- LIVE HEARTBEAT ---
+[10:27:50.710][I][main:200]: --- LIVE HEARTBEAT ---
+[10:27:55.715][I][main:200]: --- LIVE HEARTBEAT ---
+[10:28:00.725][I][main:200]: --- LIVE HEARTBEAT ---
+[10:28:05.737][I][main:200]: --- LIVE HEARTBEAT ---
+[10:28:10.746][I][main:200]: --- LIVE HEARTBEAT ---
+[10:28:15.760][I][main:200]: --- LIVE HEARTBEAT ---
+[10:28:20.773][I][main:200]: --- LIVE HEARTBEAT ---
+[10:28:25.781][I][main:200]: --- LIVE HEARTBEAT ---
+[10:28:30.787][I][main:200]: --- LIVE HEARTBEAT ---
+[10:28:35.798][I][main:200]: --- LIVE HEARTBEAT ---
+[10:28:40.807][I][main:200]: --- LIVE HEARTBEAT ---
+[10:28:45.818][I][main:200]: --- LIVE HEARTBEAT ---
+[10:28:50.835][I][main:200]: --- LIVE HEARTBEAT ---
+[10:28:55.842][I][main:200]: --- LIVE HEARTBEAT ---
+[10:29:00.854][I][main:200]: --- LIVE HEARTBEAT ---
+[10:29:05.864][I][main:200]: --- LIVE HEARTBEAT ---
+[10:29:10.879][I][main:200]: --- LIVE HEARTBEAT ---
+[10:29:15.890][I][main:200]: --- LIVE HEARTBEAT ---
+[10:29:20.902][I][main:200]: --- LIVE HEARTBEAT ---
+[10:29:25.922][I][main:200]: --- LIVE HEARTBEAT ---
+[10:29:30.932][I][main:200]: --- LIVE HEARTBEAT ---
+[10:29:35.944][I][main:200]: --- LIVE HEARTBEAT ---
+[10:29:40.960][I][main:200]: --- LIVE HEARTBEAT ---
+[10:29:45.972][I][main:200]: --- LIVE HEARTBEAT ---
+[10:29:50.980][I][main:200]: --- LIVE HEARTBEAT ---
+[10:29:55.993][I][main:200]: --- LIVE HEARTBEAT ---
+[10:30:01.008][I][main:200]: --- LIVE HEARTBEAT ---
+[10:30:06.021][I][main:200]: --- LIVE HEARTBEAT ---
+[10:30:10.033][I][main:200]: --- LIVE HEARTBEAT ---
+[10:30:15.044][I][main:200]: --- LIVE HEARTBEAT ---
+[10:30:20.055][I][main:200]: --- LIVE HEARTBEAT ---
+[10:30:25.065][I][main:200]: --- LIVE HEARTBEAT ---
+[10:30:30.077][I][main:200]: --- LIVE HEARTBEAT ---
+[10:30:35.091][I][main:200]: --- LIVE HEARTBEAT ---
+[10:30:40.101][I][main:200]: --- LIVE HEARTBEAT ---
+[10:30:45.114][I][main:200]: --- LIVE HEARTBEAT ---
+[10:30:50.126][I][main:200]: --- LIVE HEARTBEAT ---
+[10:30:55.140][I][main:200]: --- LIVE HEARTBEAT ---
+[10:31:00.152][I][main:200]: --- LIVE HEARTBEAT ---
+[10:31:05.164][I][main:200]: --- LIVE HEARTBEAT ---
+[10:31:10.171][I][main:200]: --- LIVE HEARTBEAT ---
+[10:31:15.180][I][main:200]: --- LIVE HEARTBEAT ---
+[10:31:20.185][I][main:200]: --- LIVE HEARTBEAT ---
+[10:31:25.192][I][main:200]: --- LIVE HEARTBEAT ---
+[10:31:30.200][I][main:200]: --- LIVE HEARTBEAT ---
+[10:31:35.213][I][main:200]: --- LIVE HEARTBEAT ---
+[10:31:40.228][I][main:200]: --- LIVE HEARTBEAT ---
+[10:31:45.244][I][main:200]: --- LIVE HEARTBEAT ---
+[10:31:50.255][I][main:200]: --- LIVE HEARTBEAT ---
+[10:31:55.267][I][main:200]: --- LIVE HEARTBEAT ---
+[10:32:00.282][I][main:200]: --- LIVE HEARTBEAT ---
+[10:32:05.291][I][main:200]: --- LIVE HEARTBEAT ---
+[10:32:10.300][I][main:200]: --- LIVE HEARTBEAT ---
+[10:32:15.315][I][main:200]: --- LIVE HEARTBEAT ---
+[10:32:20.327][I][main:200]: --- LIVE HEARTBEAT ---
+[10:32:25.341][I][main:200]: --- LIVE HEARTBEAT ---
+[10:32:30.357][I][main:200]: --- LIVE HEARTBEAT ---
+[10:32:35.367][I][main:200]: --- LIVE HEARTBEAT ---
+[10:32:40.376][I][main:200]: --- LIVE HEARTBEAT ---
+[10:32:45.383][I][main:200]: --- LIVE HEARTBEAT ---
+[10:32:50.389][I][main:200]: --- LIVE HEARTBEAT ---
+[10:32:55.402][I][main:200]: --- LIVE HEARTBEAT ---
+[10:33:00.409][I][main:200]: --- LIVE HEARTBEAT ---
+[10:33:05.418][I][main:200]: --- LIVE HEARTBEAT ---
+[10:33:10.429][I][main:200]: --- LIVE HEARTBEAT ---
+[10:33:15.446][I][main:200]: --- LIVE HEARTBEAT ---
+[10:33:20.456][I][main:200]: --- LIVE HEARTBEAT ---
+[10:33:25.465][I][main:200]: --- LIVE HEARTBEAT ---
+[10:33:30.478][I][main:200]: --- LIVE HEARTBEAT ---
+[10:33:35.490][I][main:200]: --- LIVE HEARTBEAT ---
+[10:33:40.501][I][main:200]: --- LIVE HEARTBEAT ---
+[10:33:45.516][I][main:200]: --- LIVE HEARTBEAT ---
+[10:33:50.526][I][main:200]: --- LIVE HEARTBEAT ---
+[10:33:55.537][I][main:200]: --- LIVE HEARTBEAT ---
+[10:34:00.550][I][main:200]: --- LIVE HEARTBEAT ---
+[10:34:05.559][I][main:200]: --- LIVE HEARTBEAT ---
+[10:34:10.574][I][main:200]: --- LIVE HEARTBEAT ---
+[10:34:15.586][I][main:200]: --- LIVE HEARTBEAT ---
+[10:34:20.599][I][main:200]: --- LIVE HEARTBEAT ---
+[10:34:25.608][I][main:200]: --- LIVE HEARTBEAT ---
+[10:34:30.617][I][main:200]: --- LIVE HEARTBEAT ---
+[10:34:35.623][I][main:200]: --- LIVE HEARTBEAT ---
+[10:34:40.630][I][main:200]: --- LIVE HEARTBEAT ---
+[10:34:45.640][I][main:200]: --- LIVE HEARTBEAT ---
+[10:34:50.646][I][main:200]: --- LIVE HEARTBEAT ---
+[10:34:55.654][I][main:200]: --- LIVE HEARTBEAT ---
+[10:35:00.664][I][main:200]: --- LIVE HEARTBEAT ---
+[10:35:05.674][I][main:200]: --- LIVE HEARTBEAT ---
+[10:35:10.691][I][main:200]: --- LIVE HEARTBEAT ---
+[10:35:15.701][I][main:200]: --- LIVE HEARTBEAT ---
+[10:35:20.711][I][main:200]: --- LIVE HEARTBEAT ---
+[10:35:25.722][I][main:200]: --- LIVE HEARTBEAT ---
+[10:35:30.730][I][main:200]: --- LIVE HEARTBEAT ---
+[10:35:35.742][I][main:200]: --- LIVE HEARTBEAT ---
+[10:35:40.757][I][main:200]: --- LIVE HEARTBEAT ---
+[10:35:45.768][I][main:200]: --- LIVE HEARTBEAT ---
+[10:35:50.779][I][main:200]: --- LIVE HEARTBEAT ---
+[10:35:55.793][I][main:200]: --- LIVE HEARTBEAT ---
+[10:36:00.810][I][main:200]: --- LIVE HEARTBEAT ---
+[10:36:05.824][I][main:200]: --- LIVE HEARTBEAT ---
+[10:36:10.837][I][main:200]: --- LIVE HEARTBEAT ---
+[10:36:15.843][I][main:200]: --- LIVE HEARTBEAT ---
+[10:36:20.853][I][main:200]: --- LIVE HEARTBEAT ---
+[10:36:25.866][I][main:200]: --- LIVE HEARTBEAT ---
+[10:36:30.877][I][main:200]: --- LIVE HEARTBEAT ---
+[10:36:35.888][I][main:200]: --- LIVE HEARTBEAT ---
+[10:36:40.899][I][main:200]: --- LIVE HEARTBEAT ---
+[10:36:45.914][I][main:200]: --- LIVE HEARTBEAT ---
+[10:36:50.922][I][main:200]: --- LIVE HEARTBEAT ---
+[10:36:55.929][I][main:200]: --- LIVE HEARTBEAT ---
+[10:37:00.946][I][main:200]: --- LIVE HEARTBEAT ---
+[10:37:05.959][I][main:200]: --- LIVE HEARTBEAT ---
+[10:37:10.973][I][main:200]: --- LIVE HEARTBEAT ---
+[10:37:15.991][I][main:200]: --- LIVE HEARTBEAT ---
+[10:37:21.002][I][main:200]: --- LIVE HEARTBEAT ---
+[10:37:25.014][I][main:200]: --- LIVE HEARTBEAT ---
+[10:37:30.023][I][main:200]: --- LIVE HEARTBEAT ---
+[10:37:35.037][I][main:200]: --- LIVE HEARTBEAT ---
+[10:37:40.043][I][main:200]: --- LIVE HEARTBEAT ---
+[10:37:45.052][I][main:200]: --- LIVE HEARTBEAT ---
+[10:37:50.061][I][main:200]: --- LIVE HEARTBEAT ---
+[10:37:55.081][I][main:200]: --- LIVE HEARTBEAT ---
+[10:38:00.091][I][main:200]: --- LIVE HEARTBEAT ---
+[10:38:05.098][I][main:200]: --- LIVE HEARTBEAT ---
+[10:38:10.109][I][main:200]: --- LIVE HEARTBEAT ---
+[10:38:15.119][I][main:200]: --- LIVE HEARTBEAT ---
+[10:38:20.127][I][main:200]: --- LIVE HEARTBEAT ---
+[10:38:25.143][I][main:200]: --- LIVE HEARTBEAT ---
+[10:38:30.149][I][main:200]: --- LIVE HEARTBEAT ---
+[10:38:35.166][I][main:200]: --- LIVE HEARTBEAT ---
+[10:38:40.180][I][main:200]: --- LIVE HEARTBEAT ---
+[10:38:45.196][I][main:200]: --- LIVE HEARTBEAT ---
+[10:38:50.206][I][main:200]: --- LIVE HEARTBEAT ---
+[10:38:55.218][I][main:200]: --- LIVE HEARTBEAT ---
+[10:39:00.231][I][main:200]: --- LIVE HEARTBEAT ---
+[10:39:05.241][I][main:200]: --- LIVE HEARTBEAT ---
+[10:39:10.252][I][main:200]: --- LIVE HEARTBEAT ---
+[10:39:15.262][I][main:200]: --- LIVE HEARTBEAT ---
+[10:39:20.275][I][main:200]: --- LIVE HEARTBEAT ---
+[10:39:25.287][I][main:200]: --- LIVE HEARTBEAT ---
+[10:39:30.299][I][main:200]: --- LIVE HEARTBEAT ---
+[10:39:35.308][I][main:200]: --- LIVE HEARTBEAT ---
+[10:39:40.317][I][main:200]: --- LIVE HEARTBEAT ---
+[10:39:45.323][I][main:200]: --- LIVE HEARTBEAT ---
+[10:39:50.336][I][main:200]: --- LIVE HEARTBEAT ---
+[10:39:55.346][I][main:200]: --- LIVE HEARTBEAT ---
+[10:40:00.354][I][main:200]: --- LIVE HEARTBEAT ---
+[10:40:05.367][I][main:200]: --- LIVE HEARTBEAT ---
+[10:40:10.383][I][main:200]: --- LIVE HEARTBEAT ---
+[10:40:15.396][I][main:200]: --- LIVE HEARTBEAT ---
+[10:40:20.404][I][main:200]: --- LIVE HEARTBEAT ---
+[10:40:25.420][I][main:200]: --- LIVE HEARTBEAT ---
+[10:40:30.433][I][main:200]: --- LIVE HEARTBEAT ---
+[10:40:35.444][I][main:200]: --- LIVE HEARTBEAT ---
+[10:40:40.458][I][main:200]: --- LIVE HEARTBEAT ---
+[10:40:45.468][I][main:200]: --- LIVE HEARTBEAT ---
+[10:40:50.485][I][main:200]: --- LIVE HEARTBEAT ---
+[10:40:55.495][I][main:200]: --- LIVE HEARTBEAT ---
+[10:41:00.507][I][main:200]: --- LIVE HEARTBEAT ---
+[10:41:05.516][I][main:200]: --- LIVE HEARTBEAT ---
+[10:41:10.529][I][main:200]: --- LIVE HEARTBEAT ---
+[10:41:15.541][I][main:200]: --- LIVE HEARTBEAT ---
+[10:41:20.546][I][main:200]: --- LIVE HEARTBEAT ---
+[10:41:25.556][I][main:200]: --- LIVE HEARTBEAT ---
+[10:41:30.566][I][main:200]: --- LIVE HEARTBEAT ---
+[10:41:35.580][I][main:200]: --- LIVE HEARTBEAT ---
+[10:41:40.592][I][main:200]: --- LIVE HEARTBEAT ---
+[10:41:45.609][I][main:200]: --- LIVE HEARTBEAT ---
+[10:41:50.617][I][main:200]: --- LIVE HEARTBEAT ---
+[10:41:55.626][I][main:200]: --- LIVE HEARTBEAT ---
+[10:42:00.635][I][main:200]: --- LIVE HEARTBEAT ---
+[10:42:05.650][I][main:200]: --- LIVE HEARTBEAT ---
+[10:42:10.654][I][main:200]: --- LIVE HEARTBEAT ---
+[10:42:15.664][I][main:200]: --- LIVE HEARTBEAT ---
+[10:42:20.673][I][main:200]: --- LIVE HEARTBEAT ---
+[10:42:25.685][I][main:200]: --- LIVE HEARTBEAT ---
+[10:42:30.692][I][main:200]: --- LIVE HEARTBEAT ---
+[10:42:35.704][I][main:200]: --- LIVE HEARTBEAT ---
+[10:42:40.716][I][main:200]: --- LIVE HEARTBEAT ---
+[10:42:45.726][I][main:200]: --- LIVE HEARTBEAT ---
+[10:42:50.734][I][main:200]: --- LIVE HEARTBEAT ---
+[10:42:55.742][I][main:200]: --- LIVE HEARTBEAT ---
+[10:43:00.756][I][main:200]: --- LIVE HEARTBEAT ---
+[10:43:05.763][I][main:200]: --- LIVE HEARTBEAT ---
+[10:43:10.767][I][main:200]: --- LIVE HEARTBEAT ---
+[10:43:15.779][I][main:200]: --- LIVE HEARTBEAT ---
+[10:43:20.790][I][main:200]: --- LIVE HEARTBEAT ---
+[10:43:25.796][I][main:200]: --- LIVE HEARTBEAT ---
+[10:43:30.807][I][main:200]: --- LIVE HEARTBEAT ---
+[10:43:35.820][I][main:200]: --- LIVE HEARTBEAT ---
+[10:43:40.829][I][main:200]: --- LIVE HEARTBEAT ---
+[10:43:45.835][I][main:200]: --- LIVE HEARTBEAT ---
+[10:43:50.843][I][main:200]: --- LIVE HEARTBEAT ---
+[10:43:55.851][I][main:200]: --- LIVE HEARTBEAT ---
+[10:44:00.857][I][main:200]: --- LIVE HEARTBEAT ---
+[10:44:05.868][I][main:200]: --- LIVE HEARTBEAT ---
+[10:44:10.876][I][main:200]: --- LIVE HEARTBEAT ---
+[10:44:15.892][I][main:200]: --- LIVE HEARTBEAT ---
+[10:44:20.904][I][main:200]: --- LIVE HEARTBEAT ---
+[10:44:25.918][I][main:200]: --- LIVE HEARTBEAT ---
+[10:44:30.929][I][main:200]: --- LIVE HEARTBEAT ---
+[10:44:35.944][I][main:200]: --- LIVE HEARTBEAT ---
+[10:44:40.953][I][main:200]: --- LIVE HEARTBEAT ---
+[10:44:45.966][I][main:200]: --- LIVE HEARTBEAT ---
+[10:44:50.980][I][main:200]: --- LIVE HEARTBEAT ---
+[10:44:55.993][I][main:200]: --- LIVE HEARTBEAT ---
+[10:45:01.004][I][main:200]: --- LIVE HEARTBEAT ---
+[10:45:06.016][I][main:200]: --- LIVE HEARTBEAT ---
+[10:45:10.026][I][main:200]: --- LIVE HEARTBEAT ---
+[10:45:15.041][I][main:200]: --- LIVE HEARTBEAT ---
+[10:45:20.054][I][main:200]: --- LIVE HEARTBEAT ---
+[10:45:25.064][I][main:200]: --- LIVE HEARTBEAT ---
+[10:45:30.074][I][main:200]: --- LIVE HEARTBEAT ---
+[10:45:35.084][I][main:200]: --- LIVE HEARTBEAT ---
+[10:45:40.098][I][main:200]: --- LIVE HEARTBEAT ---
+[10:45:45.109][I][main:200]: --- LIVE HEARTBEAT ---
+[10:45:50.122][I][main:200]: --- LIVE HEARTBEAT ---
+[10:45:55.133][I][main:200]: --- LIVE HEARTBEAT ---
+[10:46:00.147][I][main:200]: --- LIVE HEARTBEAT ---
+[10:46:05.162][I][main:200]: --- LIVE HEARTBEAT ---
+[10:46:10.175][I][main:200]: --- LIVE HEARTBEAT ---
+[10:46:15.183][I][main:200]: --- LIVE HEARTBEAT ---
+[10:46:20.196][I][main:200]: --- LIVE HEARTBEAT ---
+[10:46:25.207][I][main:200]: --- LIVE HEARTBEAT ---
+[10:46:30.222][I][main:200]: --- LIVE HEARTBEAT ---
+[10:46:35.233][I][main:200]: --- LIVE HEARTBEAT ---
+[10:46:40.243][I][main:200]: --- LIVE HEARTBEAT ---
+[10:46:45.250][I][main:200]: --- LIVE HEARTBEAT ---
+[10:46:50.260][I][main:200]: --- LIVE HEARTBEAT ---
+[10:46:55.268][I][main:200]: --- LIVE HEARTBEAT ---
+[10:47:00.280][I][main:200]: --- LIVE HEARTBEAT ---
+[10:47:05.294][I][main:200]: --- LIVE HEARTBEAT ---
+[10:47:10.306][I][main:200]: --- LIVE HEARTBEAT ---
+[10:47:15.318][I][main:200]: --- LIVE HEARTBEAT ---
+[10:47:20.326][I][main:200]: --- LIVE HEARTBEAT ---
+[10:47:25.341][I][main:200]: --- LIVE HEARTBEAT ---
+[10:47:30.349][I][main:200]: --- LIVE HEARTBEAT ---
+[10:47:35.356][I][main:200]: --- LIVE HEARTBEAT ---
+[10:47:40.368][I][main:200]: --- LIVE HEARTBEAT ---
+[10:47:45.384][I][main:200]: --- LIVE HEARTBEAT ---
+[10:47:50.399][I][main:200]: --- LIVE HEARTBEAT ---
+[10:47:55.417][I][main:200]: --- LIVE HEARTBEAT ---
+[10:48:00.429][I][main:200]: --- LIVE HEARTBEAT ---
+[10:48:05.440][I][main:200]: --- LIVE HEARTBEAT ---
+[10:48:10.445][I][main:200]: --- LIVE HEARTBEAT ---
+[10:48:15.461][I][main:200]: --- LIVE HEARTBEAT ---
+[10:48:20.478][I][main:200]: --- LIVE HEARTBEAT ---
+[10:48:25.492][I][main:200]: --- LIVE HEARTBEAT ---
+[10:48:30.499][I][main:200]: --- LIVE HEARTBEAT ---
+[10:48:35.515][I][main:200]: --- LIVE HEARTBEAT ---
+[10:48:40.530][I][main:200]: --- LIVE HEARTBEAT ---
+[10:48:45.543][I][main:200]: --- LIVE HEARTBEAT ---
+[10:48:50.553][I][main:200]: --- LIVE HEARTBEAT ---
+[10:48:55.564][I][main:200]: --- LIVE HEARTBEAT ---
+[10:49:00.573][I][main:200]: --- LIVE HEARTBEAT ---
+[10:49:05.582][I][main:200]: --- LIVE HEARTBEAT ---
+[10:49:10.592][I][main:200]: --- LIVE HEARTBEAT ---
+[10:49:15.603][I][main:200]: --- LIVE HEARTBEAT ---
+[10:49:20.615][I][main:200]: --- LIVE HEARTBEAT ---
+[10:49:25.625][I][main:200]: --- LIVE HEARTBEAT ---
+[10:49:30.640][I][main:200]: --- LIVE HEARTBEAT ---
+[10:49:35.653][I][main:200]: --- LIVE HEARTBEAT ---
+[10:49:40.669][I][main:200]: --- LIVE HEARTBEAT ---
+[10:49:45.678][I][main:200]: --- LIVE HEARTBEAT ---
+[10:49:50.688][I][main:200]: --- LIVE HEARTBEAT ---
+[10:49:55.704][I][main:200]: --- LIVE HEARTBEAT ---
+[10:50:00.722][I][main:200]: --- LIVE HEARTBEAT ---
+[10:50:05.733][I][main:200]: --- LIVE HEARTBEAT ---
+[10:50:10.743][I][main:200]: --- LIVE HEARTBEAT ---
+[10:50:15.758][I][main:200]: --- LIVE HEARTBEAT ---
+[10:50:20.773][I][main:200]: --- LIVE HEARTBEAT ---
+[10:50:25.789][I][main:200]: --- LIVE HEARTBEAT ---
+[10:50:30.796][I][main:200]: --- LIVE HEARTBEAT ---
+[10:50:35.802][I][main:200]: --- LIVE HEARTBEAT ---
+[10:50:40.809][I][main:200]: --- LIVE HEARTBEAT ---
+[10:50:45.815][I][main:200]: --- LIVE HEARTBEAT ---
+[10:50:50.822][I][main:200]: --- LIVE HEARTBEAT ---
+[10:50:55.831][I][main:200]: --- LIVE HEARTBEAT ---
+[10:51:00.838][I][main:200]: --- LIVE HEARTBEAT ---
+[10:51:05.845][I][main:200]: --- LIVE HEARTBEAT ---
+[10:51:10.858][I][main:200]: --- LIVE HEARTBEAT ---
+[10:51:15.865][I][main:200]: --- LIVE HEARTBEAT ---
+[10:51:20.880][I][main:200]: --- LIVE HEARTBEAT ---
+[10:51:25.888][I][main:200]: --- LIVE HEARTBEAT ---
+[10:51:30.894][I][main:200]: --- LIVE HEARTBEAT ---
+[10:51:35.904][I][main:200]: --- LIVE HEARTBEAT ---
+[10:51:40.910][I][main:200]: --- LIVE HEARTBEAT ---
+[10:51:45.921][I][main:200]: --- LIVE HEARTBEAT ---
+[10:51:50.928][I][main:200]: --- LIVE HEARTBEAT ---
+[10:51:55.935][I][main:200]: --- LIVE HEARTBEAT ---
+[10:52:00.946][I][main:200]: --- LIVE HEARTBEAT ---
+[10:52:05.955][I][main:200]: --- LIVE HEARTBEAT ---
+[10:52:10.961][I][main:200]: --- LIVE HEARTBEAT ---
+[10:52:15.974][I][main:200]: --- LIVE HEARTBEAT ---
+[10:52:20.984][I][main:200]: --- LIVE HEARTBEAT ---
+[10:52:25.992][I][main:200]: --- LIVE HEARTBEAT ---
+[10:52:31.002][I][main:200]: --- LIVE HEARTBEAT ---
+[10:52:36.009][I][main:200]: --- LIVE HEARTBEAT ---
+[10:52:41.014][I][main:200]: --- LIVE HEARTBEAT ---
+[10:52:45.023][I][main:200]: --- LIVE HEARTBEAT ---
+[10:52:50.031][I][main:200]: --- LIVE HEARTBEAT ---
+[10:52:55.041][I][main:200]: --- LIVE HEARTBEAT ---
+[10:53:00.048][I][main:200]: --- LIVE HEARTBEAT ---
+[10:53:05.062][I][main:200]: --- LIVE HEARTBEAT ---
+[10:53:10.071][I][main:200]: --- LIVE HEARTBEAT ---
+[10:53:15.080][I][main:200]: --- LIVE HEARTBEAT ---
+[10:53:20.094][I][main:200]: --- LIVE HEARTBEAT ---
+[10:53:25.109][I][main:200]: --- LIVE HEARTBEAT ---
+[10:53:30.121][I][main:200]: --- LIVE HEARTBEAT ---
+[10:53:35.128][I][main:200]: --- LIVE HEARTBEAT ---
+[10:53:40.140][I][main:200]: --- LIVE HEARTBEAT ---
+[10:53:45.147][I][main:200]: --- LIVE HEARTBEAT ---
+[10:53:50.156][I][main:200]: --- LIVE HEARTBEAT ---
+[10:53:55.176][I][main:200]: --- LIVE HEARTBEAT ---
+[10:54:00.189][I][main:200]: --- LIVE HEARTBEAT ---
+[10:54:05.198][I][main:200]: --- LIVE HEARTBEAT ---
+[10:54:10.210][I][main:200]: --- LIVE HEARTBEAT ---
+[10:54:15.223][I][main:200]: --- LIVE HEARTBEAT ---
+[10:54:20.236][I][main:200]: --- LIVE HEARTBEAT ---
+[10:54:25.247][I][main:200]: --- LIVE HEARTBEAT ---
+[10:54:30.253][I][main:200]: --- LIVE HEARTBEAT ---
+[10:54:35.268][I][main:200]: --- LIVE HEARTBEAT ---
+[10:54:40.270][I][main:200]: --- LIVE HEARTBEAT ---
+[10:54:45.280][I][main:200]: --- LIVE HEARTBEAT ---
+[10:54:50.285][I][main:200]: --- LIVE HEARTBEAT ---
+[10:54:55.292][I][main:200]: --- LIVE HEARTBEAT ---
+[10:55:00.301][I][main:200]: --- LIVE HEARTBEAT ---
+[10:55:05.312][I][main:200]: --- LIVE HEARTBEAT ---
+[10:55:10.321][I][main:200]: --- LIVE HEARTBEAT ---
+[10:55:15.329][I][main:200]: --- LIVE HEARTBEAT ---
+[10:55:20.334][I][main:200]: --- LIVE HEARTBEAT ---
+[10:55:25.348][I][main:200]: --- LIVE HEARTBEAT ---
+[10:55:30.353][I][main:200]: --- LIVE HEARTBEAT ---
+[10:55:35.362][I][main:200]: --- LIVE HEARTBEAT ---
+[10:55:40.375][I][main:200]: --- LIVE HEARTBEAT ---
+[10:55:45.392][I][main:200]: --- LIVE HEARTBEAT ---
+[10:55:50.404][I][main:200]: --- LIVE HEARTBEAT ---
+[10:55:55.418][I][main:200]: --- LIVE HEARTBEAT ---
+[10:56:00.424][I][main:200]: --- LIVE HEARTBEAT ---
+[10:56:05.433][I][main:200]: --- LIVE HEARTBEAT ---
+[10:56:10.438][I][main:200]: --- LIVE HEARTBEAT ---
+[10:56:15.451][I][main:200]: --- LIVE HEARTBEAT ---
+[10:56:20.463][I][main:200]: --- LIVE HEARTBEAT ---
+[10:56:25.468][I][main:200]: --- LIVE HEARTBEAT ---
+[10:56:30.481][I][main:200]: --- LIVE HEARTBEAT ---
+[10:56:35.495][I][main:200]: --- LIVE HEARTBEAT ---
+[10:56:40.505][I][main:200]: --- LIVE HEARTBEAT ---
+[10:56:45.507][I][main:200]: --- LIVE HEARTBEAT ---
+[10:56:50.521][I][main:200]: --- LIVE HEARTBEAT ---
+[10:56:55.534][I][main:200]: --- LIVE HEARTBEAT ---
+[10:57:00.545][I][main:200]: --- LIVE HEARTBEAT ---
+[10:57:05.553][I][main:200]: --- LIVE HEARTBEAT ---
+[10:57:10.560][I][main:200]: --- LIVE HEARTBEAT ---
+[10:57:15.570][I][main:200]: --- LIVE HEARTBEAT ---
+[10:57:20.581][I][main:200]: --- LIVE HEARTBEAT ---
+[10:57:25.593][I][main:200]: --- LIVE HEARTBEAT ---
+[10:57:30.607][I][main:200]: --- LIVE HEARTBEAT ---
+[10:57:35.617][I][main:200]: --- LIVE HEARTBEAT ---
+[10:57:40.631][I][main:200]: --- LIVE HEARTBEAT ---
+[10:57:45.648][I][main:200]: --- LIVE HEARTBEAT ---
+[10:57:50.661][I][main:200]: --- LIVE HEARTBEAT ---
+[10:57:55.667][I][main:200]: --- LIVE HEARTBEAT ---
+[10:58:00.676][I][main:200]: --- LIVE HEARTBEAT ---
+[10:58:05.688][I][main:200]: --- LIVE HEARTBEAT ---
+[10:58:10.692][I][main:200]: --- LIVE HEARTBEAT ---
+[10:58:15.699][I][main:200]: --- LIVE HEARTBEAT ---
+[10:58:20.705][I][main:200]: --- LIVE HEARTBEAT ---
+[10:58:25.716][I][main:200]: --- LIVE HEARTBEAT ---
+[10:58:30.724][I][main:200]: --- LIVE HEARTBEAT ---
+[10:58:35.734][I][main:200]: --- LIVE HEARTBEAT ---
+[10:58:40.745][I][main:200]: --- LIVE HEARTBEAT ---
+[10:58:45.754][I][main:200]: --- LIVE HEARTBEAT ---
+[10:58:50.767][I][main:200]: --- LIVE HEARTBEAT ---
+[10:58:55.777][I][main:200]: --- LIVE HEARTBEAT ---
+[10:59:00.791][I][main:200]: --- LIVE HEARTBEAT ---
+[10:59:05.800][I][main:200]: --- LIVE HEARTBEAT ---
+[10:59:10.804][I][main:200]: --- LIVE HEARTBEAT ---
+[10:59:15.820][I][main:200]: --- LIVE HEARTBEAT ---
+[10:59:20.833][I][main:200]: --- LIVE HEARTBEAT ---
+[10:59:25.844][I][main:200]: --- LIVE HEARTBEAT ---
+[10:59:30.860][I][main:200]: --- LIVE HEARTBEAT ---
+[10:59:35.872][I][main:200]: --- LIVE HEARTBEAT ---
+[10:59:40.879][I][main:200]: --- LIVE HEARTBEAT ---
+[10:59:45.890][I][main:200]: --- LIVE HEARTBEAT ---
+[10:59:50.904][I][main:200]: --- LIVE HEARTBEAT ---
+[10:59:55.915][I][main:200]: --- LIVE HEARTBEAT ---
+[11:00:00.929][I][main:200]: --- LIVE HEARTBEAT ---
+[11:00:05.935][I][main:200]: --- LIVE HEARTBEAT ---
+[11:00:10.940][I][main:200]: --- LIVE HEARTBEAT ---
+[11:00:15.954][I][main:200]: --- LIVE HEARTBEAT ---
+[11:00:20.959][I][main:200]: --- LIVE HEARTBEAT ---
+[11:00:25.969][I][main:200]: --- LIVE HEARTBEAT ---
+[11:00:30.977][I][main:200]: --- LIVE HEARTBEAT ---
+[11:00:35.986][I][main:200]: --- LIVE HEARTBEAT ---
+[11:00:41.005][I][main:200]: --- LIVE HEARTBEAT ---
+[11:00:46.015][I][main:200]: --- LIVE HEARTBEAT ---
+[11:00:50.026][I][main:200]: --- LIVE HEARTBEAT ---
+[11:00:55.039][I][main:200]: --- LIVE HEARTBEAT ---
+[11:01:00.047][I][main:200]: --- LIVE HEARTBEAT ---
+[11:01:05.068][I][main:200]: --- LIVE HEARTBEAT ---
+[11:01:10.081][I][main:200]: --- LIVE HEARTBEAT ---
+[11:01:15.094][I][main:200]: --- LIVE HEARTBEAT ---
+[11:01:20.102][I][main:200]: --- LIVE HEARTBEAT ---
+[11:01:25.114][I][main:200]: --- LIVE HEARTBEAT ---
+[11:01:30.122][I][main:200]: --- LIVE HEARTBEAT ---
+[11:01:35.129][I][main:200]: --- LIVE HEARTBEAT ---
+[11:01:40.137][I][main:200]: --- LIVE HEARTBEAT ---
+[11:01:45.154][I][main:200]: --- LIVE HEARTBEAT ---
+[11:01:50.167][I][main:200]: --- LIVE HEARTBEAT ---
+[11:01:55.184][I][main:200]: --- LIVE HEARTBEAT ---
+[11:02:00.195][I][main:200]: --- LIVE HEARTBEAT ---
+[11:02:05.203][I][main:200]: --- LIVE HEARTBEAT ---
+[11:02:10.217][I][main:200]: --- LIVE HEARTBEAT ---
+[11:02:15.232][I][main:200]: --- LIVE HEARTBEAT ---
+[11:02:20.247][I][main:200]: --- LIVE HEARTBEAT ---
+[11:02:25.262][I][main:200]: --- LIVE HEARTBEAT ---
+[11:02:30.271][I][main:200]: --- LIVE HEARTBEAT ---
+[11:02:35.278][I][main:200]: --- LIVE HEARTBEAT ---
+[11:02:40.286][I][main:200]: --- LIVE HEARTBEAT ---
+[11:02:45.301][I][main:200]: --- LIVE HEARTBEAT ---
+[11:02:50.306][I][main:200]: --- LIVE HEARTBEAT ---
+[11:02:55.317][I][main:200]: --- LIVE HEARTBEAT ---
+[11:03:00.329][I][main:200]: --- LIVE HEARTBEAT ---
+[11:03:05.341][I][main:200]: --- LIVE HEARTBEAT ---
+[11:03:10.346][I][main:200]: --- LIVE HEARTBEAT ---
+[11:03:15.353][I][main:200]: --- LIVE HEARTBEAT ---
+[11:03:20.359][I][main:200]: --- LIVE HEARTBEAT ---
+[11:03:25.369][I][main:200]: --- LIVE HEARTBEAT ---
+[11:03:30.376][I][main:200]: --- LIVE HEARTBEAT ---
+[11:03:35.385][I][main:200]: --- LIVE HEARTBEAT ---
+[11:03:40.396][I][main:200]: --- LIVE HEARTBEAT ---
+[11:03:45.404][I][main:200]: --- LIVE HEARTBEAT ---
+[11:03:50.412][I][main:200]: --- LIVE HEARTBEAT ---
+[11:03:55.425][I][main:200]: --- LIVE HEARTBEAT ---
+[11:04:00.439][I][main:200]: --- LIVE HEARTBEAT ---
+[11:04:05.452][I][main:200]: --- LIVE HEARTBEAT ---
+[11:04:10.465][I][main:200]: --- LIVE HEARTBEAT ---
+[11:04:15.480][I][main:200]: --- LIVE HEARTBEAT ---
+[11:04:20.487][I][main:200]: --- LIVE HEARTBEAT ---
+[11:04:25.489][I][main:200]: --- LIVE HEARTBEAT ---
+[11:04:30.502][I][main:200]: --- LIVE HEARTBEAT ---
+[11:04:35.513][I][main:200]: --- LIVE HEARTBEAT ---
+[11:04:40.523][I][main:200]: --- LIVE HEARTBEAT ---
+[11:04:45.530][I][main:200]: --- LIVE HEARTBEAT ---
+[11:04:50.542][I][main:200]: --- LIVE HEARTBEAT ---
+[11:04:55.550][I][main:200]: --- LIVE HEARTBEAT ---
+[11:05:00.555][I][main:200]: --- LIVE HEARTBEAT ---
+[11:05:05.565][I][main:200]: --- LIVE HEARTBEAT ---
+[11:05:10.578][I][main:200]: --- LIVE HEARTBEAT ---
+[11:05:15.590][I][main:200]: --- LIVE HEARTBEAT ---
+[11:05:20.598][I][main:200]: --- LIVE HEARTBEAT ---
+[11:05:25.604][I][main:200]: --- LIVE HEARTBEAT ---
+[11:05:30.620][I][main:200]: --- LIVE HEARTBEAT ---
+[11:05:35.629][I][main:200]: --- LIVE HEARTBEAT ---
+[11:05:40.641][I][main:200]: --- LIVE HEARTBEAT ---
+[11:05:45.658][I][main:200]: --- LIVE HEARTBEAT ---
+[11:05:50.669][I][main:200]: --- LIVE HEARTBEAT ---
+[11:05:55.676][I][main:200]: --- LIVE HEARTBEAT ---
+[11:06:00.684][I][main:200]: --- LIVE HEARTBEAT ---
+[11:06:05.695][I][main:200]: --- LIVE HEARTBEAT ---
+[11:06:10.702][I][main:200]: --- LIVE HEARTBEAT ---
+[11:06:15.714][I][main:200]: --- LIVE HEARTBEAT ---
+[11:06:20.720][I][main:200]: --- LIVE HEARTBEAT ---
+[11:06:25.725][I][main:200]: --- LIVE HEARTBEAT ---
+[11:06:30.735][I][main:200]: --- LIVE HEARTBEAT ---
+[11:06:35.747][I][main:200]: --- LIVE HEARTBEAT ---
+[11:06:40.754][I][main:200]: --- LIVE HEARTBEAT ---
+[11:06:45.764][I][main:200]: --- LIVE HEARTBEAT ---
+[11:06:50.776][I][main:200]: --- LIVE HEARTBEAT ---
+[11:06:55.790][I][main:200]: --- LIVE HEARTBEAT ---
+[11:07:00.803][I][main:200]: --- LIVE HEARTBEAT ---
+[11:07:05.812][I][main:200]: --- LIVE HEARTBEAT ---
+[11:07:10.821][I][main:200]: --- LIVE HEARTBEAT ---
+[11:07:15.831][I][main:200]: --- LIVE HEARTBEAT ---
+[11:07:20.843][I][main:200]: --- LIVE HEARTBEAT ---
+[11:07:25.857][I][main:200]: --- LIVE HEARTBEAT ---
+[11:07:30.867][I][main:200]: --- LIVE HEARTBEAT ---
+[11:07:35.878][I][main:200]: --- LIVE HEARTBEAT ---
+[11:07:40.891][I][main:200]: --- LIVE HEARTBEAT ---
+[11:07:45.904][I][main:200]: --- LIVE HEARTBEAT ---
+[11:07:50.918][I][main:200]: --- LIVE HEARTBEAT ---
+[11:07:55.922][I][main:200]: --- LIVE HEARTBEAT ---
+[11:08:00.936][I][main:200]: --- LIVE HEARTBEAT ---
+[11:08:05.948][I][main:200]: --- LIVE HEARTBEAT ---
+[11:08:10.956][I][main:200]: --- LIVE HEARTBEAT ---
+[11:08:15.970][I][main:200]: --- LIVE HEARTBEAT ---
+[11:08:20.982][I][main:200]: --- LIVE HEARTBEAT ---
+[11:08:25.994][I][main:200]: --- LIVE HEARTBEAT ---
+[11:08:31.006][I][main:200]: --- LIVE HEARTBEAT ---
+[11:08:35.015][I][main:200]: --- LIVE HEARTBEAT ---
+[11:08:40.030][I][main:200]: --- LIVE HEARTBEAT ---
+[11:08:45.038][I][main:200]: --- LIVE HEARTBEAT ---
+[11:08:50.053][I][main:200]: --- LIVE HEARTBEAT ---
+[11:08:55.058][I][main:200]: --- LIVE HEARTBEAT ---
+[11:09:00.066][I][main:200]: --- LIVE HEARTBEAT ---
+[11:09:05.075][I][main:200]: --- LIVE HEARTBEAT ---
+[11:09:10.083][I][main:200]: --- LIVE HEARTBEAT ---
+[11:09:15.101][I][main:200]: --- LIVE HEARTBEAT ---
+[11:09:20.111][I][main:200]: --- LIVE HEARTBEAT ---
+[11:09:25.127][I][main:200]: --- LIVE HEARTBEAT ---
+[11:09:30.135][I][main:200]: --- LIVE HEARTBEAT ---
+[11:09:35.151][I][main:200]: --- LIVE HEARTBEAT ---
+[11:09:40.162][I][main:200]: --- LIVE HEARTBEAT ---
+[11:09:45.177][I][main:200]: --- LIVE HEARTBEAT ---
+[11:09:50.182][I][main:200]: --- LIVE HEARTBEAT ---
+[11:09:55.191][I][main:200]: --- LIVE HEARTBEAT ---
+[11:10:00.201][I][main:200]: --- LIVE HEARTBEAT ---
+[11:10:05.209][I][main:200]: --- LIVE HEARTBEAT ---
+[11:10:10.220][I][main:200]: --- LIVE HEARTBEAT ---
+[11:10:15.234][I][main:200]: --- LIVE HEARTBEAT ---
+[11:10:20.249][I][main:200]: --- LIVE HEARTBEAT ---
+[11:10:25.267][I][main:200]: --- LIVE HEARTBEAT ---
+[11:10:30.276][I][main:200]: --- LIVE HEARTBEAT ---
+[11:10:35.287][I][main:200]: --- LIVE HEARTBEAT ---
+[11:10:40.300][I][main:200]: --- LIVE HEARTBEAT ---
+[11:10:45.310][I][main:200]: --- LIVE HEARTBEAT ---
+[11:10:50.315][I][main:200]: --- LIVE HEARTBEAT ---
+[11:10:55.318][I][main:200]: --- LIVE HEARTBEAT ---
+[11:11:00.330][I][main:200]: --- LIVE HEARTBEAT ---
+[11:11:05.339][I][main:200]: --- LIVE HEARTBEAT ---
+[11:11:10.350][I][main:200]: --- LIVE HEARTBEAT ---
+[11:11:15.361][I][main:200]: --- LIVE HEARTBEAT ---
+[11:11:20.367][I][main:200]: --- LIVE HEARTBEAT ---
+[11:11:25.377][I][main:200]: --- LIVE HEARTBEAT ---
+[11:11:30.388][I][main:200]: --- LIVE HEARTBEAT ---
+[11:11:35.398][I][main:200]: --- LIVE HEARTBEAT ---
+[11:11:40.398][I][main:200]: --- LIVE HEARTBEAT ---
+[11:11:45.408][I][main:200]: --- LIVE HEARTBEAT ---
+[11:11:50.411][I][main:200]: --- LIVE HEARTBEAT ---
+[11:11:55.419][I][main:200]: --- LIVE HEARTBEAT ---
+[11:12:00.423][I][main:200]: --- LIVE HEARTBEAT ---
+[11:12:05.431][I][main:200]: --- LIVE HEARTBEAT ---
+[11:12:10.439][I][main:200]: --- LIVE HEARTBEAT ---
+[11:12:15.452][I][main:200]: --- LIVE HEARTBEAT ---
+[11:12:20.461][I][main:200]: --- LIVE HEARTBEAT ---
+[11:12:25.476][I][main:200]: --- LIVE HEARTBEAT ---
+[11:12:30.480][I][main:200]: --- LIVE HEARTBEAT ---
+[11:12:35.490][I][main:200]: --- LIVE HEARTBEAT ---
+[11:12:40.507][I][main:200]: --- LIVE HEARTBEAT ---
+[11:12:45.516][I][main:200]: --- LIVE HEARTBEAT ---
+[11:12:50.530][I][main:200]: --- LIVE HEARTBEAT ---
+[11:12:55.546][I][main:200]: --- LIVE HEARTBEAT ---
+[11:13:00.557][I][main:200]: --- LIVE HEARTBEAT ---
+[11:13:05.566][I][main:200]: --- LIVE HEARTBEAT ---
+[11:13:10.579][I][main:200]: --- LIVE HEARTBEAT ---
+[11:13:15.589][I][main:200]: --- LIVE HEARTBEAT ---
+[11:13:20.596][I][main:200]: --- LIVE HEARTBEAT ---
+[11:13:25.604][I][main:200]: --- LIVE HEARTBEAT ---
+[11:13:30.615][I][main:200]: --- LIVE HEARTBEAT ---
+[11:13:35.622][I][main:200]: --- LIVE HEARTBEAT ---
+[11:13:40.635][I][main:200]: --- LIVE HEARTBEAT ---
+[11:13:45.646][I][main:200]: --- LIVE HEARTBEAT ---
+[11:13:50.654][I][main:200]: --- LIVE HEARTBEAT ---
+[11:13:55.665][I][main:200]: --- LIVE HEARTBEAT ---
+[11:14:00.677][I][main:200]: --- LIVE HEARTBEAT ---
+[11:14:05.690][I][main:200]: --- LIVE HEARTBEAT ---
+[11:14:10.702][I][main:200]: --- LIVE HEARTBEAT ---
+[11:14:15.716][I][main:200]: --- LIVE HEARTBEAT ---
+[11:14:20.728][I][main:200]: --- LIVE HEARTBEAT ---
+[11:14:25.739][I][main:200]: --- LIVE HEARTBEAT ---
+[11:14:30.749][I][main:200]: --- LIVE HEARTBEAT ---
+[11:14:35.761][I][main:200]: --- LIVE HEARTBEAT ---
+[11:14:40.773][I][main:200]: --- LIVE HEARTBEAT ---
+[11:14:45.783][I][main:200]: --- LIVE HEARTBEAT ---
+[11:14:50.794][I][main:200]: --- LIVE HEARTBEAT ---
+[11:14:55.804][I][main:200]: --- LIVE HEARTBEAT ---
+[11:15:00.809][I][main:200]: --- LIVE HEARTBEAT ---
+[11:15:05.818][I][main:200]: --- LIVE HEARTBEAT ---
+[11:15:10.824][I][main:200]: --- LIVE HEARTBEAT ---
+[11:15:15.839][I][main:200]: --- LIVE HEARTBEAT ---
+[11:15:20.846][I][main:200]: --- LIVE HEARTBEAT ---
+[11:15:25.853][I][main:200]: --- LIVE HEARTBEAT ---
+[11:15:30.859][I][main:200]: --- LIVE HEARTBEAT ---
+[11:15:35.866][I][main:200]: --- LIVE HEARTBEAT ---
+[11:15:40.877][I][main:200]: --- LIVE HEARTBEAT ---
+[11:15:45.890][I][main:200]: --- LIVE HEARTBEAT ---
+[11:15:50.899][I][main:200]: --- LIVE HEARTBEAT ---
+[11:15:55.905][I][main:200]: --- LIVE HEARTBEAT ---
+[11:16:00.920][I][main:200]: --- LIVE HEARTBEAT ---
+[11:16:05.936][I][main:200]: --- LIVE HEARTBEAT ---
+[11:16:10.947][I][main:200]: --- LIVE HEARTBEAT ---
+[11:16:15.959][I][main:200]: --- LIVE HEARTBEAT ---
+[11:16:20.968][I][main:200]: --- LIVE HEARTBEAT ---
+[11:16:25.978][I][main:200]: --- LIVE HEARTBEAT ---
+[11:16:30.987][I][main:200]: --- LIVE HEARTBEAT ---
+[11:16:35.999][I][main:200]: --- LIVE HEARTBEAT ---
+[11:16:41.011][I][main:200]: --- LIVE HEARTBEAT ---
+[11:16:45.022][I][main:200]: --- LIVE HEARTBEAT ---
+[11:16:50.036][I][main:200]: --- LIVE HEARTBEAT ---
+[11:16:55.043][I][main:200]: --- LIVE HEARTBEAT ---
+[11:17:00.058][I][main:200]: --- LIVE HEARTBEAT ---
+[11:17:05.073][I][main:200]: --- LIVE HEARTBEAT ---
+[11:17:10.080][I][main:200]: --- LIVE HEARTBEAT ---
+[11:17:15.089][I][main:200]: --- LIVE HEARTBEAT ---
+[11:17:20.101][I][main:200]: --- LIVE HEARTBEAT ---
+[11:17:25.110][I][main:200]: --- LIVE HEARTBEAT ---
+[11:17:30.120][I][main:200]: --- LIVE HEARTBEAT ---
+[11:17:35.130][I][main:200]: --- LIVE HEARTBEAT ---
+[11:17:40.143][I][main:200]: --- LIVE HEARTBEAT ---
+[11:17:45.152][I][main:200]: --- LIVE HEARTBEAT ---
+[11:17:50.161][I][main:200]: --- LIVE HEARTBEAT ---
+[11:17:55.171][I][main:200]: --- LIVE HEARTBEAT ---
+[11:18:00.180][I][main:200]: --- LIVE HEARTBEAT ---
+[11:18:05.191][I][main:200]: --- LIVE HEARTBEAT ---
+[11:18:10.205][I][main:200]: --- LIVE HEARTBEAT ---
+[11:18:15.213][I][main:200]: --- LIVE HEARTBEAT ---
+[11:18:20.219][I][main:200]: --- LIVE HEARTBEAT ---
+[11:18:25.231][I][main:200]: --- LIVE HEARTBEAT ---
+[11:18:30.240][I][main:200]: --- LIVE HEARTBEAT ---
+[11:18:35.250][I][main:200]: --- LIVE HEARTBEAT ---
+[11:18:40.263][I][main:200]: --- LIVE HEARTBEAT ---
+[11:18:45.271][I][main:200]: --- LIVE HEARTBEAT ---
+[11:18:50.280][I][main:200]: --- LIVE HEARTBEAT ---
+[11:18:55.293][I][main:200]: --- LIVE HEARTBEAT ---
+[11:19:00.300][I][main:200]: --- LIVE HEARTBEAT ---
+[11:19:05.305][I][main:200]: --- LIVE HEARTBEAT ---
+[11:19:10.311][I][main:200]: --- LIVE HEARTBEAT ---
+[11:19:15.320][I][main:200]: --- LIVE HEARTBEAT ---
+[11:19:20.327][I][main:200]: --- LIVE HEARTBEAT ---
+[11:19:25.336][I][main:200]: --- LIVE HEARTBEAT ---
+[11:19:30.347][I][main:200]: --- LIVE HEARTBEAT ---
+[11:19:35.352][I][main:200]: --- LIVE HEARTBEAT ---
+[11:19:40.361][I][main:200]: --- LIVE HEARTBEAT ---
+[11:19:45.370][I][main:200]: --- LIVE HEARTBEAT ---
+[11:19:50.381][I][main:200]: --- LIVE HEARTBEAT ---
+[11:19:55.390][I][main:200]: --- LIVE HEARTBEAT ---
+[11:20:00.402][I][main:200]: --- LIVE HEARTBEAT ---
+[11:20:05.415][I][main:200]: --- LIVE HEARTBEAT ---
+[11:20:10.420][I][main:200]: --- LIVE HEARTBEAT ---
+[11:20:15.429][I][main:200]: --- LIVE HEARTBEAT ---
+[11:20:20.440][I][main:200]: --- LIVE HEARTBEAT ---
+[11:20:25.453][I][main:200]: --- LIVE HEARTBEAT ---
+[11:20:30.464][I][main:200]: --- LIVE HEARTBEAT ---
+[11:20:35.478][I][main:200]: --- LIVE HEARTBEAT ---
+[11:20:40.484][I][main:200]: --- LIVE HEARTBEAT ---
+[11:20:45.497][I][main:200]: --- LIVE HEARTBEAT ---
+[11:20:50.505][I][main:200]: --- LIVE HEARTBEAT ---
+[11:20:55.517][I][main:200]: --- LIVE HEARTBEAT ---
+[11:21:00.526][I][main:200]: --- LIVE HEARTBEAT ---
+[11:21:05.533][I][main:200]: --- LIVE HEARTBEAT ---
+[11:21:10.543][I][main:200]: --- LIVE HEARTBEAT ---
+[11:21:15.552][I][main:200]: --- LIVE HEARTBEAT ---
+[11:21:20.567][I][main:200]: --- LIVE HEARTBEAT ---
+[11:21:25.580][I][main:200]: --- LIVE HEARTBEAT ---
+[11:21:30.589][I][main:200]: --- LIVE HEARTBEAT ---
+[11:21:35.598][I][main:200]: --- LIVE HEARTBEAT ---
+[11:21:40.609][I][main:200]: --- LIVE HEARTBEAT ---
+[11:21:45.618][I][main:200]: --- LIVE HEARTBEAT ---
+[11:21:50.632][I][main:200]: --- LIVE HEARTBEAT ---
+[11:21:55.642][I][main:200]: --- LIVE HEARTBEAT ---
+[11:22:00.646][I][main:200]: --- LIVE HEARTBEAT ---
+[11:22:05.657][I][main:200]: --- LIVE HEARTBEAT ---
+[11:22:10.664][I][main:200]: --- LIVE HEARTBEAT ---
+[11:22:15.671][I][main:200]: --- LIVE HEARTBEAT ---
+[11:22:20.682][I][main:200]: --- LIVE HEARTBEAT ---
+[11:22:25.695][I][main:200]: --- LIVE HEARTBEAT ---
+[11:22:30.703][I][main:200]: --- LIVE HEARTBEAT ---
+[11:22:35.718][I][main:200]: --- LIVE HEARTBEAT ---
+[11:22:40.733][I][main:200]: --- LIVE HEARTBEAT ---
+[11:22:45.748][I][main:200]: --- LIVE HEARTBEAT ---
+[11:22:50.761][I][main:200]: --- LIVE HEARTBEAT ---
+[11:22:55.776][I][main:200]: --- LIVE HEARTBEAT ---
+[11:23:00.788][I][main:200]: --- LIVE HEARTBEAT ---
+[11:23:05.797][I][main:200]: --- LIVE HEARTBEAT ---
+[11:23:10.808][I][main:200]: --- LIVE HEARTBEAT ---
+[11:23:15.824][I][main:200]: --- LIVE HEARTBEAT ---
+[11:23:20.834][I][main:200]: --- LIVE HEARTBEAT ---
+[11:23:25.850][I][main:200]: --- LIVE HEARTBEAT ---
+[11:23:30.858][I][main:200]: --- LIVE HEARTBEAT ---
+[11:23:35.870][I][main:200]: --- LIVE HEARTBEAT ---
+[11:23:40.878][I][main:200]: --- LIVE HEARTBEAT ---
+[11:23:45.886][I][main:200]: --- LIVE HEARTBEAT ---
+[11:23:50.899][I][main:200]: --- LIVE HEARTBEAT ---
+[11:23:55.912][I][main:200]: --- LIVE HEARTBEAT ---
+[11:24:00.920][I][main:200]: --- LIVE HEARTBEAT ---
+[11:24:05.928][I][main:200]: --- LIVE HEARTBEAT ---
+[11:24:10.933][I][main:200]: --- LIVE HEARTBEAT ---
+[11:24:15.942][I][main:200]: --- LIVE HEARTBEAT ---
+[11:24:20.948][I][main:200]: --- LIVE HEARTBEAT ---
+[11:24:25.956][I][main:200]: --- LIVE HEARTBEAT ---
+[11:24:30.964][I][main:200]: --- LIVE HEARTBEAT ---
+[11:24:35.970][I][main:200]: --- LIVE HEARTBEAT ---
+[11:24:40.978][I][main:200]: --- LIVE HEARTBEAT ---
+[11:24:45.992][I][main:200]: --- LIVE HEARTBEAT ---
+[11:24:50.999][I][main:200]: --- LIVE HEARTBEAT ---
+[11:24:56.008][I][main:200]: --- LIVE HEARTBEAT ---
+[11:25:00.019][I][main:200]: --- LIVE HEARTBEAT ---
+[11:25:05.031][I][main:200]: --- LIVE HEARTBEAT ---
+[11:25:10.037][I][main:200]: --- LIVE HEARTBEAT ---
+[11:25:15.045][I][main:200]: --- LIVE HEARTBEAT ---
+[11:25:20.058][I][main:200]: --- LIVE HEARTBEAT ---
+[11:25:25.065][I][main:200]: --- LIVE HEARTBEAT ---
+[11:25:30.073][I][main:200]: --- LIVE HEARTBEAT ---
+[11:25:35.082][I][main:200]: --- LIVE HEARTBEAT ---
+[11:25:40.095][I][main:200]: --- LIVE HEARTBEAT ---
+[11:25:45.108][I][main:200]: --- LIVE HEARTBEAT ---
+[11:25:50.120][I][main:200]: --- LIVE HEARTBEAT ---
+[11:25:55.129][I][main:200]: --- LIVE HEARTBEAT ---
+[11:26:00.142][I][main:200]: --- LIVE HEARTBEAT ---
+[11:26:05.151][I][main:200]: --- LIVE HEARTBEAT ---
+[11:26:10.158][I][main:200]: --- LIVE HEARTBEAT ---
+[11:26:15.169][I][main:200]: --- LIVE HEARTBEAT ---
+[11:26:20.178][I][main:200]: --- LIVE HEARTBEAT ---
+[11:26:25.188][I][main:200]: --- LIVE HEARTBEAT ---
+[11:26:30.200][I][main:200]: --- LIVE HEARTBEAT ---
+[11:26:35.216][I][main:200]: --- LIVE HEARTBEAT ---
+[11:26:40.221][I][main:200]: --- LIVE HEARTBEAT ---
+[11:26:45.235][I][main:200]: --- LIVE HEARTBEAT ---
+[11:26:50.244][I][main:200]: --- LIVE HEARTBEAT ---
+[11:26:55.258][I][main:200]: --- LIVE HEARTBEAT ---
+[11:27:00.267][I][main:200]: --- LIVE HEARTBEAT ---
+[11:27:05.281][I][main:200]: --- LIVE HEARTBEAT ---
+[11:27:10.290][I][main:200]: --- LIVE HEARTBEAT ---
+[11:27:15.302][I][main:200]: --- LIVE HEARTBEAT ---
+[11:27:20.314][I][main:200]: --- LIVE HEARTBEAT ---
+[11:27:25.326][I][main:200]: --- LIVE HEARTBEAT ---
+[11:27:30.331][I][main:200]: --- LIVE HEARTBEAT ---
+[11:27:35.343][I][main:200]: --- LIVE HEARTBEAT ---
+[11:27:40.349][I][main:200]: --- LIVE HEARTBEAT ---
+[11:27:45.357][I][main:200]: --- LIVE HEARTBEAT ---
+[11:27:50.363][I][main:200]: --- LIVE HEARTBEAT ---
+[11:27:55.376][I][main:200]: --- LIVE HEARTBEAT ---
+[11:28:00.394][I][main:200]: --- LIVE HEARTBEAT ---
+[11:28:05.408][I][main:200]: --- LIVE HEARTBEAT ---
+[11:28:10.419][I][main:200]: --- LIVE HEARTBEAT ---
+[11:28:15.433][I][main:200]: --- LIVE HEARTBEAT ---
+[11:28:20.441][I][main:200]: --- LIVE HEARTBEAT ---
+[11:28:25.450][I][main:200]: --- LIVE HEARTBEAT ---
+[11:28:30.465][I][main:200]: --- LIVE HEARTBEAT ---
+[11:28:35.480][I][main:200]: --- LIVE HEARTBEAT ---
+[11:28:40.487][I][main:200]: --- LIVE HEARTBEAT ---
+[11:28:45.501][I][main:200]: --- LIVE HEARTBEAT ---
+[11:28:50.506][I][main:200]: --- LIVE HEARTBEAT ---
+[11:28:55.512][I][main:200]: --- LIVE HEARTBEAT ---
+[11:29:00.525][I][main:200]: --- LIVE HEARTBEAT ---
+[11:29:05.539][I][main:200]: --- LIVE HEARTBEAT ---
+[11:29:10.554][I][main:200]: --- LIVE HEARTBEAT ---
+[11:29:15.567][I][main:200]: --- LIVE HEARTBEAT ---
+[11:29:20.577][I][main:200]: --- LIVE HEARTBEAT ---
+[11:29:25.582][I][main:200]: --- LIVE HEARTBEAT ---
+[11:29:30.596][I][main:200]: --- LIVE HEARTBEAT ---
+[11:29:35.607][I][main:200]: --- LIVE HEARTBEAT ---
+[11:29:40.617][I][main:200]: --- LIVE HEARTBEAT ---
+[11:29:45.631][I][main:200]: --- LIVE HEARTBEAT ---
+[11:29:50.640][I][main:200]: --- LIVE HEARTBEAT ---
+[11:29:55.650][I][main:200]: --- LIVE HEARTBEAT ---
+[11:30:00.658][I][main:200]: --- LIVE HEARTBEAT ---
+[11:30:05.671][I][main:200]: --- LIVE HEARTBEAT ---
+[11:30:10.682][I][main:200]: --- LIVE HEARTBEAT ---
+[11:30:15.698][I][main:200]: --- LIVE HEARTBEAT ---
+[11:30:20.716][I][main:200]: --- LIVE HEARTBEAT ---
+[11:30:25.734][I][main:200]: --- LIVE HEARTBEAT ---
+[11:30:30.747][I][main:200]: --- LIVE HEARTBEAT ---
+[11:30:35.759][I][main:200]: --- LIVE HEARTBEAT ---
+[11:30:40.767][I][main:200]: --- LIVE HEARTBEAT ---
+[11:30:45.776][I][main:200]: --- LIVE HEARTBEAT ---
+[11:30:50.787][I][main:200]: --- LIVE HEARTBEAT ---
+[11:30:55.803][I][main:200]: --- LIVE HEARTBEAT ---
+[11:31:00.815][I][main:200]: --- LIVE HEARTBEAT ---
+[11:31:05.830][I][main:200]: --- LIVE HEARTBEAT ---
+[11:31:10.842][I][main:200]: --- LIVE HEARTBEAT ---
+[11:31:15.856][I][main:200]: --- LIVE HEARTBEAT ---
+[11:31:20.869][I][main:200]: --- LIVE HEARTBEAT ---
+[11:31:25.883][I][main:200]: --- LIVE HEARTBEAT ---
+[11:31:30.900][I][main:200]: --- LIVE HEARTBEAT ---
+[11:31:35.909][I][main:200]: --- LIVE HEARTBEAT ---
+[11:31:40.923][I][main:200]: --- LIVE HEARTBEAT ---
+[11:31:45.937][I][main:200]: --- LIVE HEARTBEAT ---
+[11:31:50.942][I][main:200]: --- LIVE HEARTBEAT ---
+[11:31:55.955][I][main:200]: --- LIVE HEARTBEAT ---
+[11:32:00.969][I][main:200]: --- LIVE HEARTBEAT ---
+[11:32:05.983][I][main:200]: --- LIVE HEARTBEAT ---
+[11:32:10.996][I][main:200]: --- LIVE HEARTBEAT ---
+[11:32:16.012][I][main:200]: --- LIVE HEARTBEAT ---
+[11:32:20.021][I][main:200]: --- LIVE HEARTBEAT ---
+[11:32:25.033][I][main:200]: --- LIVE HEARTBEAT ---
+[11:32:30.039][I][main:200]: --- LIVE HEARTBEAT ---
+[11:32:35.047][I][main:200]: --- LIVE HEARTBEAT ---
+[11:32:40.056][I][main:200]: --- LIVE HEARTBEAT ---
+[11:32:45.069][I][main:200]: --- LIVE HEARTBEAT ---
+[11:32:50.074][I][main:200]: --- LIVE HEARTBEAT ---
+[11:32:55.084][I][main:200]: --- LIVE HEARTBEAT ---
+[11:33:00.096][I][main:200]: --- LIVE HEARTBEAT ---
+[11:33:05.110][I][main:200]: --- LIVE HEARTBEAT ---
+[11:33:10.116][I][main:200]: --- LIVE HEARTBEAT ---
+[11:33:15.132][I][main:200]: --- LIVE HEARTBEAT ---
+[11:33:20.137][I][main:200]: --- LIVE HEARTBEAT ---
+[11:33:25.148][I][main:200]: --- LIVE HEARTBEAT ---
+[11:33:30.158][I][main:200]: --- LIVE HEARTBEAT ---
+[11:33:35.171][I][main:200]: --- LIVE HEARTBEAT ---
+[11:33:40.180][I][main:200]: --- LIVE HEARTBEAT ---
+[11:33:45.192][I][main:200]: --- LIVE HEARTBEAT ---
+[11:33:50.203][I][main:200]: --- LIVE HEARTBEAT ---
+[11:33:55.209][I][main:200]: --- LIVE HEARTBEAT ---
+[11:34:00.218][I][main:200]: --- LIVE HEARTBEAT ---
+[11:34:05.226][I][main:200]: --- LIVE HEARTBEAT ---
+[11:34:10.231][I][main:200]: --- LIVE HEARTBEAT ---
+[11:34:15.241][I][main:200]: --- LIVE HEARTBEAT ---
+[11:34:20.251][I][main:200]: --- LIVE HEARTBEAT ---
+[11:34:25.261][I][main:200]: --- LIVE HEARTBEAT ---
+[11:34:30.274][I][main:200]: --- LIVE HEARTBEAT ---
+[11:34:35.290][I][main:200]: --- LIVE HEARTBEAT ---
+[11:34:40.296][I][main:200]: --- LIVE HEARTBEAT ---
+[11:34:45.313][I][main:200]: --- LIVE HEARTBEAT ---
+[11:34:50.319][I][main:200]: --- LIVE HEARTBEAT ---
+[11:34:55.328][I][main:200]: --- LIVE HEARTBEAT ---
+[11:35:00.343][I][main:200]: --- LIVE HEARTBEAT ---
+[11:35:05.360][I][main:200]: --- LIVE HEARTBEAT ---
+[11:35:10.369][I][main:200]: --- LIVE HEARTBEAT ---
+[11:35:15.382][I][main:200]: --- LIVE HEARTBEAT ---
+[11:35:20.393][I][main:200]: --- LIVE HEARTBEAT ---
+[11:35:25.400][I][main:200]: --- LIVE HEARTBEAT ---
+[11:35:30.414][I][main:200]: --- LIVE HEARTBEAT ---
+[11:35:35.421][I][main:200]: --- LIVE HEARTBEAT ---
+[11:35:40.434][I][main:200]: --- LIVE HEARTBEAT ---
+[11:35:45.447][I][main:200]: --- LIVE HEARTBEAT ---
+[11:35:50.457][I][main:200]: --- LIVE HEARTBEAT ---
+[11:35:55.469][I][main:200]: --- LIVE HEARTBEAT ---
+[11:36:00.483][I][main:200]: --- LIVE HEARTBEAT ---
+[11:36:05.495][I][main:200]: --- LIVE HEARTBEAT ---
+[11:36:10.510][I][main:200]: --- LIVE HEARTBEAT ---
+[11:36:15.516][I][main:200]: --- LIVE HEARTBEAT ---
+[11:36:20.527][I][main:200]: --- LIVE HEARTBEAT ---
+[11:36:25.538][I][main:200]: --- LIVE HEARTBEAT ---
+[11:36:30.544][I][main:200]: --- LIVE HEARTBEAT ---
+[11:36:35.552][I][main:200]: --- LIVE HEARTBEAT ---
+[11:36:40.557][I][main:200]: --- LIVE HEARTBEAT ---
+[11:36:45.568][I][main:200]: --- LIVE HEARTBEAT ---
+[11:36:50.577][I][main:200]: --- LIVE HEARTBEAT ---
+[11:36:55.585][I][main:200]: --- LIVE HEARTBEAT ---
+[11:37:00.594][I][main:200]: --- LIVE HEARTBEAT ---
+[11:37:05.603][I][main:200]: --- LIVE HEARTBEAT ---
+[11:37:10.615][I][main:200]: --- LIVE HEARTBEAT ---
+[11:37:15.623][I][main:200]: --- LIVE HEARTBEAT ---
+[11:37:20.636][I][main:200]: --- LIVE HEARTBEAT ---
+[11:37:25.648][I][main:200]: --- LIVE HEARTBEAT ---
+[11:37:30.660][I][main:200]: --- LIVE HEARTBEAT ---
+[11:37:35.677][I][main:200]: --- LIVE HEARTBEAT ---
+[11:37:40.684][I][main:200]: --- LIVE HEARTBEAT ---
+[11:37:45.696][I][main:200]: --- LIVE HEARTBEAT ---
+[11:37:50.702][I][main:200]: --- LIVE HEARTBEAT ---
+[11:37:55.716][I][main:200]: --- LIVE HEARTBEAT ---
+[11:38:00.730][I][main:200]: --- LIVE HEARTBEAT ---
+[11:38:05.746][I][main:200]: --- LIVE HEARTBEAT ---
+[11:38:10.754][I][main:200]: --- LIVE HEARTBEAT ---
+[11:38:15.762][I][main:200]: --- LIVE HEARTBEAT ---
+[11:38:20.767][I][main:200]: --- LIVE HEARTBEAT ---
+[11:38:25.775][I][main:200]: --- LIVE HEARTBEAT ---
+[11:38:30.784][I][main:200]: --- LIVE HEARTBEAT ---
+[11:38:35.789][I][main:200]: --- LIVE HEARTBEAT ---
+[11:38:40.794][I][main:200]: --- LIVE HEARTBEAT ---
+[11:38:45.801][I][main:200]: --- LIVE HEARTBEAT ---
+[11:38:50.812][I][main:200]: --- LIVE HEARTBEAT ---
+[11:38:55.823][I][main:200]: --- LIVE HEARTBEAT ---
+[11:39:00.834][I][main:200]: --- LIVE HEARTBEAT ---
+[11:39:05.843][I][main:200]: --- LIVE HEARTBEAT ---
+[11:39:10.852][I][main:200]: --- LIVE HEARTBEAT ---
+[11:39:15.862][I][main:200]: --- LIVE HEARTBEAT ---
+[11:39:20.872][I][main:200]: --- LIVE HEARTBEAT ---
+[11:39:25.881][I][main:200]: --- LIVE HEARTBEAT ---
+[11:39:30.888][I][main:200]: --- LIVE HEARTBEAT ---
+[11:39:35.896][I][main:200]: --- LIVE HEARTBEAT ---
+[11:39:40.901][I][main:200]: --- LIVE HEARTBEAT ---
+[11:39:45.911][I][main:200]: --- LIVE HEARTBEAT ---
+[11:39:50.918][I][main:200]: --- LIVE HEARTBEAT ---
+[11:39:55.925][I][main:200]: --- LIVE HEARTBEAT ---
+[11:40:00.932][I][main:200]: --- LIVE HEARTBEAT ---
+[11:40:05.944][I][main:200]: --- LIVE HEARTBEAT ---
+[11:40:10.953][I][main:200]: --- LIVE HEARTBEAT ---
+[11:40:15.956][I][main:200]: --- LIVE HEARTBEAT ---
+[11:40:20.967][I][main:200]: --- LIVE HEARTBEAT ---
+[11:40:25.976][I][main:200]: --- LIVE HEARTBEAT ---
+[11:40:30.988][I][main:200]: --- LIVE HEARTBEAT ---
+[11:40:35.999][I][main:200]: --- LIVE HEARTBEAT ---
+[11:40:45.020][I][main:200]: --- LIVE HEARTBEAT ---
+[11:40:50.031][I][main:200]: --- LIVE HEARTBEAT ---
+[11:40:55.038][I][main:200]: --- LIVE HEARTBEAT ---
+[11:41:00.044][I][main:200]: --- LIVE HEARTBEAT ---
+[11:41:05.060][I][main:200]: --- LIVE HEARTBEAT ---
+[11:41:10.078][I][main:200]: --- LIVE HEARTBEAT ---
+[11:41:15.089][I][main:200]: --- LIVE HEARTBEAT ---
+[11:41:20.093][I][main:200]: --- LIVE HEARTBEAT ---
+[11:41:25.099][I][main:200]: --- LIVE HEARTBEAT ---
+[11:41:30.110][I][main:200]: --- LIVE HEARTBEAT ---
+[11:41:35.120][I][main:200]: --- LIVE HEARTBEAT ---
+[11:41:40.130][I][main:200]: --- LIVE HEARTBEAT ---
+[11:41:45.140][I][main:200]: --- LIVE HEARTBEAT ---
+[11:41:50.148][I][main:200]: --- LIVE HEARTBEAT ---
+[11:41:55.156][I][main:200]: --- LIVE HEARTBEAT ---
+[11:42:00.166][I][main:200]: --- LIVE HEARTBEAT ---
+[11:42:05.172][I][main:200]: --- LIVE HEARTBEAT ---
+[11:42:10.181][I][main:200]: --- LIVE HEARTBEAT ---
+[11:42:15.191][I][main:200]: --- LIVE HEARTBEAT ---
+[11:42:20.199][I][main:200]: --- LIVE HEARTBEAT ---
+[11:42:25.211][I][main:200]: --- LIVE HEARTBEAT ---
+[11:42:30.219][I][main:200]: --- LIVE HEARTBEAT ---
+[11:42:35.235][I][main:200]: --- LIVE HEARTBEAT ---
+[11:42:40.243][I][main:200]: --- LIVE HEARTBEAT ---
+[11:42:45.253][I][main:200]: --- LIVE HEARTBEAT ---
+[11:42:50.263][I][main:200]: --- LIVE HEARTBEAT ---
+[11:42:55.272][I][main:200]: --- LIVE HEARTBEAT ---
+[11:43:00.276][I][main:200]: --- LIVE HEARTBEAT ---
+[11:43:05.288][I][main:200]: --- LIVE HEARTBEAT ---
+[11:43:10.298][I][main:200]: --- LIVE HEARTBEAT ---
+[11:43:15.310][I][main:200]: --- LIVE HEARTBEAT ---
+[11:43:20.316][I][main:200]: --- LIVE HEARTBEAT ---
+[11:43:25.320][I][main:200]: --- LIVE HEARTBEAT ---
+[11:43:30.333][I][main:200]: --- LIVE HEARTBEAT ---
+[11:43:35.341][I][main:200]: --- LIVE HEARTBEAT ---
+[11:43:40.351][I][main:200]: --- LIVE HEARTBEAT ---
+[11:43:45.359][I][main:200]: --- LIVE HEARTBEAT ---
+[11:43:50.372][I][main:200]: --- LIVE HEARTBEAT ---
+[11:43:55.383][I][main:200]: --- LIVE HEARTBEAT ---
+[11:44:00.396][I][main:200]: --- LIVE HEARTBEAT ---
+[11:44:05.403][I][main:200]: --- LIVE HEARTBEAT ---
+[11:44:10.408][I][main:200]: --- LIVE HEARTBEAT ---
+[11:44:15.419][I][main:200]: --- LIVE HEARTBEAT ---
+[11:44:20.429][I][main:200]: --- LIVE HEARTBEAT ---
+[11:44:25.433][I][main:200]: --- LIVE HEARTBEAT ---
+[11:44:30.442][I][main:200]: --- LIVE HEARTBEAT ---
+[11:44:35.450][I][main:200]: --- LIVE HEARTBEAT ---
+[11:44:40.458][I][main:200]: --- LIVE HEARTBEAT ---
+[11:44:45.464][I][main:200]: --- LIVE HEARTBEAT ---
+[11:44:50.469][I][main:200]: --- LIVE HEARTBEAT ---
+[11:44:55.478][I][main:200]: --- LIVE HEARTBEAT ---
+[11:45:00.489][I][main:200]: --- LIVE HEARTBEAT ---
+[11:45:05.502][I][main:200]: --- LIVE HEARTBEAT ---
+[11:45:10.512][I][main:200]: --- LIVE HEARTBEAT ---
+[11:45:15.520][I][main:200]: --- LIVE HEARTBEAT ---
+[11:45:20.534][I][main:200]: --- LIVE HEARTBEAT ---
+[11:45:25.549][I][main:200]: --- LIVE HEARTBEAT ---
+[11:45:30.566][I][main:200]: --- LIVE HEARTBEAT ---
+[11:45:35.581][I][main:200]: --- LIVE HEARTBEAT ---
+[11:45:40.586][I][main:200]: --- LIVE HEARTBEAT ---
+[11:45:45.599][I][main:200]: --- LIVE HEARTBEAT ---
+[11:45:50.610][I][main:200]: --- LIVE HEARTBEAT ---
+[11:45:55.624][I][main:200]: --- LIVE HEARTBEAT ---
+[11:46:00.640][I][main:200]: --- LIVE HEARTBEAT ---
+[11:46:05.649][I][main:200]: --- LIVE HEARTBEAT ---
+[11:46:10.661][I][main:200]: --- LIVE HEARTBEAT ---
+[11:46:15.679][I][main:200]: --- LIVE HEARTBEAT ---
+[11:46:20.695][I][main:200]: --- LIVE HEARTBEAT ---
+[11:46:25.703][I][main:200]: --- LIVE HEARTBEAT ---
+[11:46:30.717][I][main:200]: --- LIVE HEARTBEAT ---
+[11:46:35.728][I][main:200]: --- LIVE HEARTBEAT ---
+[11:46:40.737][I][main:200]: --- LIVE HEARTBEAT ---
+[11:46:45.742][I][main:200]: --- LIVE HEARTBEAT ---
+[11:46:50.752][I][main:200]: --- LIVE HEARTBEAT ---
+[11:46:55.760][I][main:200]: --- LIVE HEARTBEAT ---
+[11:47:00.764][I][main:200]: --- LIVE HEARTBEAT ---
+[11:47:05.772][I][main:200]: --- LIVE HEARTBEAT ---
+[11:47:10.784][I][main:200]: --- LIVE HEARTBEAT ---
+[11:47:15.795][I][main:200]: --- LIVE HEARTBEAT ---
+[11:47:20.803][I][main:200]: --- LIVE HEARTBEAT ---
+[11:47:25.808][I][main:200]: --- LIVE HEARTBEAT ---
+[11:47:30.823][I][main:200]: --- LIVE HEARTBEAT ---
+[11:47:35.833][I][main:200]: --- LIVE HEARTBEAT ---
+[11:47:40.840][I][main:200]: --- LIVE HEARTBEAT ---
+[11:47:45.848][I][main:200]: --- LIVE HEARTBEAT ---
+[11:47:50.864][I][main:200]: --- LIVE HEARTBEAT ---
+[11:47:55.875][I][main:200]: --- LIVE HEARTBEAT ---
+[11:48:00.884][I][main:200]: --- LIVE HEARTBEAT ---
+[11:48:05.898][I][main:200]: --- LIVE HEARTBEAT ---
+[11:48:10.911][I][main:200]: --- LIVE HEARTBEAT ---
+[11:48:15.918][I][main:200]: --- LIVE HEARTBEAT ---
+[11:48:20.930][I][main:200]: --- LIVE HEARTBEAT ---
+[11:48:25.944][I][main:200]: --- LIVE HEARTBEAT ---
+[11:48:30.952][I][main:200]: --- LIVE HEARTBEAT ---
+[11:48:35.963][I][main:200]: --- LIVE HEARTBEAT ---
+[11:48:40.966][I][main:200]: --- LIVE HEARTBEAT ---
+[11:48:45.975][I][main:200]: --- LIVE HEARTBEAT ---
+[11:48:50.981][I][main:200]: --- LIVE HEARTBEAT ---
+[11:48:55.998][I][main:200]: --- LIVE HEARTBEAT ---
+[11:49:01.009][I][main:200]: --- LIVE HEARTBEAT ---
+[11:49:05.022][I][main:200]: --- LIVE HEARTBEAT ---
+[11:49:10.028][I][main:200]: --- LIVE HEARTBEAT ---
+[11:49:15.039][I][main:200]: --- LIVE HEARTBEAT ---
+[11:49:20.050][I][main:200]: --- LIVE HEARTBEAT ---
+[11:49:25.057][I][main:200]: --- LIVE HEARTBEAT ---
+[11:49:30.068][I][main:200]: --- LIVE HEARTBEAT ---
+[11:49:35.072][I][main:200]: --- LIVE HEARTBEAT ---
+[11:49:40.088][I][main:200]: --- LIVE HEARTBEAT ---
+[11:49:45.103][I][main:200]: --- LIVE HEARTBEAT ---
+[11:49:50.113][I][main:200]: --- LIVE HEARTBEAT ---
+[11:49:55.118][I][main:200]: --- LIVE HEARTBEAT ---
+[11:50:00.120][I][main:200]: --- LIVE HEARTBEAT ---
+[11:50:05.130][I][main:200]: --- LIVE HEARTBEAT ---
+[11:50:10.136][I][main:200]: --- LIVE HEARTBEAT ---
+[11:50:15.149][I][main:200]: --- LIVE HEARTBEAT ---
+[11:50:20.163][I][main:200]: --- LIVE HEARTBEAT ---
+[11:50:25.173][I][main:200]: --- LIVE HEARTBEAT ---
+[11:50:30.178][I][main:200]: --- LIVE HEARTBEAT ---
+[11:50:35.185][I][main:200]: --- LIVE HEARTBEAT ---
+[11:50:40.194][I][main:200]: --- LIVE HEARTBEAT ---
+[11:50:45.204][I][main:200]: --- LIVE HEARTBEAT ---
+[11:50:50.217][I][main:200]: --- LIVE HEARTBEAT ---
+[11:50:55.225][I][main:200]: --- LIVE HEARTBEAT ---
+[11:51:00.235][I][main:200]: --- LIVE HEARTBEAT ---
+[11:51:05.249][I][main:200]: --- LIVE HEARTBEAT ---
+[11:51:10.261][I][main:200]: --- LIVE HEARTBEAT ---
+[11:51:15.268][I][main:200]: --- LIVE HEARTBEAT ---
+[11:51:20.274][I][main:200]: --- LIVE HEARTBEAT ---
+[11:51:25.284][I][main:200]: --- LIVE HEARTBEAT ---
+[11:51:30.296][I][main:200]: --- LIVE HEARTBEAT ---
+[11:51:35.302][I][main:200]: --- LIVE HEARTBEAT ---
+[11:51:40.313][I][main:200]: --- LIVE HEARTBEAT ---
+[11:51:45.323][I][main:200]: --- LIVE HEARTBEAT ---
+[11:51:50.326][I][main:200]: --- LIVE HEARTBEAT ---
+[11:51:55.332][I][main:200]: --- LIVE HEARTBEAT ---
+[11:52:00.337][I][main:200]: --- LIVE HEARTBEAT ---
+[11:52:05.347][I][main:200]: --- LIVE HEARTBEAT ---
+[11:52:10.352][I][main:200]: --- LIVE HEARTBEAT ---
+[11:52:15.366][I][main:200]: --- LIVE HEARTBEAT ---
+[11:52:20.377][I][main:200]: --- LIVE HEARTBEAT ---
+[11:52:25.388][I][main:200]: --- LIVE HEARTBEAT ---
+[11:52:30.394][I][main:200]: --- LIVE HEARTBEAT ---
+[11:52:35.399][I][main:200]: --- LIVE HEARTBEAT ---
+[11:52:40.406][I][main:200]: --- LIVE HEARTBEAT ---
+[11:52:45.422][I][main:200]: --- LIVE HEARTBEAT ---
+[11:52:50.431][I][main:200]: --- LIVE HEARTBEAT ---
+[11:52:55.442][I][main:200]: --- LIVE HEARTBEAT ---
+[11:53:00.449][I][main:200]: --- LIVE HEARTBEAT ---
+[11:53:05.465][I][main:200]: --- LIVE HEARTBEAT ---
+[11:53:10.469][I][main:200]: --- LIVE HEARTBEAT ---
+[11:53:15.486][I][main:200]: --- LIVE HEARTBEAT ---
+[11:53:20.492][I][main:200]: --- LIVE HEARTBEAT ---
+[11:53:25.505][I][main:200]: --- LIVE HEARTBEAT ---
+[11:53:30.511][I][main:200]: --- LIVE HEARTBEAT ---
+[11:53:35.523][I][main:200]: --- LIVE HEARTBEAT ---
+[11:53:40.524][I][main:200]: --- LIVE HEARTBEAT ---
+[11:53:45.535][I][main:200]: --- LIVE HEARTBEAT ---
+[11:53:50.550][I][main:200]: --- LIVE HEARTBEAT ---
+[11:53:55.558][I][main:200]: --- LIVE HEARTBEAT ---
+[11:54:00.565][I][main:200]: --- LIVE HEARTBEAT ---
+[11:54:05.570][I][main:200]: --- LIVE HEARTBEAT ---
+[11:54:10.580][I][main:200]: --- LIVE HEARTBEAT ---
+[11:54:15.590][I][main:200]: --- LIVE HEARTBEAT ---
+[11:54:20.605][I][main:200]: --- LIVE HEARTBEAT ---
+[11:54:25.615][I][main:200]: --- LIVE HEARTBEAT ---
+[11:54:30.631][I][main:200]: --- LIVE HEARTBEAT ---
+[11:54:35.643][I][main:200]: --- LIVE HEARTBEAT ---
+[11:54:40.654][I][main:200]: --- LIVE HEARTBEAT ---
+[11:54:45.660][I][main:200]: --- LIVE HEARTBEAT ---
+[11:54:50.664][I][main:200]: --- LIVE HEARTBEAT ---
+[11:54:55.678][I][main:200]: --- LIVE HEARTBEAT ---
+[11:55:00.687][I][main:200]: --- LIVE HEARTBEAT ---
+[11:55:05.697][I][main:200]: --- LIVE HEARTBEAT ---
+[11:55:10.712][I][main:200]: --- LIVE HEARTBEAT ---
+[11:55:15.725][I][main:200]: --- LIVE HEARTBEAT ---
+[11:55:20.738][I][main:200]: --- LIVE HEARTBEAT ---
+[11:55:25.750][I][main:200]: --- LIVE HEARTBEAT ---
+[11:55:30.759][I][main:200]: --- LIVE HEARTBEAT ---
+[11:55:35.774][I][main:200]: --- LIVE HEARTBEAT ---
+[11:55:40.788][I][main:200]: --- LIVE HEARTBEAT ---
+[11:55:45.796][I][main:200]: --- LIVE HEARTBEAT ---
+[11:55:50.804][I][main:200]: --- LIVE HEARTBEAT ---
+[11:55:55.816][I][main:200]: --- LIVE HEARTBEAT ---
+[11:56:00.832][I][main:200]: --- LIVE HEARTBEAT ---
+[11:56:05.837][I][main:200]: --- LIVE HEARTBEAT ---
+[11:56:10.851][I][main:200]: --- LIVE HEARTBEAT ---
+[11:56:15.854][I][main:200]: --- LIVE HEARTBEAT ---
+[11:56:20.859][I][main:200]: --- LIVE HEARTBEAT ---
+[11:56:25.868][I][main:200]: --- LIVE HEARTBEAT ---
+[11:56:30.876][I][main:200]: --- LIVE HEARTBEAT ---
+[11:56:35.888][I][main:200]: --- LIVE HEARTBEAT ---
+[11:56:40.898][I][main:200]: --- LIVE HEARTBEAT ---
+[11:56:45.909][I][main:200]: --- LIVE HEARTBEAT ---
+[11:56:50.920][I][main:200]: --- LIVE HEARTBEAT ---
+[11:56:55.931][I][main:200]: --- LIVE HEARTBEAT ---
+[11:57:00.938][I][main:200]: --- LIVE HEARTBEAT ---
+[11:57:05.944][I][main:200]: --- LIVE HEARTBEAT ---
+[11:57:10.954][I][main:200]: --- LIVE HEARTBEAT ---
+[11:57:15.961][I][main:200]: --- LIVE HEARTBEAT ---
+[11:57:20.969][I][main:200]: --- LIVE HEARTBEAT ---
+[11:57:25.974][I][main:200]: --- LIVE HEARTBEAT ---
+[11:57:30.988][I][main:200]: --- LIVE HEARTBEAT ---
+[11:57:35.995][I][main:200]: --- LIVE HEARTBEAT ---
+[11:57:41.009][I][main:200]: --- LIVE HEARTBEAT ---
+[11:57:46.022][I][main:200]: --- LIVE HEARTBEAT ---
+[11:57:50.031][I][main:200]: --- LIVE HEARTBEAT ---
+[11:57:55.037][I][main:200]: --- LIVE HEARTBEAT ---
+[11:58:00.040][I][main:200]: --- LIVE HEARTBEAT ---
+[11:58:05.047][I][main:200]: --- LIVE HEARTBEAT ---
+[11:58:10.053][I][main:200]: --- LIVE HEARTBEAT ---
+[11:58:15.061][I][main:200]: --- LIVE HEARTBEAT ---
+[11:58:20.071][I][main:200]: --- LIVE HEARTBEAT ---
+[11:58:25.078][I][main:200]: --- LIVE HEARTBEAT ---
+[11:58:30.082][I][main:200]: --- LIVE HEARTBEAT ---
+[11:58:35.100][I][main:200]: --- LIVE HEARTBEAT ---
+[11:58:40.114][I][main:200]: --- LIVE HEARTBEAT ---
+[11:58:45.120][I][main:200]: --- LIVE HEARTBEAT ---
+[11:58:50.125][I][main:200]: --- LIVE HEARTBEAT ---
+[11:58:55.132][I][main:200]: --- LIVE HEARTBEAT ---
+[11:59:00.140][I][main:200]: --- LIVE HEARTBEAT ---
+[11:59:05.144][I][main:200]: --- LIVE HEARTBEAT ---
+[11:59:10.157][I][main:200]: --- LIVE HEARTBEAT ---
+[11:59:15.169][I][main:200]: --- LIVE HEARTBEAT ---
+[11:59:20.183][I][main:200]: --- LIVE HEARTBEAT ---
+[11:59:25.191][I][main:200]: --- LIVE HEARTBEAT ---
+[11:59:30.197][I][main:200]: --- LIVE HEARTBEAT ---
+[11:59:35.206][I][main:200]: --- LIVE HEARTBEAT ---
+[11:59:40.210][I][main:200]: --- LIVE HEARTBEAT ---
+[11:59:45.220][I][main:200]: --- LIVE HEARTBEAT ---
+[11:59:50.225][I][main:200]: --- LIVE HEARTBEAT ---
+[11:59:55.232][I][main:200]: --- LIVE HEARTBEAT ---
+[12:00:00.246][I][main:200]: --- LIVE HEARTBEAT ---
+[12:00:05.253][I][main:200]: --- LIVE HEARTBEAT ---
+[12:00:10.260][I][main:200]: --- LIVE HEARTBEAT ---
+[12:00:15.270][I][main:200]: --- LIVE HEARTBEAT ---
+[12:00:20.281][I][main:200]: --- LIVE HEARTBEAT ---
+[12:00:25.289][I][main:200]: --- LIVE HEARTBEAT ---
+[12:00:30.296][I][main:200]: --- LIVE HEARTBEAT ---
+[12:00:35.307][I][main:200]: --- LIVE HEARTBEAT ---
+[12:00:40.324][I][main:200]: --- LIVE HEARTBEAT ---
+[12:00:45.327][I][main:200]: --- LIVE HEARTBEAT ---
+[12:00:50.340][I][main:200]: --- LIVE HEARTBEAT ---
+[12:00:55.349][I][main:200]: --- LIVE HEARTBEAT ---
+[12:01:00.355][I][main:200]: --- LIVE HEARTBEAT ---
+[12:01:05.366][I][main:200]: --- LIVE HEARTBEAT ---
+[12:01:10.377][I][main:200]: --- LIVE HEARTBEAT ---
+[12:01:15.387][I][main:200]: --- LIVE HEARTBEAT ---
+[12:01:20.391][I][main:200]: --- LIVE HEARTBEAT ---
+[12:01:25.402][I][main:200]: --- LIVE HEARTBEAT ---
+[12:01:30.411][I][main:200]: --- LIVE HEARTBEAT ---
+[12:01:35.420][I][main:200]: --- LIVE HEARTBEAT ---
+[12:01:40.433][I][main:200]: --- LIVE HEARTBEAT ---
+[12:01:45.442][I][main:200]: --- LIVE HEARTBEAT ---
+[12:01:50.452][I][main:200]: --- LIVE HEARTBEAT ---
+[12:01:55.460][I][main:200]: --- LIVE HEARTBEAT ---
+[12:02:00.467][I][main:200]: --- LIVE HEARTBEAT ---
+[12:02:05.478][I][main:200]: --- LIVE HEARTBEAT ---
+[12:02:10.489][I][main:200]: --- LIVE HEARTBEAT ---
+[12:02:15.495][I][main:200]: --- LIVE HEARTBEAT ---
+[12:02:20.509][I][main:200]: --- LIVE HEARTBEAT ---
+[12:02:25.520][I][main:200]: --- LIVE HEARTBEAT ---
+[12:02:30.526][I][main:200]: --- LIVE HEARTBEAT ---
+[12:02:35.536][I][main:200]: --- LIVE HEARTBEAT ---
+[12:02:40.540][I][main:200]: --- LIVE HEARTBEAT ---
+[12:02:45.555][I][main:200]: --- LIVE HEARTBEAT ---
+[12:02:50.571][I][main:200]: --- LIVE HEARTBEAT ---
+[12:02:55.574][I][main:200]: --- LIVE HEARTBEAT ---
+[12:03:00.582][I][main:200]: --- LIVE HEARTBEAT ---
+[12:03:05.589][I][main:200]: --- LIVE HEARTBEAT ---
+[12:03:10.597][I][main:200]: --- LIVE HEARTBEAT ---
+[12:03:15.606][I][main:200]: --- LIVE HEARTBEAT ---
+[12:03:20.616][I][main:200]: --- LIVE HEARTBEAT ---
+[12:03:25.629][I][main:200]: --- LIVE HEARTBEAT ---
+[12:03:30.637][I][main:200]: --- LIVE HEARTBEAT ---
+[12:03:35.649][I][main:200]: --- LIVE HEARTBEAT ---
+[12:03:40.662][I][main:200]: --- LIVE HEARTBEAT ---
+[12:03:45.674][I][main:200]: --- LIVE HEARTBEAT ---
+[12:03:50.681][I][main:200]: --- LIVE HEARTBEAT ---
+[12:03:55.688][I][main:200]: --- LIVE HEARTBEAT ---
+[12:04:00.705][I][main:200]: --- LIVE HEARTBEAT ---
+[12:04:05.719][I][main:200]: --- LIVE HEARTBEAT ---
+[12:04:10.730][I][main:200]: --- LIVE HEARTBEAT ---
+[12:04:15.739][I][main:200]: --- LIVE HEARTBEAT ---
+[12:04:20.744][I][main:200]: --- LIVE HEARTBEAT ---
+[12:04:25.756][I][main:200]: --- LIVE HEARTBEAT ---
+[12:04:30.774][I][main:200]: --- LIVE HEARTBEAT ---
+[12:04:35.783][I][main:200]: --- LIVE HEARTBEAT ---
+[12:04:40.791][I][main:200]: --- LIVE HEARTBEAT ---
+[12:04:45.805][I][main:200]: --- LIVE HEARTBEAT ---
+[12:04:50.808][I][main:200]: --- LIVE HEARTBEAT ---
+[12:04:55.819][I][main:200]: --- LIVE HEARTBEAT ---
+[12:05:00.828][I][main:200]: --- LIVE HEARTBEAT ---
+[12:05:05.839][I][main:200]: --- LIVE HEARTBEAT ---
+[12:05:10.841][I][main:200]: --- LIVE HEARTBEAT ---
+[12:05:15.856][I][main:200]: --- LIVE HEARTBEAT ---
+[12:05:20.867][I][main:200]: --- LIVE HEARTBEAT ---
+[12:05:25.875][I][main:200]: --- LIVE HEARTBEAT ---
+[12:05:30.881][I][main:200]: --- LIVE HEARTBEAT ---
+[12:05:35.898][I][main:200]: --- LIVE HEARTBEAT ---
+[12:05:40.905][I][main:200]: --- LIVE HEARTBEAT ---
+[12:05:45.917][I][main:200]: --- LIVE HEARTBEAT ---
+[12:05:50.929][I][main:200]: --- LIVE HEARTBEAT ---
+[12:05:55.945][I][main:200]: --- LIVE HEARTBEAT ---
+[12:06:00.957][I][main:200]: --- LIVE HEARTBEAT ---
+[12:06:05.961][I][main:200]: --- LIVE HEARTBEAT ---
+[12:06:10.965][I][main:200]: --- LIVE HEARTBEAT ---
+[12:06:15.984][I][main:200]: --- LIVE HEARTBEAT ---
+[12:06:20.999][I][main:200]: --- LIVE HEARTBEAT ---
+[12:06:25.010][I][main:200]: --- LIVE HEARTBEAT ---
+[12:06:30.022][I][main:200]: --- LIVE HEARTBEAT ---
+[12:06:35.030][I][main:200]: --- LIVE HEARTBEAT ---
+[12:06:40.042][I][main:200]: --- LIVE HEARTBEAT ---
+[12:06:45.053][I][main:200]: --- LIVE HEARTBEAT ---
+[12:06:50.068][I][main:200]: --- LIVE HEARTBEAT ---
+[12:06:55.076][I][main:200]: --- LIVE HEARTBEAT ---
+[12:07:00.080][I][main:200]: --- LIVE HEARTBEAT ---
+[12:07:05.092][I][main:200]: --- LIVE HEARTBEAT ---
+[12:07:10.100][I][main:200]: --- LIVE HEARTBEAT ---
+[12:07:15.110][I][main:200]: --- LIVE HEARTBEAT ---
+[12:07:20.121][I][main:200]: --- LIVE HEARTBEAT ---
+[12:07:25.137][I][main:200]: --- LIVE HEARTBEAT ---
+[12:07:30.149][I][main:200]: --- LIVE HEARTBEAT ---
+[12:07:35.157][I][main:200]: --- LIVE HEARTBEAT ---
+[12:07:40.167][I][main:200]: --- LIVE HEARTBEAT ---
+[12:07:45.176][I][main:200]: --- LIVE HEARTBEAT ---
+[12:07:50.187][I][main:200]: --- LIVE HEARTBEAT ---
+[12:07:55.199][I][main:200]: --- LIVE HEARTBEAT ---
+[12:08:00.212][I][main:200]: --- LIVE HEARTBEAT ---
+[12:08:05.219][I][main:200]: --- LIVE HEARTBEAT ---
+[12:08:10.224][I][main:200]: --- LIVE HEARTBEAT ---
+[12:08:15.243][I][main:200]: --- LIVE HEARTBEAT ---
+[12:08:20.255][I][main:200]: --- LIVE HEARTBEAT ---
+[12:08:25.267][I][main:200]: --- LIVE HEARTBEAT ---
+[12:08:30.271][I][main:200]: --- LIVE HEARTBEAT ---
+[12:08:35.278][I][main:200]: --- LIVE HEARTBEAT ---
+[12:08:40.288][I][main:200]: --- LIVE HEARTBEAT ---
+[12:08:45.299][I][main:200]: --- LIVE HEARTBEAT ---
+[12:08:50.306][I][main:200]: --- LIVE HEARTBEAT ---
+[12:08:55.317][I][main:200]: --- LIVE HEARTBEAT ---
+[12:09:00.326][I][main:200]: --- LIVE HEARTBEAT ---
+[12:09:05.341][I][main:200]: --- LIVE HEARTBEAT ---
+[12:09:10.351][I][main:200]: --- LIVE HEARTBEAT ---
+[12:09:15.359][I][main:200]: --- LIVE HEARTBEAT ---
+[12:09:20.365][I][main:200]: --- LIVE HEARTBEAT ---
+[12:09:25.381][I][main:200]: --- LIVE HEARTBEAT ---
+[12:09:30.394][I][main:200]: --- LIVE HEARTBEAT ---
+[12:09:35.403][I][main:200]: --- LIVE HEARTBEAT ---
+[12:09:40.412][I][main:200]: --- LIVE HEARTBEAT ---
+[12:09:45.418][I][main:200]: --- LIVE HEARTBEAT ---
+[12:09:50.422][I][main:200]: --- LIVE HEARTBEAT ---
+[12:09:55.433][I][main:200]: --- LIVE HEARTBEAT ---
+[12:10:00.437][I][main:200]: --- LIVE HEARTBEAT ---
+[12:10:05.445][I][main:200]: --- LIVE HEARTBEAT ---
+[12:10:10.453][I][main:200]: --- LIVE HEARTBEAT ---
+[12:10:15.469][I][main:200]: --- LIVE HEARTBEAT ---
+[12:10:20.479][I][main:200]: --- LIVE HEARTBEAT ---
+[12:10:25.486][I][main:200]: --- LIVE HEARTBEAT ---
+[12:10:30.495][I][main:200]: --- LIVE HEARTBEAT ---
+[12:10:35.502][I][main:200]: --- LIVE HEARTBEAT ---
+[12:10:40.506][I][main:200]: --- LIVE HEARTBEAT ---
+[12:10:45.514][I][main:200]: --- LIVE HEARTBEAT ---
+[12:10:50.519][I][main:200]: --- LIVE HEARTBEAT ---
+[12:10:55.529][I][main:200]: --- LIVE HEARTBEAT ---
+[12:11:00.537][I][main:200]: --- LIVE HEARTBEAT ---
+[12:11:05.550][I][main:200]: --- LIVE HEARTBEAT ---
+[12:11:10.560][I][main:200]: --- LIVE HEARTBEAT ---
+[12:11:15.569][I][main:200]: --- LIVE HEARTBEAT ---
+[12:11:20.577][I][main:200]: --- LIVE HEARTBEAT ---
+[12:11:25.584][I][main:200]: --- LIVE HEARTBEAT ---
+[12:11:30.593][I][main:200]: --- LIVE HEARTBEAT ---
+[12:11:35.601][I][main:200]: --- LIVE HEARTBEAT ---
+[12:11:40.608][I][main:200]: --- LIVE HEARTBEAT ---
+[12:11:45.616][I][main:200]: --- LIVE HEARTBEAT ---
+[12:11:50.630][I][main:200]: --- LIVE HEARTBEAT ---
+[12:11:55.643][I][main:200]: --- LIVE HEARTBEAT ---
+[12:12:00.651][I][main:200]: --- LIVE HEARTBEAT ---
+[12:12:05.664][I][main:200]: --- LIVE HEARTBEAT ---
+[12:12:10.678][I][main:200]: --- LIVE HEARTBEAT ---
+[12:12:15.688][I][main:200]: --- LIVE HEARTBEAT ---
+[12:12:20.693][I][main:200]: --- LIVE HEARTBEAT ---
+[12:12:25.707][I][main:200]: --- LIVE HEARTBEAT ---
+[12:12:30.713][I][main:200]: --- LIVE HEARTBEAT ---
+[12:12:35.717][I][main:200]: --- LIVE HEARTBEAT ---
+[12:12:40.727][I][main:200]: --- LIVE HEARTBEAT ---
+[12:12:45.738][I][main:200]: --- LIVE HEARTBEAT ---
+[12:12:50.749][I][main:200]: --- LIVE HEARTBEAT ---
+[12:12:55.762][I][main:200]: --- LIVE HEARTBEAT ---
+[12:13:00.770][I][main:200]: --- LIVE HEARTBEAT ---
+[12:13:05.778][I][main:200]: --- LIVE HEARTBEAT ---
+[12:13:10.788][I][main:200]: --- LIVE HEARTBEAT ---
+[12:13:15.797][I][main:200]: --- LIVE HEARTBEAT ---
+[12:13:20.806][I][main:200]: --- LIVE HEARTBEAT ---
+[12:13:25.815][I][main:200]: --- LIVE HEARTBEAT ---
+[12:13:30.826][I][main:200]: --- LIVE HEARTBEAT ---
+[12:13:35.839][I][main:200]: --- LIVE HEARTBEAT ---
+[12:13:40.850][I][main:200]: --- LIVE HEARTBEAT ---
+[12:13:45.865][I][main:200]: --- LIVE HEARTBEAT ---
+[12:13:50.871][I][main:200]: --- LIVE HEARTBEAT ---
+[12:13:55.886][I][main:200]: --- LIVE HEARTBEAT ---
+[12:14:00.897][I][main:200]: --- LIVE HEARTBEAT ---
+[12:14:05.907][I][main:200]: --- LIVE HEARTBEAT ---
+[12:14:10.912][I][main:200]: --- LIVE HEARTBEAT ---
+[12:14:15.931][I][main:200]: --- LIVE HEARTBEAT ---
+[12:14:20.952][I][main:200]: --- LIVE HEARTBEAT ---
+[12:14:25.958][I][main:200]: --- LIVE HEARTBEAT ---
+[12:14:30.962][I][main:200]: --- LIVE HEARTBEAT ---
+[12:14:35.976][I][main:200]: --- LIVE HEARTBEAT ---
+[12:14:40.982][I][main:200]: --- LIVE HEARTBEAT ---
+[12:14:45.995][I][main:200]: --- LIVE HEARTBEAT ---
+[12:14:51.004][I][main:200]: --- LIVE HEARTBEAT ---
+[12:14:56.012][I][main:200]: --- LIVE HEARTBEAT ---
+[12:15:00.023][I][main:200]: --- LIVE HEARTBEAT ---
+[12:15:05.033][I][main:200]: --- LIVE HEARTBEAT ---
+[12:15:10.041][I][main:200]: --- LIVE HEARTBEAT ---
+[12:15:15.050][I][main:200]: --- LIVE HEARTBEAT ---
+[12:15:20.063][I][main:200]: --- LIVE HEARTBEAT ---
+[12:15:25.076][I][main:200]: --- LIVE HEARTBEAT ---
+[12:15:30.090][I][main:200]: --- LIVE HEARTBEAT ---
+[12:15:35.102][I][main:200]: --- LIVE HEARTBEAT ---
+[12:15:40.118][I][main:200]: --- LIVE HEARTBEAT ---
+[12:15:45.131][I][main:200]: --- LIVE HEARTBEAT ---
+[12:15:50.139][I][main:200]: --- LIVE HEARTBEAT ---
+[12:15:55.145][I][main:200]: --- LIVE HEARTBEAT ---
+[12:16:00.154][I][main:200]: --- LIVE HEARTBEAT ---
+[12:16:05.162][I][main:200]: --- LIVE HEARTBEAT ---
+[12:16:10.167][I][main:200]: --- LIVE HEARTBEAT ---
+[12:16:15.171][I][main:200]: --- LIVE HEARTBEAT ---
+[12:16:20.183][I][main:200]: --- LIVE HEARTBEAT ---
+[12:16:25.194][I][main:200]: --- LIVE HEARTBEAT ---
+[12:16:30.200][I][main:200]: --- LIVE HEARTBEAT ---
+[12:16:35.211][I][main:200]: --- LIVE HEARTBEAT ---
+[12:16:40.222][I][main:200]: --- LIVE HEARTBEAT ---
+[12:16:45.230][I][main:200]: --- LIVE HEARTBEAT ---
+[12:16:50.240][I][main:200]: --- LIVE HEARTBEAT ---
+[12:16:55.251][I][main:200]: --- LIVE HEARTBEAT ---
+[12:17:00.261][I][main:200]: --- LIVE HEARTBEAT ---
+[12:17:05.273][I][main:200]: --- LIVE HEARTBEAT ---
+[12:17:10.285][I][main:200]: --- LIVE HEARTBEAT ---
+[12:17:15.303][I][main:200]: --- LIVE HEARTBEAT ---
+[12:17:20.318][I][main:200]: --- LIVE HEARTBEAT ---
+[12:17:25.334][I][main:200]: --- LIVE HEARTBEAT ---
+[12:17:30.344][I][main:200]: --- LIVE HEARTBEAT ---
+[12:17:35.355][I][main:200]: --- LIVE HEARTBEAT ---
+[12:17:40.366][I][main:200]: --- LIVE HEARTBEAT ---
+[12:17:45.379][I][main:200]: --- LIVE HEARTBEAT ---
+[12:17:50.390][I][main:200]: --- LIVE HEARTBEAT ---
+[12:17:55.401][I][main:200]: --- LIVE HEARTBEAT ---
+[12:18:00.414][I][main:200]: --- LIVE HEARTBEAT ---
+[12:18:05.422][I][main:200]: --- LIVE HEARTBEAT ---
+[12:18:10.433][I][main:200]: --- LIVE HEARTBEAT ---
+[12:18:15.443][I][main:200]: --- LIVE HEARTBEAT ---
+[12:18:20.451][I][main:200]: --- LIVE HEARTBEAT ---
+[12:18:25.460][I][main:200]: --- LIVE HEARTBEAT ---
+[12:18:30.470][I][main:200]: --- LIVE HEARTBEAT ---
+[12:18:35.481][I][main:200]: --- LIVE HEARTBEAT ---
+[12:18:40.487][I][main:200]: --- LIVE HEARTBEAT ---
+[12:18:45.498][I][main:200]: --- LIVE HEARTBEAT ---
+[12:18:50.507][I][main:200]: --- LIVE HEARTBEAT ---
+[12:18:55.517][I][main:200]: --- LIVE HEARTBEAT ---
+[12:19:00.531][I][main:200]: --- LIVE HEARTBEAT ---
+[12:19:05.540][I][main:200]: --- LIVE HEARTBEAT ---
+[12:19:10.550][I][main:200]: --- LIVE HEARTBEAT ---
+[12:19:15.558][I][main:200]: --- LIVE HEARTBEAT ---
+[12:19:20.570][I][main:200]: --- LIVE HEARTBEAT ---
+[12:19:25.576][I][main:200]: --- LIVE HEARTBEAT ---
+[12:19:30.587][I][main:200]: --- LIVE HEARTBEAT ---
+[12:19:35.599][I][main:200]: --- LIVE HEARTBEAT ---
+[12:19:40.606][I][main:200]: --- LIVE HEARTBEAT ---
+[12:19:45.617][I][main:200]: --- LIVE HEARTBEAT ---
+[12:19:50.631][I][main:200]: --- LIVE HEARTBEAT ---
+[12:19:55.643][I][main:200]: --- LIVE HEARTBEAT ---
+[12:20:00.653][I][main:200]: --- LIVE HEARTBEAT ---
+[12:20:05.659][I][main:200]: --- LIVE HEARTBEAT ---
+[12:20:10.666][I][main:200]: --- LIVE HEARTBEAT ---
+[12:20:15.677][I][main:200]: --- LIVE HEARTBEAT ---
+[12:20:20.694][I][main:200]: --- LIVE HEARTBEAT ---
+[12:20:25.702][I][main:200]: --- LIVE HEARTBEAT ---
+[12:20:30.709][I][main:200]: --- LIVE HEARTBEAT ---
+[12:20:35.717][I][main:200]: --- LIVE HEARTBEAT ---
+[12:20:40.726][I][main:200]: --- LIVE HEARTBEAT ---
+[12:20:45.735][I][main:200]: --- LIVE HEARTBEAT ---
+[12:20:50.745][I][main:200]: --- LIVE HEARTBEAT ---
+[12:20:55.753][I][main:200]: --- LIVE HEARTBEAT ---
+[12:21:00.769][I][main:200]: --- LIVE HEARTBEAT ---
+[12:21:05.780][I][main:200]: --- LIVE HEARTBEAT ---
+[12:21:10.792][I][main:200]: --- LIVE HEARTBEAT ---
+[12:21:15.801][I][main:200]: --- LIVE HEARTBEAT ---
+[12:21:20.812][I][main:200]: --- LIVE HEARTBEAT ---
+[12:21:25.822][I][main:200]: --- LIVE HEARTBEAT ---
+[12:21:30.827][I][main:200]: --- LIVE HEARTBEAT ---
+[12:21:35.834][I][main:200]: --- LIVE HEARTBEAT ---
+[12:21:40.843][I][main:200]: --- LIVE HEARTBEAT ---
+[12:21:45.857][I][main:200]: --- LIVE HEARTBEAT ---
+[12:21:50.862][I][main:200]: --- LIVE HEARTBEAT ---
+[12:21:55.873][I][main:200]: --- LIVE HEARTBEAT ---
+[12:22:00.877][I][main:200]: --- LIVE HEARTBEAT ---
+[12:22:05.895][I][main:200]: --- LIVE HEARTBEAT ---
+[12:22:10.906][I][main:200]: --- LIVE HEARTBEAT ---
+[12:22:15.916][I][main:200]: --- LIVE HEARTBEAT ---
+[12:22:20.924][I][main:200]: --- LIVE HEARTBEAT ---
+[12:22:25.935][I][main:200]: --- LIVE HEARTBEAT ---
+[12:22:30.940][I][main:200]: --- LIVE HEARTBEAT ---
+[12:22:35.952][I][main:200]: --- LIVE HEARTBEAT ---
+[12:22:40.962][I][main:200]: --- LIVE HEARTBEAT ---
+[12:22:45.976][I][main:200]: --- LIVE HEARTBEAT ---
+[12:22:50.983][I][main:200]: --- LIVE HEARTBEAT ---
+[12:22:55.991][I][main:200]: --- LIVE HEARTBEAT ---
+[12:23:01.001][I][main:200]: --- LIVE HEARTBEAT ---
+[12:23:05.015][I][main:200]: --- LIVE HEARTBEAT ---
+[12:23:10.021][I][main:200]: --- LIVE HEARTBEAT ---
+[12:23:15.030][I][main:200]: --- LIVE HEARTBEAT ---
+[12:23:20.037][I][main:200]: --- LIVE HEARTBEAT ---
+[12:23:25.043][I][main:200]: --- LIVE HEARTBEAT ---
+[12:23:30.055][I][main:200]: --- LIVE HEARTBEAT ---
+[12:23:35.065][I][main:200]: --- LIVE HEARTBEAT ---
+[12:23:40.081][I][main:200]: --- LIVE HEARTBEAT ---
+[12:23:45.094][I][main:200]: --- LIVE HEARTBEAT ---
+[12:23:50.107][I][main:200]: --- LIVE HEARTBEAT ---
+[12:23:55.120][I][main:200]: --- LIVE HEARTBEAT ---
+[12:24:00.127][I][main:200]: --- LIVE HEARTBEAT ---
+[12:24:05.140][I][main:200]: --- LIVE HEARTBEAT ---
+[12:24:10.153][I][main:200]: --- LIVE HEARTBEAT ---
+[12:24:15.162][I][main:200]: --- LIVE HEARTBEAT ---
+[12:24:20.172][I][main:200]: --- LIVE HEARTBEAT ---
+[12:24:25.182][I][main:200]: --- LIVE HEARTBEAT ---
+[12:24:30.188][I][main:200]: --- LIVE HEARTBEAT ---
+[12:24:35.196][I][main:200]: --- LIVE HEARTBEAT ---
+[12:24:40.205][I][main:200]: --- LIVE HEARTBEAT ---
+[12:24:45.219][I][main:200]: --- LIVE HEARTBEAT ---
+[12:24:50.235][I][main:200]: --- LIVE HEARTBEAT ---
+[12:24:55.243][I][main:200]: --- LIVE HEARTBEAT ---
+[12:25:00.256][I][main:200]: --- LIVE HEARTBEAT ---
+[12:25:05.269][I][main:200]: --- LIVE HEARTBEAT ---
+[12:25:10.278][I][main:200]: --- LIVE HEARTBEAT ---
+[12:25:15.293][I][main:200]: --- LIVE HEARTBEAT ---
+[12:25:20.304][I][main:200]: --- LIVE HEARTBEAT ---
+[12:25:25.311][I][main:200]: --- LIVE HEARTBEAT ---
+[12:25:30.319][I][main:200]: --- LIVE HEARTBEAT ---
+[12:25:35.324][I][main:200]: --- LIVE HEARTBEAT ---
+[12:25:40.329][I][main:200]: --- LIVE HEARTBEAT ---
+[12:25:45.340][I][main:200]: --- LIVE HEARTBEAT ---
+[12:25:50.348][I][main:200]: --- LIVE HEARTBEAT ---
+[12:25:55.354][I][main:200]: --- LIVE HEARTBEAT ---
+[12:26:00.363][I][main:200]: --- LIVE HEARTBEAT ---
+[12:26:05.369][I][main:200]: --- LIVE HEARTBEAT ---
+[12:26:10.383][I][main:200]: --- LIVE HEARTBEAT ---
+[12:26:15.390][I][main:200]: --- LIVE HEARTBEAT ---
+[12:26:20.396][I][main:200]: --- LIVE HEARTBEAT ---
+[12:26:25.403][I][main:200]: --- LIVE HEARTBEAT ---
+[12:26:30.414][I][main:200]: --- LIVE HEARTBEAT ---
+[12:26:35.421][I][main:200]: --- LIVE HEARTBEAT ---
+[12:26:40.433][I][main:200]: --- LIVE HEARTBEAT ---
+[12:26:45.444][I][main:200]: --- LIVE HEARTBEAT ---
+[12:26:50.449][I][main:200]: --- LIVE HEARTBEAT ---
+[12:26:55.457][I][main:200]: --- LIVE HEARTBEAT ---
+[12:27:00.465][I][main:200]: --- LIVE HEARTBEAT ---
+[12:27:05.479][I][main:200]: --- LIVE HEARTBEAT ---
+[12:27:10.493][I][main:200]: --- LIVE HEARTBEAT ---
+[12:27:15.503][I][main:200]: --- LIVE HEARTBEAT ---
+[12:27:20.520][I][main:200]: --- LIVE HEARTBEAT ---
+[12:27:25.524][I][main:200]: --- LIVE HEARTBEAT ---
+[12:27:30.530][I][main:200]: --- LIVE HEARTBEAT ---
+[12:27:35.544][I][main:200]: --- LIVE HEARTBEAT ---
+[12:27:40.562][I][main:200]: --- LIVE HEARTBEAT ---
+[12:27:45.568][I][main:200]: --- LIVE HEARTBEAT ---
+[12:27:50.580][I][main:200]: --- LIVE HEARTBEAT ---
+[12:27:55.593][I][main:200]: --- LIVE HEARTBEAT ---
+[12:28:00.607][I][main:200]: --- LIVE HEARTBEAT ---
+[12:28:05.622][I][main:200]: --- LIVE HEARTBEAT ---
+[12:28:10.634][I][main:200]: --- LIVE HEARTBEAT ---
+[12:28:15.643][I][main:200]: --- LIVE HEARTBEAT ---
+[12:28:20.656][I][main:200]: --- LIVE HEARTBEAT ---
+[12:28:25.670][I][main:200]: --- LIVE HEARTBEAT ---
+[12:28:30.680][I][main:200]: --- LIVE HEARTBEAT ---
+[12:28:35.696][I][main:200]: --- LIVE HEARTBEAT ---
+[12:28:40.703][I][main:200]: --- LIVE HEARTBEAT ---
+[12:28:45.715][I][main:200]: --- LIVE HEARTBEAT ---
+[12:28:50.728][I][main:200]: --- LIVE HEARTBEAT ---
+[12:28:55.737][I][main:200]: --- LIVE HEARTBEAT ---
+[12:29:00.741][I][main:200]: --- LIVE HEARTBEAT ---
+[12:29:05.753][I][main:200]: --- LIVE HEARTBEAT ---
+[12:29:10.771][I][main:200]: --- LIVE HEARTBEAT ---
+[12:29:15.775][I][main:200]: --- LIVE HEARTBEAT ---
+[12:29:20.779][I][main:200]: --- LIVE HEARTBEAT ---
+[12:29:25.786][I][main:200]: --- LIVE HEARTBEAT ---
+[12:29:30.791][I][main:200]: --- LIVE HEARTBEAT ---
+[12:29:35.806][I][main:200]: --- LIVE HEARTBEAT ---
+[12:29:40.815][I][main:200]: --- LIVE HEARTBEAT ---
+[12:29:45.827][I][main:200]: --- LIVE HEARTBEAT ---
+[12:29:50.843][I][main:200]: --- LIVE HEARTBEAT ---
+[12:29:55.856][I][main:200]: --- LIVE HEARTBEAT ---
+[12:30:00.870][I][main:200]: --- LIVE HEARTBEAT ---
+[12:30:05.876][I][main:200]: --- LIVE HEARTBEAT ---
+[12:30:10.889][I][main:200]: --- LIVE HEARTBEAT ---
+[12:30:15.900][I][main:200]: --- LIVE HEARTBEAT ---
+[12:30:20.912][I][main:200]: --- LIVE HEARTBEAT ---
+[12:30:25.927][I][main:200]: --- LIVE HEARTBEAT ---
+[12:30:30.931][I][main:200]: --- LIVE HEARTBEAT ---
+[12:30:35.950][I][main:200]: --- LIVE HEARTBEAT ---
+[12:30:40.956][I][main:200]: --- LIVE HEARTBEAT ---
+[12:30:45.970][I][main:200]: --- LIVE HEARTBEAT ---
+[12:30:50.981][I][main:200]: --- LIVE HEARTBEAT ---
+[12:30:55.988][I][main:200]: --- LIVE HEARTBEAT ---
+[12:31:00.993][I][main:200]: --- LIVE HEARTBEAT ---
+[12:31:06.006][I][main:200]: --- LIVE HEARTBEAT ---
+[12:31:11.020][I][main:200]: --- LIVE HEARTBEAT ---
+[12:31:15.032][I][main:200]: --- LIVE HEARTBEAT ---
+[12:31:20.044][I][main:200]: --- LIVE HEARTBEAT ---
+[12:31:25.048][I][main:200]: --- LIVE HEARTBEAT ---
+[12:31:30.057][I][main:200]: --- LIVE HEARTBEAT ---
+[12:31:35.068][I][main:200]: --- LIVE HEARTBEAT ---
+[12:31:40.080][I][main:200]: --- LIVE HEARTBEAT ---
+[12:31:45.096][I][main:200]: --- LIVE HEARTBEAT ---
+[12:31:50.109][I][main:200]: --- LIVE HEARTBEAT ---
+[12:31:55.123][I][main:200]: --- LIVE HEARTBEAT ---
+[12:32:00.133][I][main:200]: --- LIVE HEARTBEAT ---
+[12:32:05.138][I][main:200]: --- LIVE HEARTBEAT ---
+[12:32:10.149][I][main:200]: --- LIVE HEARTBEAT ---
+[12:32:15.163][I][main:200]: --- LIVE HEARTBEAT ---
+[12:32:20.175][I][main:200]: --- LIVE HEARTBEAT ---
+[12:32:25.186][I][main:200]: --- LIVE HEARTBEAT ---
+[12:32:30.210][I][main:200]: --- LIVE HEARTBEAT ---
+[12:32:35.217][I][main:200]: --- LIVE HEARTBEAT ---
+[12:32:40.231][I][main:200]: --- LIVE HEARTBEAT ---
+[12:32:45.243][I][main:200]: --- LIVE HEARTBEAT ---
+[12:32:50.255][I][main:200]: --- LIVE HEARTBEAT ---
+[12:32:55.267][I][main:200]: --- LIVE HEARTBEAT ---
+[12:33:00.278][I][main:200]: --- LIVE HEARTBEAT ---
+[12:33:05.292][I][main:200]: --- LIVE HEARTBEAT ---
+[12:33:10.304][I][main:200]: --- LIVE HEARTBEAT ---
+[12:33:15.308][I][main:200]: --- LIVE HEARTBEAT ---
+[12:33:20.321][I][main:200]: --- LIVE HEARTBEAT ---
+[12:33:25.329][I][main:200]: --- LIVE HEARTBEAT ---
+[12:33:30.342][I][main:200]: --- LIVE HEARTBEAT ---
+[12:33:35.351][I][main:200]: --- LIVE HEARTBEAT ---
+[12:33:40.369][I][main:200]: --- LIVE HEARTBEAT ---
+[12:33:45.377][I][main:200]: --- LIVE HEARTBEAT ---
+[12:33:50.388][I][main:200]: --- LIVE HEARTBEAT ---
+[12:33:55.402][I][main:200]: --- LIVE HEARTBEAT ---
+[12:34:00.408][I][main:200]: --- LIVE HEARTBEAT ---
+[12:34:05.419][I][main:200]: --- LIVE HEARTBEAT ---
+[12:34:10.432][I][main:200]: --- LIVE HEARTBEAT ---
+[12:34:15.445][I][main:200]: --- LIVE HEARTBEAT ---
+[12:34:20.451][I][main:200]: --- LIVE HEARTBEAT ---
+[12:34:25.457][I][main:200]: --- LIVE HEARTBEAT ---
+[12:34:30.465][I][main:200]: --- LIVE HEARTBEAT ---
+[12:34:35.475][I][main:200]: --- LIVE HEARTBEAT ---
+[12:34:40.486][I][main:200]: --- LIVE HEARTBEAT ---
+[12:34:45.498][I][main:200]: --- LIVE HEARTBEAT ---
+[12:34:50.510][I][main:200]: --- LIVE HEARTBEAT ---
+[12:34:55.519][I][main:200]: --- LIVE HEARTBEAT ---
+[12:35:00.527][I][main:200]: --- LIVE HEARTBEAT ---
+[12:35:05.539][I][main:200]: --- LIVE HEARTBEAT ---
+[12:35:10.547][I][main:200]: --- LIVE HEARTBEAT ---
+[12:35:15.557][I][main:200]: --- LIVE HEARTBEAT ---
+[12:35:20.563][I][main:200]: --- LIVE HEARTBEAT ---
+[12:35:25.578][I][main:200]: --- LIVE HEARTBEAT ---
+[12:35:30.589][I][main:200]: --- LIVE HEARTBEAT ---
+[12:35:35.597][I][main:200]: --- LIVE HEARTBEAT ---
+[12:35:40.608][I][main:200]: --- LIVE HEARTBEAT ---
+[12:35:45.622][I][main:200]: --- LIVE HEARTBEAT ---
+[12:35:50.632][I][main:200]: --- LIVE HEARTBEAT ---
+[12:35:55.642][I][main:200]: --- LIVE HEARTBEAT ---
+[12:36:00.655][I][main:200]: --- LIVE HEARTBEAT ---
+[12:36:05.663][I][main:200]: --- LIVE HEARTBEAT ---
+[12:36:10.671][I][main:200]: --- LIVE HEARTBEAT ---
+[12:36:15.680][I][main:200]: --- LIVE HEARTBEAT ---
+[12:36:20.685][I][main:200]: --- LIVE HEARTBEAT ---
+[12:36:25.694][I][main:200]: --- LIVE HEARTBEAT ---
+[12:36:30.704][I][main:200]: --- LIVE HEARTBEAT ---
+[12:36:35.709][I][main:200]: --- LIVE HEARTBEAT ---
+[12:36:40.715][I][main:200]: --- LIVE HEARTBEAT ---
+[12:36:45.725][I][main:200]: --- LIVE HEARTBEAT ---
+[12:36:50.732][I][main:200]: --- LIVE HEARTBEAT ---
+[12:36:55.738][I][main:200]: --- LIVE HEARTBEAT ---
+[12:37:00.744][I][main:200]: --- LIVE HEARTBEAT ---
+[12:37:05.754][I][main:200]: --- LIVE HEARTBEAT ---
+[12:37:10.766][I][main:200]: --- LIVE HEARTBEAT ---
+[12:37:15.772][I][main:200]: --- LIVE HEARTBEAT ---
+[12:37:20.777][I][main:200]: --- LIVE HEARTBEAT ---
+[12:37:25.792][I][main:200]: --- LIVE HEARTBEAT ---
+[12:37:30.795][I][main:200]: --- LIVE HEARTBEAT ---
+[12:37:35.806][I][main:200]: --- LIVE HEARTBEAT ---
+[12:37:40.818][I][main:200]: --- LIVE HEARTBEAT ---
+[12:37:45.834][I][main:200]: --- LIVE HEARTBEAT ---
+[12:37:50.848][I][main:200]: --- LIVE HEARTBEAT ---
+[12:37:55.859][I][main:200]: --- LIVE HEARTBEAT ---
+[12:38:00.868][I][main:200]: --- LIVE HEARTBEAT ---
+[12:38:05.879][I][main:200]: --- LIVE HEARTBEAT ---
+[12:38:10.890][I][main:200]: --- LIVE HEARTBEAT ---
+[12:38:15.904][I][main:200]: --- LIVE HEARTBEAT ---
+[12:38:20.915][I][main:200]: --- LIVE HEARTBEAT ---
+[12:38:25.924][I][main:200]: --- LIVE HEARTBEAT ---
+[12:38:30.934][I][main:200]: --- LIVE HEARTBEAT ---
+[12:38:35.939][I][main:200]: --- LIVE HEARTBEAT ---
+[12:38:40.945][I][main:200]: --- LIVE HEARTBEAT ---
+[12:38:45.954][I][main:200]: --- LIVE HEARTBEAT ---
+[12:38:50.966][I][main:200]: --- LIVE HEARTBEAT ---
+[12:38:55.974][I][main:200]: --- LIVE HEARTBEAT ---
+[12:39:00.983][I][main:200]: --- LIVE HEARTBEAT ---
+[12:39:05.989][I][main:200]: --- LIVE HEARTBEAT ---
+[12:39:11.003][I][main:200]: --- LIVE HEARTBEAT ---
+[12:39:16.007][I][main:200]: --- LIVE HEARTBEAT ---
+[12:39:21.012][I][main:200]: --- LIVE HEARTBEAT ---
+[12:39:25.023][I][main:200]: --- LIVE HEARTBEAT ---
+[12:39:30.030][I][main:200]: --- LIVE HEARTBEAT ---
+[12:39:35.043][I][main:200]: --- LIVE HEARTBEAT ---
+[12:39:40.054][I][main:200]: --- LIVE HEARTBEAT ---
+[12:39:45.062][I][main:200]: --- LIVE HEARTBEAT ---
+[12:39:50.067][I][main:200]: --- LIVE HEARTBEAT ---
+[12:39:55.072][I][main:200]: --- LIVE HEARTBEAT ---
+[12:40:00.086][I][main:200]: --- LIVE HEARTBEAT ---
+[12:40:05.092][I][main:200]: --- LIVE HEARTBEAT ---
+[12:40:10.095][I][main:200]: --- LIVE HEARTBEAT ---
+[12:40:15.108][I][main:200]: --- LIVE HEARTBEAT ---
+[12:40:20.118][I][main:200]: --- LIVE HEARTBEAT ---
+[12:40:25.131][I][main:200]: --- LIVE HEARTBEAT ---
+[12:40:30.137][I][main:200]: --- LIVE HEARTBEAT ---
+[12:40:35.149][I][main:200]: --- LIVE HEARTBEAT ---
+[12:40:40.157][I][main:200]: --- LIVE HEARTBEAT ---
+[12:40:45.168][I][main:200]: --- LIVE HEARTBEAT ---
+[12:40:50.176][I][main:200]: --- LIVE HEARTBEAT ---
+[12:40:55.194][I][main:200]: --- LIVE HEARTBEAT ---
+[12:41:00.202][I][main:200]: --- LIVE HEARTBEAT ---
+[12:41:05.208][I][main:200]: --- LIVE HEARTBEAT ---
+[12:41:10.225][I][main:200]: --- LIVE HEARTBEAT ---
+[12:41:15.231][I][main:200]: --- LIVE HEARTBEAT ---
+[12:41:20.245][I][main:200]: --- LIVE HEARTBEAT ---
+[12:41:25.255][I][main:200]: --- LIVE HEARTBEAT ---
+[12:41:30.261][I][main:200]: --- LIVE HEARTBEAT ---
+[12:41:35.266][I][main:200]: --- LIVE HEARTBEAT ---
+[12:41:40.270][I][main:200]: --- LIVE HEARTBEAT ---
+[12:41:45.277][I][main:200]: --- LIVE HEARTBEAT ---
+[12:41:50.283][I][main:200]: --- LIVE HEARTBEAT ---
+[12:41:55.298][I][main:200]: --- LIVE HEARTBEAT ---
+[12:42:00.303][I][main:200]: --- LIVE HEARTBEAT ---
+[12:42:05.309][I][main:200]: --- LIVE HEARTBEAT ---
+[12:42:10.320][I][main:200]: --- LIVE HEARTBEAT ---
+[12:42:15.325][I][main:200]: --- LIVE HEARTBEAT ---
+[12:42:20.333][I][main:200]: --- LIVE HEARTBEAT ---
+[12:42:25.339][I][main:200]: --- LIVE HEARTBEAT ---
+[12:42:30.347][I][main:200]: --- LIVE HEARTBEAT ---
+[12:42:35.360][I][main:200]: --- LIVE HEARTBEAT ---
+[12:42:40.366][I][main:200]: --- LIVE HEARTBEAT ---
+[12:42:45.375][I][main:200]: --- LIVE HEARTBEAT ---
+[12:42:50.383][I][main:200]: --- LIVE HEARTBEAT ---
+[12:42:55.399][I][main:200]: --- LIVE HEARTBEAT ---
+[12:43:00.411][I][main:200]: --- LIVE HEARTBEAT ---
+[12:43:05.426][I][main:200]: --- LIVE HEARTBEAT ---
+[12:43:10.439][I][main:200]: --- LIVE HEARTBEAT ---
+[12:43:15.451][I][main:200]: --- LIVE HEARTBEAT ---
+[12:43:20.460][I][main:200]: --- LIVE HEARTBEAT ---
+[12:43:25.467][I][main:200]: --- LIVE HEARTBEAT ---
+[12:43:30.477][I][main:200]: --- LIVE HEARTBEAT ---
+[12:43:35.492][I][main:200]: --- LIVE HEARTBEAT ---
+[12:43:40.505][I][main:200]: --- LIVE HEARTBEAT ---
+[12:43:45.512][I][main:200]: --- LIVE HEARTBEAT ---
+[12:43:50.528][I][main:200]: --- LIVE HEARTBEAT ---
+[12:43:55.536][I][main:200]: --- LIVE HEARTBEAT ---
+[12:44:00.543][I][main:200]: --- LIVE HEARTBEAT ---
+[12:44:05.549][I][main:200]: --- LIVE HEARTBEAT ---
+[12:44:10.557][I][main:200]: --- LIVE HEARTBEAT ---
+[12:44:15.567][I][main:200]: --- LIVE HEARTBEAT ---
+[12:44:20.581][I][main:200]: --- LIVE HEARTBEAT ---
+[12:44:25.600][I][main:200]: --- LIVE HEARTBEAT ---
+[12:44:30.613][I][main:200]: --- LIVE HEARTBEAT ---
+[12:44:35.618][I][main:200]: --- LIVE HEARTBEAT ---
+[12:44:40.628][I][main:200]: --- LIVE HEARTBEAT ---
+[12:44:45.636][I][main:200]: --- LIVE HEARTBEAT ---
+[12:44:50.644][I][main:200]: --- LIVE HEARTBEAT ---
+[12:44:55.659][I][main:200]: --- LIVE HEARTBEAT ---
+[12:45:00.666][I][main:200]: --- LIVE HEARTBEAT ---
+[12:45:05.676][I][main:200]: --- LIVE HEARTBEAT ---
+[12:45:10.686][I][main:200]: --- LIVE HEARTBEAT ---
+[12:45:15.693][I][main:200]: --- LIVE HEARTBEAT ---
+[12:45:20.701][I][main:200]: --- LIVE HEARTBEAT ---
+[12:45:25.708][I][main:200]: --- LIVE HEARTBEAT ---
+[12:45:30.717][I][main:200]: --- LIVE HEARTBEAT ---
+[12:45:35.731][I][main:200]: --- LIVE HEARTBEAT ---
+[12:45:40.745][I][main:200]: --- LIVE HEARTBEAT ---
+[12:45:45.752][I][main:200]: --- LIVE HEARTBEAT ---
+[12:45:50.761][I][main:200]: --- LIVE HEARTBEAT ---
+[12:45:55.766][I][main:200]: --- LIVE HEARTBEAT ---
+[12:46:00.776][I][main:200]: --- LIVE HEARTBEAT ---
+[12:46:05.789][I][main:200]: --- LIVE HEARTBEAT ---
+[12:46:10.800][I][main:200]: --- LIVE HEARTBEAT ---
+[12:46:15.807][I][main:200]: --- LIVE HEARTBEAT ---
+[12:46:20.823][I][main:200]: --- LIVE HEARTBEAT ---
+[12:46:25.835][I][main:200]: --- LIVE HEARTBEAT ---
+[12:46:30.845][I][main:200]: --- LIVE HEARTBEAT ---
+[12:46:35.850][I][main:200]: --- LIVE HEARTBEAT ---
+[12:46:40.859][I][main:200]: --- LIVE HEARTBEAT ---
+[12:46:45.870][I][main:200]: --- LIVE HEARTBEAT ---
+[12:46:50.889][I][main:200]: --- LIVE HEARTBEAT ---
+[12:46:55.902][I][main:200]: --- LIVE HEARTBEAT ---

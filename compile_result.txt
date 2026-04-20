@@ -1,0 +1,28 @@
+INFO ESPHome 2026.3.1
+INFO Reading configuration device.yaml...
+INFO Generating C++ source...
+INFO Using user-provided CONFIG_LWIP_MAX_SOCKETS: 16
+WARNING CORE.using_esp_idf was deprecated in 2026.1, will change behavior in 2026.6. ESP32 Arduino builds on top of ESP-IDF, so ESP-IDF features are available in both frameworks. Use CORE.is_esp32 and/or CORE.using_arduino instead.
+INFO Compiling app... Build path: /root/claude-dev/projects/esphome1/.esphome/build/esp32-display
+Processing esp32-display (board: esp32-s3-devkitc-1; framework: espidf; platform: https://github.com/pioarduino/platform-espressif32/releases/download/55.03.37/platform-espressif32.zip)
+--------------------------------------------------------------------------------
+HARDWARE: ESP32S3 240MHz, 320KB RAM, 16MB Flash
+ - contrib-piohome @ 3.4.4 
+ - framework-espidf @ 3.50503.0 (5.5.3) 
+ - tool-cmake @ 4.0.3 
+ - tool-esp-rom-elfs @ 2024.10.11 
+ - tool-esptoolpy @ 5.1.2 
+ - tool-ninja @ 1.13.1 
+ - tool-scons @ 4.40801.0 (4.8.1) 
+ - toolchain-xtensa-esp-elf @ 14.2.0+20251107
+Reading CMake configuration...
+Dependency Graph
+|-- LovyanGFX @ 1.2.19
+|-- ArduinoJson @ 7.3.0
+|-- lvgl @ 8.4.0
+Compiling .pioenvs/esp32-display/src/main.cpp.o
+RAM:   [==        ]  15.4% (used 50472 bytes from 327680 bytes)
+Flash: [==        ]  21.1% (used 1383091 bytes from 6553600 bytes)
+========================= [SUCCESS] Took 10.96 seconds =========================
+INFO Build Info: config_hash=0xac3a657f build_time_str=2026-04-18 20:22:00 +0000
+INFO Successfully compiled program.
