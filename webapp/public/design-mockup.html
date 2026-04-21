@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GridOS Editor — UX Redesign Mockup</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Outfit', 'Segoe UI', sans-serif; background: #e8eaf0; color: #1e293b; height: 100vh; display: flex; flex-direction: column; overflow: hidden; font-size: 14px; }
+
+  /* ── HEADER ── */
+  .header {
+    background: #fff; border-bottom: 2px solid #e2e8f0;
+    padding: 0 16px; height: 52px; display: flex; align-items: center; gap: 12px; flex-shrink: 0;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  }
+  .logo { font-weight: 900; font-size: 18px; color: #6d28d9; letter-spacing: 3px; }
+  .tab-bar { display: flex; gap: 4px; margin-left: 8px; }
+  .htab { padding: 7px 18px; border-radius: 7px; font-size: 13px; font-weight: 700; cursor: pointer; letter-spacing: 1px; color: #94a3b8; border: 2px solid transparent; transition: all 0.15s; }
+  .htab.active { background: #6d28d9; color: #fff; border-color: #6d28d9; }
+  .htab:hover:not(.active) { background: #f1f5f9; color: #475569; border-color: #e2e8f0; }
+  .spacer { flex: 1; }
+  .sync-btn { background: #16a34a; color: #fff; border: none; border-radius: 7px; padding: 8px 18px; font-size: 13px; font-weight: 800; cursor: pointer; letter-spacing: 1px; box-shadow: 0 2px 8px rgba(22,163,74,0.4); }
+  .ip-input { background: #f8fafc; border: 2px solid #e2e8f0; color: #475569; border-radius: 7px; padding: 6px 12px; font-size: 13px; width: 140px; }
+
+  /* ── MAIN LAYOUT ── */
+  .workspace { display: flex; flex: 1; overflow: hidden; }
+
+  /* ── LEFT SIDEBAR — bright white ── */
+  .sidebar { width: 270px; background: #fff; border-right: 2px solid #e2e8f0; display: flex; flex-direction: column; flex-shrink: 0; }
+
+  .sidebar-tabs { display: flex; border-bottom: 2px solid #e2e8f0; background: #f8fafc; flex-shrink: 0; }
+  .stab { flex: 1; text-align: center; padding: 12px 0; font-size: 13px; font-weight: 800; letter-spacing: 2px; cursor: pointer; color: #94a3b8; border-bottom: 3px solid transparent; transition: all 0.15s; }
+  .stab.active { color: #6d28d9; border-bottom-color: #6d28d9; background: #fff; }
+  .stab:hover:not(.active) { color: #475569; background: #f1f5f9; }
+
+  .sidebar-panel { flex: 1; overflow-y: auto; display: none; padding: 12px; gap: 14px; flex-direction: column; }
+  .sidebar-panel.visible { display: flex; }
+
+  .section-label { font-size: 11px; font-weight: 800; letter-spacing: 2px; color: #94a3b8; padding: 4px 2px 8px; text-transform: uppercase; border-bottom: 2px solid #f1f5f9; margin-bottom: 4px; }
+
+  /* Widget chips — colorful! */
+  .widget-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+  .widget-chip {
+    border-radius: 10px; padding: 10px 6px; text-align: center; cursor: grab;
+    font-size: 12px; font-weight: 700; transition: all 0.15s;
+    display: flex; flex-direction: column; align-items: center; gap: 5px;
+    border: 2px solid transparent;
+  }
+  .widget-chip .wicon { font-size: 22px; }
+  .widget-chip:hover { transform: translateY(-2px); box-shadow: 0 4px 14px rgba(0,0,0,0.15); }
+
+  /* Each widget type gets its own color */
+  .wc-btn      { background: #ede9fe; color: #5b21b6; border-color: #c4b5fd; }
+  .wc-btn:hover { background: #ddd6fe; }
+  .wc-label    { background: #dbeafe; color: #1d4ed8; border-color: #93c5fd; }
+  .wc-label:hover { background: #bfdbfe; }
+  .wc-switch   { background: #dcfce7; color: #15803d; border-color: #86efac; }
+  .wc-switch:hover { background: #bbf7d0; }
+  .wc-slider   { background: #fef9c3; color: #854d0e; border-color: #fde047; }
+  .wc-slider:hover { background: #fef08a; }
+  .wc-arc      { background: #ffe4e6; color: #be123c; border-color: #fca5a5; }
+  .wc-arc:hover { background: #fecdd3; }
+  .wc-check    { background: #f0fdf4; color: #166534; border-color: #86efac; }
+  .wc-check:hover { background: #dcfce7; }
+  .wc-drop     { background: #fff7ed; color: #c2410c; border-color: #fdba74; }
+  .wc-drop:hover { background: #fed7aa; }
+  .wc-roller   { background: #fdf4ff; color: #86198f; border-color: #e879f9; }
+  .wc-roller:hover { background: #fae8ff; }
+  .wc-bar      { background: #ecfeff; color: #0e7490; border-color: #67e8f9; }
+  .wc-bar:hover { background: #cffafe; }
+  .wc-clock    { background: #f0f9ff; color: #0369a1; border-color: #7dd3fc; }
+  .wc-clock:hover { background: #e0f2fe; }
+  .wc-border   { background: #f8fafc; color: #475569; border-color: #cbd5e1; }
+  .wc-border:hover { background: #f1f5f9; }
+  .wc-nav      { background: #fefce8; color: #713f12; border-color: #fde047; }
+  .wc-nav:hover { background: #fef9c3; }
+
+  /* Panel cards */
+  .panel-card { background: #f8fafc; border: 2px solid #e2e8f0; border-radius: 10px; padding: 10px 12px; cursor: grab; display: flex; align-items: center; gap: 10px; transition: all 0.15s; }
+  .panel-card:hover { border-color: #6d28d9; background: #ede9fe; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(109,40,217,0.15); }
+  .panel-card .pname { font-size: 13px; font-weight: 700; color: #1e293b; flex: 1; }
+  .panel-card .pdim { font-size: 11px; color: #64748b; background: #e2e8f0; border-radius: 4px; padding: 2px 7px; font-weight: 600; }
+
+  /* Smart component cards */
+  .comp-card { border-radius: 10px; padding: 12px; cursor: grab; display: flex; align-items: center; gap: 12px; transition: all 0.15s; border: 2px solid transparent; }
+  .comp-card:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(0,0,0,0.12); }
+  .comp-wifi   { background: #eff6ff; border-color: #3b82f6; }
+  .comp-wifi:hover { background: #dbeafe; }
+  .comp-sd     { background: #f0fdf4; border-color: #22c55e; }
+  .comp-sd:hover { background: #dcfce7; }
+  .comp-sys    { background: #fff7ed; border-color: #f97316; }
+  .comp-sys:hover { background: #fed7aa; }
+  .comp-icon { font-size: 26px; }
+  .comp-info .cname { font-size: 13px; font-weight: 800; color: #1e293b; }
+  .comp-info .cdesc { font-size: 11px; color: #64748b; margin-top: 3px; font-weight: 600; }
+
+  /* ── LAYERS ── */
+  .layers-panel { flex: 1; overflow-y: auto; display: none; flex-direction: column; background: #fff; }
+  .layers-panel.visible { display: flex; }
+  .layers-header { display: flex; align-items: center; padding: 12px 14px 8px; border-bottom: 2px solid #e2e8f0; flex-shrink: 0; gap: 8px; background: #f8fafc; }
+  .layers-title { font-size: 12px; font-weight: 800; letter-spacing: 2px; color: #94a3b8; text-transform: uppercase; flex: 1; }
+  .add-screen-btn { background: #6d28d9; color: #fff; border: none; border-radius: 6px; padding: 5px 12px; font-size: 12px; font-weight: 800; cursor: pointer; letter-spacing: 1px; }
+  .add-screen-btn:hover { background: #5b21b6; }
+
+  .tree { padding: 6px 0; flex: 1; }
+  .screen-node { margin-bottom: 2px; }
+  .screen-row { display: flex; align-items: center; padding: 8px 14px; cursor: pointer; border-left: 4px solid transparent; transition: all 0.12s; }
+  .screen-row.active { background: #ede9fe; border-left-color: #6d28d9; }
+  .screen-row:hover:not(.active) { background: #f8fafc; border-left-color: #e2e8f0; }
+  .screen-chevron { font-size: 11px; color: #94a3b8; margin-right: 7px; width: 13px; font-weight: 700; }
+  .screen-icon { font-size: 15px; margin-right: 7px; }
+  .screen-name { font-size: 14px; font-weight: 800; color: #1e293b; flex: 1; }
+  .screen-row.active .screen-name { color: #6d28d9; }
+  .screen-badge { font-size: 10px; background: #e2e8f0; color: #64748b; border-radius: 4px; padding: 2px 7px; font-weight: 700; }
+  .screen-row.active .screen-badge { background: #ddd6fe; color: #6d28d9; }
+
+  .page-list { padding-left: 18px; }
+  .page-row { display: flex; align-items: center; padding: 7px 12px; cursor: pointer; border-left: 3px solid #e2e8f0; transition: all 0.12s; border-radius: 0 6px 6px 0; }
+  .page-row:hover { background: #f8fafc; border-left-color: #94a3b8; }
+  .page-row.selected { background: #ede9fe; border-left-color: #6d28d9; }
+  .page-icon { font-size: 13px; margin-right: 7px; color: #94a3b8; }
+  .page-row.selected .page-icon { color: #6d28d9; }
+  .page-name { font-size: 13px; font-weight: 600; color: #64748b; flex: 1; }
+  .page-row.selected .page-name { color: #1e293b; font-weight: 700; }
+  .page-add-btn { background: #fff; border: 2px solid #e2e8f0; color: #94a3b8; border-radius: 5px; padding: 2px 8px; font-size: 11px; font-weight: 700; cursor: pointer; opacity: 0; transition: all 0.12s; }
+  .page-row:hover .page-add-btn, .page-row.selected .page-add-btn { opacity: 1; }
+  .page-row.selected .page-add-btn { border-color: #6d28d9; color: #6d28d9; background: #ede9fe; }
+
+  .item-list { padding-left: 30px; }
+  .item-row { display: flex; align-items: center; padding: 5px 8px; cursor: pointer; border-left: 2px solid #e2e8f0; border-radius: 0 4px 4px 0; transition: all 0.12s; }
+  .item-row:hover { background: #f8fafc; border-left-color: #94a3b8; }
+  .item-row.selected { background: #ede9fe; border-left-color: #6d28d9; }
+  .item-dot { width: 8px; height: 8px; border-radius: 50%; background: #cbd5e1; margin-right: 8px; flex-shrink: 0; }
+  .item-row.selected .item-dot { background: #6d28d9; }
+  .item-name { font-size: 12px; font-weight: 600; color: #64748b; flex: 1; }
+  .item-row.selected .item-name { color: #1e293b; font-weight: 700; }
+  .item-row:hover .item-name { color: #475569; }
+  .item-type { font-size: 10px; font-weight: 700; color: #94a3b8; background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 4px; padding: 1px 5px; }
+  .item-row.selected .item-type { color: #6d28d9; border-color: #c4b5fd; background: #ede9fe; }
+
+  .quick-add-hint { margin: 10px 12px; background: #eff6ff; border: 2px dashed #3b82f6; border-radius: 9px; padding: 10px 12px; font-size: 12px; font-weight: 600; color: #1d4ed8; display: flex; align-items: center; gap: 8px; line-height: 1.5; }
+
+  /* ── PROPERTIES PANEL — slides out next to sidebar, light ── */
+  .props-panel {
+    width: 0; background: #fff;
+    border-right: 0px solid #6d28d9;
+    display: flex; flex-direction: column; flex-shrink: 0; overflow: hidden;
+    transition: width 0.22s cubic-bezier(0.4,0,0.2,1), border-right-width 0.22s;
+    box-shadow: none;
+  }
+  .props-panel.open { width: 270px; border-right-width: 2px; box-shadow: 4px 0 16px rgba(109,40,217,0.08); }
+  .props-inner { width: 270px; display: flex; flex-direction: column; height: 100%; }
+
+  .props-header { padding: 12px 14px 10px; border-bottom: 2px solid #e2e8f0; flex-shrink: 0; background: #f8fafc; display: flex; align-items: flex-start; gap: 8px; }
+  .props-header-text { flex: 1; }
+  .props-title { font-size: 11px; font-weight: 800; letter-spacing: 2px; color: #94a3b8; text-transform: uppercase; }
+  .props-entity { font-size: 16px; font-weight: 800; color: #1e293b; margin-top: 5px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .entity-type-badge { font-size: 10px; font-weight: 800; background: #ede9fe; color: #6d28d9; border: 2px solid #c4b5fd; border-radius: 5px; padding: 2px 8px; letter-spacing: 1px; }
+  .props-close { background: #f1f5f9; border: 2px solid #e2e8f0; color: #94a3b8; border-radius: 6px; width: 28px; height: 28px; cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 2px; }
+  .props-close:hover { border-color: #ef4444; color: #ef4444; background: #fee2e2; }
+
+  .props-body { flex: 1; overflow-y: auto; padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; background: #fff; }
+
+  .prop-group { display: flex; flex-direction: column; gap: 5px; }
+  .prop-label { font-size: 11px; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 1.5px; }
+  .prop-input { background: #f8fafc; border: 2px solid #e2e8f0; border-radius: 7px; color: #1e293b; padding: 8px 12px; font-size: 13px; font-weight: 600; width: 100%; outline: none; transition: border-color 0.15s; }
+  .prop-input:focus { border-color: #6d28d9; background: #fff; box-shadow: 0 0 0 3px rgba(109,40,217,0.1); }
+  .prop-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .prop-color { display: flex; align-items: center; gap: 10px; background: #f8fafc; border: 2px solid #e2e8f0; border-radius: 7px; padding: 7px 12px; cursor: pointer; transition: border-color 0.15s; }
+  .prop-color:hover { border-color: #94a3b8; }
+  .color-swatch { width: 22px; height: 22px; border-radius: 5px; flex-shrink: 0; border: 2px solid rgba(0,0,0,0.1); }
+  .color-val { font-size: 12px; font-weight: 700; color: #475569; font-family: monospace; }
+  .prop-divider { border: none; border-top: 2px solid #f1f5f9; margin: 2px 0; }
+
+  .children-section { background: #f8fafc; border: 2px solid #e2e8f0; border-radius: 9px; padding: 10px; }
+  .children-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+  .children-title { font-size: 11px; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 1.5px; }
+  .child-add-btn { background: #fff; border: 2px solid #e2e8f0; color: #64748b; border-radius: 5px; padding: 2px 10px; font-size: 11px; font-weight: 700; cursor: pointer; }
+  .child-add-btn:hover { border-color: #6d28d9; color: #6d28d9; }
+  .no-children-msg { font-size: 12px; color: #cbd5e1; text-align: center; padding: 8px 0; font-weight: 600; }
+
+  /* ── CANVAS — keep dark, it represents a real device ── */
+  .canvas-area { flex: 1; background: #1e293b; display: flex; align-items: center; justify-content: center; overflow: auto; position: relative; }
+
+  .active-page-bar { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); background: #0f172a; border: 2px solid #334155; border-radius: 24px; padding: 6px 16px; font-size: 13px; font-weight: 700; color: #a78bfa; display: flex; align-items: center; gap: 10px; z-index: 10; white-space: nowrap; box-shadow: 0 4px 20px rgba(0,0,0,0.4); }
+  .active-page-bar .apb-screen { color: #475569; font-weight: 600; }
+  .active-page-bar .apb-sep { color: #334155; font-size: 16px; }
+  .active-page-bar .apb-page { color: #a78bfa; font-weight: 800; }
+  .page-switcher { display: flex; gap: 5px; margin-left: 4px; }
+  .psw-btn { background: #1e293b; border: 2px solid #334155; border-radius: 6px; padding: 3px 10px; font-size: 12px; font-weight: 700; color: #64748b; cursor: pointer; transition: all 0.12s; }
+  .psw-btn:hover { border-color: #7c3aed; color: #a78bfa; }
+  .psw-btn.active { background: #2d1b69; border-color: #7c3aed; color: #a78bfa; }
+
+  .device-frame { width: 600px; height: 370px; background: #08090e; border-radius: 14px; border: 8px solid #0f172a; box-shadow: 0 30px 80px rgba(0,0,0,0.7), 0 0 0 2px #334155; position: relative; overflow: hidden; }
+  .device-status { height: 24px; background: #0f172a; display: flex; align-items: center; padding: 0 12px; font-size: 11px; font-weight: 700; color: #475569; gap: 10px; border-bottom: 1px solid #1e293b; }
+  .device-status .dtime { color: #94a3b8; }
+  .device-status .spacer { flex:1; }
+  .device-canvas { position: relative; width: 100%; height: calc(100% - 24px); overflow: hidden; }
+
+  .cv-widget { position: absolute; border-radius: 7px; display: flex; align-items: center; justify-content: center; font-weight: 700; border: 2px solid transparent; cursor: pointer; transition: all 0.15s; }
+  .cv-widget:hover { border-color: #7c3aed; }
+  .cv-widget.selected { border: 2px dashed #a78bfa !important; box-shadow: 0 0 0 3px rgba(124,58,237,0.35), 0 0 24px rgba(124,58,237,0.3); }
+  .cv-widget .resize-handle { position: absolute; bottom: -5px; right: -5px; width: 13px; height: 13px; background: #a78bfa; border-radius: 50%; cursor: se-resize; box-shadow: 0 0 8px rgba(167,139,250,0.7); display: none; }
+  .cv-widget.selected .resize-handle { display: block; }
+
+  /* ── MINI-POPOVER ── */
+  .mini-popover { position: absolute; left: 250px; top: 190px; background: #fff; border: 2px solid #6d28d9; border-radius: 12px; padding: 12px; width: 210px; box-shadow: 0 12px 40px rgba(0,0,0,0.2); z-index: 50; }
+  .popover-title { font-size: 11px; font-weight: 800; letter-spacing: 2px; color: #6d28d9; text-transform: uppercase; margin-bottom: 10px; border-bottom: 2px solid #ede9fe; padding-bottom: 7px; }
+  .popover-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+  .pwchip { border-radius: 8px; padding: 8px 4px; text-align: center; cursor: pointer; font-size: 11px; font-weight: 700; display: flex; flex-direction: column; align-items: center; gap: 4px; transition: all 0.12s; border: 2px solid transparent; }
+  .pwchip:hover { transform: translateY(-2px); box-shadow: 0 4px 10px rgba(0,0,0,0.12); }
+  .pwchip .pwi { font-size: 18px; }
+  .pwc-btn   { background: #ede9fe; color: #5b21b6; } .pwc-btn:hover   { border-color: #6d28d9; }
+  .pwc-label { background: #dbeafe; color: #1d4ed8; } .pwc-label:hover { border-color: #3b82f6; }
+  .pwc-sw    { background: #dcfce7; color: #15803d; } .pwc-sw:hover    { border-color: #22c55e; }
+  .pwc-sl    { background: #fef9c3; color: #854d0e; } .pwc-sl:hover    { border-color: #eab308; }
+  .pwc-arc   { background: #ffe4e6; color: #be123c; } .pwc-arc:hover   { border-color: #f43f5e; }
+  .pwc-chk   { background: #f0fdf4; color: #166534; } .pwc-chk:hover   { border-color: #22c55e; }
+  .pwc-drp   { background: #fff7ed; color: #c2410c; } .pwc-drp:hover   { border-color: #f97316; }
+  .pwc-clk   { background: #f0f9ff; color: #0369a1; } .pwc-clk:hover   { border-color: #0ea5e9; }
+  .pwc-bar   { background: #ecfeff; color: #0e7490; } .pwc-bar:hover   { border-color: #06b6d4; }
+
+  /* ── ANNOTATIONS ── */
+  .annotation-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; pointer-events: none; z-index: 1000; }
+  .callout { position: absolute; background: #fde047; color: #1a1000; font-size: 12px; font-weight: 800; border-radius: 8px; padding: 5px 12px; white-space: nowrap; box-shadow: 0 3px 14px rgba(0,0,0,0.3); border: 2px solid #ca8a04; }
+  .callout::after { content: ''; position: absolute; border: 6px solid transparent; }
+  .callout.left::after   { border-right-color: #fde047; right: 100%; top: 50%; transform: translateY(-50%); }
+  .callout.right::after  { border-left-color:  #fde047; left:  100%; top: 50%; transform: translateY(-50%); }
+  .callout.top::after    { border-bottom-color: #fde047; bottom: 100%; left: 50%; transform: translateX(-50%); }
+  .callout.bottom::after { border-top-color:    #fde047; top:   100%; left: 50%; transform: translateX(-50%); }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="logo">GRIDOS</div>
+  <div class="tab-bar">
+    <div class="htab active">BUILDER</div>
+    <div class="htab">MIRROR</div>
+    <div class="htab">WIFI</div>
+    <div class="htab">CONSOLE</div>
+  </div>
+  <div class="spacer"></div>
+  <input class="ip-input" value="192.168.1.42" placeholder="device ip...">
+  <button class="sync-btn">⬆ SYNC</button>
+</div>
+
+<div class="workspace">
+
+  <!-- LEFT SIDEBAR -->
+  <div class="sidebar">
+    <div class="sidebar-tabs">
+      <div class="stab" id="tab-palette" onclick="switchSidebarTab('palette')">PALETTE</div>
+      <div class="stab active" id="tab-layers" onclick="switchSidebarTab('layers')">LAYERS</div>
+    </div>
+
+    <!-- PALETTE -->
+    <div class="sidebar-panel" id="panel-palette">
+      <div>
+        <div class="section-label">Basic Widgets</div>
+        <div class="widget-grid">
+          <div class="widget-chip wc-btn">   <span class="wicon">🔘</span>Button</div>
+          <div class="widget-chip wc-label"> <span class="wicon">🏷️</span>Label</div>
+          <div class="widget-chip wc-switch"><span class="wicon">⚡</span>Switch</div>
+          <div class="widget-chip wc-slider"><span class="wicon">〰️</span>Slider</div>
+          <div class="widget-chip wc-arc">   <span class="wicon">🔵</span>Arc</div>
+          <div class="widget-chip wc-check"> <span class="wicon">☑️</span>Checkbox</div>
+          <div class="widget-chip wc-drop">  <span class="wicon">⬇️</span>Dropdown</div>
+          <div class="widget-chip wc-roller"><span class="wicon">🎚️</span>Roller</div>
+          <div class="widget-chip wc-bar">   <span class="wicon">📊</span>Bar</div>
+          <div class="widget-chip wc-clock"> <span class="wicon">🕐</span>Clock</div>
+          <div class="widget-chip wc-border"><span class="wicon">▭</span>Border</div>
+          <div class="widget-chip wc-nav">   <span class="wicon">☰</span>Nav Menu</div>
+        </div>
+      </div>
+      <div>
+        <div class="section-label">Master Panels</div>
+        <div style="display:flex;flex-direction:column;gap:7px;">
+          <div class="panel-card"><span style="font-size:18px">🧩</span><span class="pname">TopBar</span><span class="pdim">800×40</span></div>
+          <div class="panel-card"><span style="font-size:18px">🧩</span><span class="pname">StatusRow</span><span class="pdim">800×32</span></div>
+          <div class="panel-card" style="border-style:dashed;color:#94a3b8;justify-content:center;gap:6px;font-size:13px;font-weight:700;"><span>＋</span> New Panel</div>
+        </div>
+      </div>
+      <div>
+        <div class="section-label">Smart Components</div>
+        <div style="display:flex;flex-direction:column;gap:7px;">
+          <div class="comp-card comp-wifi"><span class="comp-icon">📶</span><div class="comp-info"><div class="cname">WiFi</div><div class="cdesc">Connection manager</div></div></div>
+          <div class="comp-card comp-sd">  <span class="comp-icon">💾</span><div class="comp-info"><div class="cname">SD Card</div><div class="cdesc">File browser</div></div></div>
+          <div class="comp-card comp-sys"> <span class="comp-icon">⚙️</span><div class="comp-info"><div class="cname">System Settings</div><div class="cdesc">Device config</div></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- LAYERS -->
+    <div class="layers-panel visible" id="panel-layers">
+      <div class="layers-header">
+        <span class="layers-title">Project</span>
+        <button class="add-screen-btn" onclick="addScreenDemo()">＋ Screen</button>
+      </div>
+      <div class="tree" id="tree-root">
+
+        <div class="screen-node">
+          <div class="screen-row active" onclick="toggleScreen('main')">
+            <span class="screen-chevron" id="chev-main">▼</span>
+            <span class="screen-icon">🖥</span>
+            <span class="screen-name">main</span>
+            <span class="screen-badge">2 pages</span>
+          </div>
+          <div id="children-main">
+            <div class="page-list">
+              <div class="page-row selected" onclick="selectPage(event)">
+                <span class="page-icon">📄</span>
+                <span class="page-name">home</span>
+                <button class="page-add-btn" onclick="showPopover(event)">＋ Widget</button>
+              </div>
+              <div class="item-list">
+                <div class="item-row selected" data-id="clock1" onclick="selectFromLayer(event,'clock1')">
+                  <div class="item-dot"></div>
+                  <span class="item-name">clock1</span>
+                  <span class="item-type">clock</span>
+                </div>
+                <div class="item-row" data-id="btn_settings" onclick="selectFromLayer(event,'btn_settings')">
+                  <div class="item-dot"></div>
+                  <span class="item-name">btn_settings</span>
+                  <span class="item-type">btn</span>
+                </div>
+                <div class="item-row" data-id="tempLabel" onclick="selectFromLayer(event,'tempLabel')">
+                  <div class="item-dot"></div>
+                  <span class="item-name">tempLabel</span>
+                  <span class="item-type">label</span>
+                </div>
+              </div>
+              <div class="page-row" onclick="selectPage(event)">
+                <span class="page-icon">📄</span>
+                <span class="page-name">alerts</span>
+                <button class="page-add-btn" onclick="showPopover(event)">＋ Widget</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="screen-node">
+          <div class="screen-row" onclick="toggleScreen('settings')">
+            <span class="screen-chevron" id="chev-settings">▶</span>
+            <span class="screen-icon">🖥</span>
+            <span class="screen-name">settings</span>
+            <span class="screen-badge">1 page</span>
+          </div>
+          <div id="children-settings" style="display:none;">
+            <div class="page-list">
+              <div class="page-row" onclick="selectPage(event)">
+                <span class="page-icon">📄</span>
+                <span class="page-name">settings-main</span>
+                <button class="page-add-btn" onclick="showPopover(event)">＋ Widget</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+      <div class="quick-add-hint">
+        <span>💡</span>
+        <span>Click an item to select it on the canvas — and vice versa.</span>
+      </div>
+    </div>
+
+    <!-- MINI POPOVER -->
+    <div class="mini-popover" id="mini-popover" style="display:none;">
+      <div class="popover-title">Add to "home"</div>
+      <div class="popover-grid">
+        <div class="pwchip pwc-btn">  <span class="pwi">🔘</span>Btn</div>
+        <div class="pwchip pwc-label"><span class="pwi">🏷️</span>Label</div>
+        <div class="pwchip pwc-sw">   <span class="pwi">⚡</span>Switch</div>
+        <div class="pwchip pwc-sl">   <span class="pwi">〰️</span>Slider</div>
+        <div class="pwchip pwc-arc">  <span class="pwi">🔵</span>Arc</div>
+        <div class="pwchip pwc-chk">  <span class="pwi">☑️</span>Check</div>
+        <div class="pwchip pwc-drp">  <span class="pwi">⬇️</span>Drop</div>
+        <div class="pwchip pwc-clk">  <span class="pwi">🕐</span>Clock</div>
+        <div class="pwchip pwc-bar">  <span class="pwi">📊</span>Bar</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PROPERTIES PANEL -->
+  <div class="props-panel open" id="props-panel">
+    <div class="props-inner">
+      <div class="props-header">
+        <div class="props-header-text">
+          <div class="props-title">Properties</div>
+          <div class="props-entity">clock1 <span class="entity-type-badge">CLOCK</span></div>
+        </div>
+        <button class="props-close" onclick="closeProps()">✕</button>
+      </div>
+      <div class="props-body">
+        <div class="prop-group">
+          <div class="prop-label">Name / ID</div>
+          <input class="prop-input" value="clock1">
+        </div>
+        <div class="prop-row">
+          <div class="prop-group"><div class="prop-label">X</div><input class="prop-input" value="170" type="number"></div>
+          <div class="prop-group"><div class="prop-label">Y</div><input class="prop-input" value="28" type="number"></div>
+        </div>
+        <div class="prop-row">
+          <div class="prop-group"><div class="prop-label">Width</div><input class="prop-input" value="240" type="number"></div>
+          <div class="prop-group"><div class="prop-label">Height</div><input class="prop-input" value="86" type="number"></div>
+        </div>
+        <hr class="prop-divider">
+        <div class="prop-group">
+          <div class="prop-label">Background</div>
+          <div class="prop-color"><div class="color-swatch" style="background:#2e1065;"></div><span class="color-val">#2e1065</span></div>
+        </div>
+        <div class="prop-group">
+          <div class="prop-label">Text Color</div>
+          <div class="prop-color"><div class="color-swatch" style="background:#a78bfa;"></div><span class="color-val">#a78bfa</span></div>
+        </div>
+        <hr class="prop-divider">
+        <div class="prop-group"><div class="prop-label">Font Size</div><input class="prop-input" value="30" type="number"></div>
+        <div class="prop-group"><div class="prop-label">Border Radius</div><input class="prop-input" value="8" type="number"></div>
+        <div class="prop-group"><div class="prop-label">MQTT Topic</div><input class="prop-input" value="" placeholder="sensor/time"></div>
+        <hr class="prop-divider">
+        <div class="children-section">
+          <div class="children-header">
+            <span class="children-title">Children</span>
+            <button class="child-add-btn">＋ Add</button>
+          </div>
+          <div class="no-children-msg">No children for this type</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CANVAS (dark = the device) -->
+  <div class="canvas-area" id="canvas-area" onclick="canvasDeselect(event)">
+
+    <div class="active-page-bar">
+      <span class="apb-screen">main</span>
+      <span class="apb-sep">/</span>
+      <span class="apb-page">home</span>
+      <div class="page-switcher">
+        <div class="psw-btn active">home</div>
+        <div class="psw-btn">alerts</div>
+        <div class="psw-btn" style="color:#7c3aed;border-color:#7c3aed;">＋ page</div>
+      </div>
+    </div>
+
+    <div class="device-frame">
+      <div class="device-status">
+        <span class="dtime">14:32</span>
+        <span>main / home</span>
+        <div class="spacer"></div>
+        <span>📶</span><span>🔋</span>
+      </div>
+      <div class="device-canvas">
+        <div class="cv-widget selected"
+             data-id="clock1" data-name="clock1" data-type="CLOCK"
+             data-bg="#2e1065" data-fg="#a78bfa" data-font="30" data-x="170" data-y="28" data-w="240" data-h="86"
+             style="left:170px;top:28px;width:240px;height:86px;background:#2e1065;color:#a78bfa;font-size:30px;font-weight:900;"
+             onclick="selectFromCanvas(event,'clock1')">
+          14:32:05
+          <div class="resize-handle"></div>
+        </div>
+        <div class="cv-widget"
+             data-id="btn_settings" data-name="btn_settings" data-type="BTN"
+             data-bg="#1e3a5f" data-fg="#93c5fd" data-font="13" data-x="55" data-y="158" data-w="128" data-h="40"
+             style="left:55px;top:158px;width:128px;height:40px;background:#1e3a5f;color:#93c5fd;border-radius:9px;font-size:13px;"
+             onclick="selectFromCanvas(event,'btn_settings')">
+          Settings
+          <div class="resize-handle"></div>
+        </div>
+        <div class="cv-widget"
+             data-id="tempLabel" data-name="tempLabel" data-type="LABEL"
+             data-bg="#1a2a1a" data-fg="#86efac" data-font="13" data-x="215" data-y="158" data-w="155" data-h="40"
+             style="left:215px;top:158px;width:155px;height:40px;background:#1a2a1a;color:#86efac;border-radius:9px;font-size:13px;"
+             onclick="selectFromCanvas(event,'tempLabel')">
+          Temp: 22.4°C
+          <div class="resize-handle"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ANNOTATIONS -->
+<div class="annotation-overlay" id="annotations">
+  <div class="callout left" style="left:548px;top:330px;">Props slide in here — white panel, auto-shows on select</div>
+  <div class="callout left" style="left:278px;top:62px;">Bright widget chips — each type its own color</div>
+  <div class="callout top"  style="left:48%;top:60px;">Click canvas widget ↔ highlights in layers tree (bidirectional)</div>
+</div>
+
+<script>
+const WIDGET_DATA = {
+  clock1:       { name:'clock1',       type:'CLOCK', bg:'#2e1065', fg:'#a78bfa', font:30, x:170, y:28,  w:240, h:86 },
+  btn_settings: { name:'btn_settings', type:'BTN',   bg:'#1e3a5f', fg:'#93c5fd', font:13, x:55,  y:158, w:128, h:40 },
+  tempLabel:    { name:'tempLabel',    type:'LABEL',  bg:'#1a2a1a', fg:'#86efac', font:13, x:215, y:158, w:155, h:40 },
+};
+
+let selectedId = 'clock1';
+
+function selectFromLayer(e, id) {
+  e.stopPropagation();
+  selectEntity(id);
+  document.querySelector(`.cv-widget[data-id="${id}"]`)?.scrollIntoView({ behavior:'smooth', block:'nearest' });
+}
+function selectFromCanvas(e, id) {
+  e.stopPropagation();
+  selectEntity(id);
+  document.querySelector(`.item-row[data-id="${id}"]`)?.scrollIntoView({ behavior:'smooth', block:'nearest' });
+}
+function selectEntity(id) {
+  selectedId = id;
+  document.querySelectorAll('.cv-widget').forEach(w => w.classList.remove('selected'));
+  document.querySelector(`.cv-widget[data-id="${id}"]`)?.classList.add('selected');
+  document.querySelectorAll('.item-row').forEach(r => r.classList.remove('selected'));
+  document.querySelector(`.item-row[data-id="${id}"]`)?.classList.add('selected');
+  const d = WIDGET_DATA[id];
+  if (d) populateProps(d);
+  openProps();
+}
+function populateProps(d) {
+  const p = document.getElementById('props-panel');
+  p.querySelector('.props-entity').innerHTML = `${d.name} <span class="entity-type-badge">${d.type}</span>`;
+  const inputs = p.querySelectorAll('.prop-input');
+  inputs[0].value = d.name; inputs[1].value = d.x; inputs[2].value = d.y;
+  inputs[3].value = d.w;   inputs[4].value = d.h; inputs[5].value = d.font;
+  const sw = p.querySelectorAll('.color-swatch'), cv = p.querySelectorAll('.color-val');
+  sw[0].style.background = d.bg; cv[0].textContent = d.bg;
+  sw[1].style.background = d.fg; cv[1].textContent = d.fg;
+}
+function openProps()  { document.getElementById('props-panel').classList.add('open'); }
+function closeProps() {
+  document.getElementById('props-panel').classList.remove('open');
+  document.querySelectorAll('.cv-widget,.item-row').forEach(e => e.classList.remove('selected'));
+  selectedId = null;
+}
+function canvasDeselect(e) {
+  if (!e.target.closest('.cv-widget')) closeProps();
+  closePopover();
+}
+function switchSidebarTab(tab) {
+  ['palette','layers'].forEach(t => {
+    document.getElementById('tab-'+t).classList.toggle('active', t===tab);
+    document.getElementById('panel-'+t)?.classList.toggle('visible', t===tab);
+  });
+  closePopover();
+}
+function toggleScreen(id) {
+  const ch = document.getElementById('children-'+id), cv = document.getElementById('chev-'+id);
+  const hidden = ch.style.display === 'none';
+  ch.style.display = hidden ? '' : 'none';
+  cv.textContent = hidden ? '▼' : '▶';
+}
+function selectPage(e) {
+  document.querySelectorAll('.page-row').forEach(r => r.classList.remove('selected'));
+  e.currentTarget.classList.add('selected');
+}
+function showPopover(e) { e.stopPropagation(); document.getElementById('mini-popover').style.display='block'; }
+function closePopover() { document.getElementById('mini-popover').style.display='none'; }
+
+let sc = 2;
+function addScreenDemo() {
+  sc++;
+  const name = 'screen'+sc, tree = document.getElementById('tree-root');
+  document.querySelectorAll('.screen-row').forEach(r => r.classList.remove('active'));
+  const node = document.createElement('div');
+  node.className = 'screen-node';
+  node.innerHTML = `<div class="screen-row active"><span class="screen-chevron">▼</span><span class="screen-icon">🖥</span><span class="screen-name">${name}</span><span class="screen-badge">1 page</span></div><div><div class="page-list"><div class="page-row selected"><span class="page-icon">📄</span><span class="page-name">page1</span><button class="page-add-btn" style="opacity:1" onclick="showPopover(event)">＋ Widget</button></div></div></div>`;
+  tree.appendChild(node);
+  node.scrollIntoView({ behavior:'smooth' });
+}
+
+setTimeout(() => {
+  const a = document.getElementById('annotations');
+  a.style.transition = 'opacity 1s'; a.style.opacity = '0';
+  setTimeout(() => a.style.display='none', 1000);
+}, 6000);
+</script>
+</body>
+</html>

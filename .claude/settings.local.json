@@ -129,7 +129,15 @@
       "Bash(find /app/esphome1/.esphome/build/esp32-display/.piolibdeps/esp32-display/lvgl/src -name *posix* -o -name *stdio* -o -name lv_fs*)",
       "Bash(grep -v \".o$\")",
       "Bash(/root/.platformio/penv/bin/python3 -m esptool version)",
-      "Bash(ls /app/esphome1/*/bin/esphome)"
+      "Bash(ls /app/esphome1/*/bin/esphome)",
+      "Bash(ulimit -n)",
+      "Read(//proc/sys/fs/**)",
+      "Bash(ulimit -n -H)",
+      "Bash(awk '{print $2}')",
+      "Bash(xargs -r kill -9)",
+      "Bash(awk '$2 ~ /Z/ {print $1}')",
+      "Bash(xargs -r kill -SIGCHLD sleep 1 ps aux)",
+      "Bash(VITE_PORT=3009 bun run dev)"
     ]
   },
   "enableAllProjectMcpServers": true,
