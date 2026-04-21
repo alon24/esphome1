@@ -108,7 +108,9 @@ static lv_obj_t *_make_textarea(lv_obj_t *parent, const char *initial,
   lv_textarea_set_one_line(ta, true);
   lv_textarea_set_text(ta, initial);
   lv_obj_set_style_text_font(ta, &lv_font_montserrat_24, LV_STATE_DEFAULT);
-  lv_obj_set_scroll_dir(ta, LV_DIR_HOR);
+      lv_obj_set_style_pad_top(ta, 4, LV_STATE_DEFAULT);
+    lv_obj_set_style_pad_bottom(ta, 4, LV_STATE_DEFAULT);
+    lv_obj_set_scroll_dir(ta, LV_DIR_HOR);
   lv_obj_clear_flag(ta, LV_OBJ_FLAG_SCROLL_ON_FOCUS);
   lv_obj_add_event_cb(ta, _cb_textarea_focus, LV_EVENT_FOCUSED, nullptr);
   return ta;

@@ -325,6 +325,8 @@ void tab_wifi_create_embedded(lv_obj_t *parent) {
     lv_obj_set_style_border_color(g_cwifi_ssid_ta, lv_color_hex(0x333333), LV_STATE_DEFAULT);
     lv_obj_set_style_border_width(g_cwifi_ssid_ta, 1, LV_STATE_DEFAULT);
     lv_obj_set_style_radius(g_cwifi_ssid_ta, 6, LV_STATE_DEFAULT);
+    lv_obj_set_style_pad_top(g_cwifi_ssid_ta, 4, LV_STATE_DEFAULT);
+    lv_obj_set_style_pad_bottom(g_cwifi_ssid_ta, 4, LV_STATE_DEFAULT);
     lv_obj_set_scroll_dir(g_cwifi_ssid_ta, LV_DIR_HOR);
     lv_obj_clear_flag(g_cwifi_ssid_ta, LV_OBJ_FLAG_SCROLL_ON_FOCUS);
     lv_obj_add_event_cb(g_cwifi_ssid_ta, [](lv_event_t *e) {
@@ -355,6 +357,8 @@ void tab_wifi_create_embedded(lv_obj_t *parent) {
     lv_obj_set_style_border_color(g_cwifi_pass_ta, lv_color_hex(0x333333), LV_STATE_DEFAULT);
     lv_obj_set_style_border_width(g_cwifi_pass_ta, 1, LV_STATE_DEFAULT);
     lv_obj_set_style_radius(g_cwifi_pass_ta, 6, LV_STATE_DEFAULT);
+    lv_obj_set_style_pad_top(g_cwifi_pass_ta, 4, LV_STATE_DEFAULT);
+    lv_obj_set_style_pad_bottom(g_cwifi_pass_ta, 4, LV_STATE_DEFAULT);
     lv_obj_set_scroll_dir(g_cwifi_pass_ta, LV_DIR_HOR);
     lv_obj_clear_flag(g_cwifi_pass_ta, LV_OBJ_FLAG_SCROLL_ON_FOCUS);
     lv_obj_add_event_cb(g_cwifi_pass_ta, [](lv_event_t *e) {
@@ -484,6 +488,8 @@ void tab_wifi_create_embedded(lv_obj_t *parent) {
     lv_obj_set_style_radius(g_cwifi_ap_ssid_ta, 6, 0);
     lv_obj_set_style_border_color(g_cwifi_ap_ssid_ta, lv_color_hex(0x333333), 0);
     lv_obj_set_style_border_width(g_cwifi_ap_ssid_ta, 1, 0);
+    lv_obj_set_style_pad_top(g_cwifi_ap_ssid_ta, 4, LV_STATE_DEFAULT);
+    lv_obj_set_style_pad_bottom(g_cwifi_ap_ssid_ta, 4, LV_STATE_DEFAULT);
     lv_obj_set_scroll_dir(g_cwifi_ap_ssid_ta, LV_DIR_HOR);
     lv_obj_clear_flag(g_cwifi_ap_ssid_ta, LV_OBJ_FLAG_SCROLL_ON_FOCUS);
     lv_obj_add_event_cb(g_cwifi_ap_ssid_ta, [](lv_event_t *e) {
@@ -510,6 +516,8 @@ void tab_wifi_create_embedded(lv_obj_t *parent) {
     lv_obj_set_style_radius(g_cwifi_ap_pass_ta, 6, 0);
     lv_obj_set_style_border_color(g_cwifi_ap_pass_ta, lv_color_hex(0x333333), 0);
     lv_obj_set_style_border_width(g_cwifi_ap_pass_ta, 1, 0);
+    lv_obj_set_style_pad_top(g_cwifi_ap_pass_ta, 4, LV_STATE_DEFAULT);
+    lv_obj_set_style_pad_bottom(g_cwifi_ap_pass_ta, 4, LV_STATE_DEFAULT);
     lv_obj_set_scroll_dir(g_cwifi_ap_pass_ta, LV_DIR_HOR);
     lv_obj_clear_flag(g_cwifi_ap_pass_ta, LV_OBJ_FLAG_SCROLL_ON_FOCUS);
     lv_obj_add_event_cb(g_cwifi_ap_pass_ta, [](lv_event_t *e) {

@@ -137,6 +137,8 @@ static void test_screen_create() {
     lv_obj_set_style_border_color(g_test_ta, lv_color_hex(0x444444), LV_STATE_DEFAULT);
     lv_obj_set_style_border_width(g_test_ta, 1, LV_STATE_DEFAULT);
     lv_obj_set_style_radius(g_test_ta, 6, LV_STATE_DEFAULT);
+    lv_obj_set_style_pad_top(g_test_ta, 4, LV_STATE_DEFAULT);
+    lv_obj_set_style_pad_bottom(g_test_ta, 4, LV_STATE_DEFAULT);
     lv_obj_set_scroll_dir(g_test_ta, LV_DIR_HOR);
     lv_obj_clear_flag(g_test_ta, LV_OBJ_FLAG_SCROLL_ON_FOCUS);
 
