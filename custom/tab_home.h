@@ -1,6 +1,5 @@
 #pragma once
 #include "lvgl.h"
-#include <esp_spiffs.h>
 #include "esp_log.h"
 
 #include "ui_helpers.h"
@@ -109,22 +108,25 @@ void ui_refresh_grid() {
     lv_obj_set_size(scr_cont, lv_pct(100), lv_pct(100));
     g_lv_screen_cache[g_current_screen] = scr_cont;
 
-    // Build the content... (logic for native screens and items remains same)
-
-    // Support direct navigation to native screens as top-level pages
-    if (g_current_screen == "wifi" || g_current_screen == "native-wifi") {
-        tab_wifi_create(scr_cont, lv_screen_active());
-        tab_wifi_on_show();
-        return;
-    }
-    if (g_current_screen == "system" || g_current_screen == "native-system") {
-        tab_settings_create(scr_cont);
-        return;
-    }
-    if (g_current_screen == "sd" || g_current_screen == "native-sd") {
-        tab_sd_create(scr_cont);
-        tab_sd_on_show();
-        return;
+    // Build the content...
+    bool is_native = (g_current_screen == "native-wifi" || g_current_screen == "native-system" || g_current_screen == "native-sd");
+    
+    // Only use native fallbacks if there are NO grid items for this screen
+    if (g_grid_items.empty() || is_native) {
+        if (g_current_screen == "wifi" || g_current_screen == "native-wifi") {
+            tab_wifi_create(scr_cont, lv_screen_active());
+            tab_wifi_on_show();
+            return;
+        }
+        if (g_current_screen == "system" || g_current_screen == "native-system") {
+            tab_settings_create(scr_cont);
+            return;
+        }
+        if (g_current_screen == "sd" || g_current_screen == "native-sd") {
+            tab_sd_create(scr_cont);
+            tab_sd_on_show();
+            return;
+        }
     }
 
     ESP_LOGI("GRID", "Building new screen: %s", g_current_screen.c_str());

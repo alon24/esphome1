@@ -171,6 +171,8 @@ static void dashboard_tick(int h, int m, int s, int dom, int mon, int year, int 
     tab_home_tick(h, m, s, dom, mon, year, dow);
     tab_settings_tick();
     tab_wifi_tick();
+    void tab_wifi_component_tick();
+    tab_wifi_component_tick();
     tab_sd_poll();
 }
 

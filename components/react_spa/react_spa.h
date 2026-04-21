@@ -22,7 +22,7 @@ namespace esphome { namespace react_spa {
 #include <sys/stat.h>
 #include "esp_http_server.h"
 #include "esp_log.h"
-#include "esp_spiffs.h"
+#include "esp_littlefs.h"
 #include "esp_wifi.h"
 #include "esp_netif.h"
 #include "esp_mac.h"
@@ -54,9 +54,9 @@ extern bool sd_card_is_mounted();
 
 namespace react_spa {
 static const char *const TAG = "react_spa";
-static char g_active_app_path[128] = "/spiffs/ultimate.gz";
-static const char *const SPIFFS_BASE = "/spiffs";
-static const char *const ACTIVE_META_PATH = "/spiffs/active_app.txt";
+static char g_active_app_path[128] = "/littlefs/ultimate.gz";
+static const char *const LITTLEFS_BASE = "/littlefs";
+static const char *const ACTIVE_META_PATH = "/littlefs/active_app.txt";
 
 // PSRAM caching for SPA content to avoid bus contention
 static char* g_spa_cache_buf = nullptr;
@@ -338,23 +338,23 @@ class ReactSPAComponent : public Component {
         httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "File too large (max 500KB)");
         return ESP_FAIL;
     }
-    char target_path[128] = "/spiffs/ultimate.gz";
+    char target_path[128] = "/littlefs/ultimate.gz";
     char query[128];
     if (httpd_req_get_url_query_str(req, query, sizeof(query)) == ESP_OK) {
         char name_val[128];
         if (httpd_query_key_value(query, "name", name_val, sizeof(name_val)) == ESP_OK) {
-            snprintf(target_path, sizeof(target_path), "/spiffs/%s", name_val);
+            snprintf(target_path, sizeof(target_path), "/littlefs/%s", name_val);
         }
     }
 
-    // Cleanup old app files to prevent SPIFFS exhaustion
-    DIR *dir = opendir("/spiffs");
+    // Cleanup old app files to prevent LittleFS exhaustion
+    DIR *dir = opendir("/littlefs");
     if (dir) {
         struct dirent *ent;
         while ((ent = readdir(dir)) != NULL) {
             if (strstr(ent->d_name, "app-v") && strstr(ent->d_name, ".gz")) {
                 char old_path[128];
-                snprintf(old_path, sizeof(old_path), "/spiffs/%s", ent->d_name);
+                snprintf(old_path, sizeof(old_path), "/littlefs/%s", ent->d_name);
                 if (strcmp(old_path, target_path) != 0) {
                     ESP_LOGI(TAG, "Cleaning up old app: %s", old_path);
                     remove(old_path);
@@ -504,9 +504,9 @@ class ReactSPAComponent : public Component {
 
   static esp_err_t wifi_file_list_handler(httpd_req_t *req) {
     size_t total = 0, used = 0;
-    esp_spiffs_info(NULL, &total, &used);
+    esp_littlefs_info("littlefs", &total, &used);
     
-    DIR* dir = opendir("/spiffs");
+    DIR* dir = opendir("/littlefs");
     if (!dir) return httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "FS Fail");
     
     char* send_buf = (char*)malloc(4096);
@@ -517,7 +517,7 @@ class ReactSPAComponent : public Component {
     while ((entry = readdir(dir)) != NULL) {
         if (entry->d_type == DT_REG) {
             struct stat st;
-            std::string path = "/spiffs/" + std::string(entry->d_name);
+            std::string path = "/littlefs/" + std::string(entry->d_name);
             int size = 0;
             if (stat(path.c_str(), &st) == 0) size = (int)st.st_size;
             

@@ -33,14 +33,6 @@ async def to_code(config):
             cg.add_library("ESPAsyncTCP", None)
         cg.add_library("ESP Async WebServer", None)
     elif CORE.is_esp32:
-        # Un-exclude SPIFFS so ESP-IDF builds and links it
-        include_builtin_idf_component("spiffs")
-        # Add SPIFFS include path from the ESP-IDF package
-        matches = glob.glob(os.path.expanduser(
-            "~/.platformio/packages/framework-espidf*/components/spiffs/include"
-        ))
-        if not matches:
-             # Fallback or alert - for now just skip to not block dev but plan says raise error
-             pass
-        else:
-            cg.add_build_flag(f"-I{matches[0]}")
+        # We are migrating to LittleFS. 
+        # The esp_littlefs component handles its own flags and sources.
+        pass

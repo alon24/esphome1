@@ -3,18 +3,14 @@
 #include <cstdio>
 #include <cstdlib>
 #include "esp_log.h"
-#include <esp_spiffs.h>
+#include "esp_littlefs.h"
+#include <esp_task_wdt.h>
+#include "esp_attr.h"
 
 // ── SYSTEM SETTINGS PERSISTENCE ─────────────────────────────────────────────
 // Manages simple key-value settings like screensaver enable/disable.
 // Uses RTC memory as a first-tier cache to avoid SPI bus contention.
 // ──────────────────────────────────────────────────────────────────────────────
-
-// Actual state variables (in RTC memory to survive reboots without bus lock)
-// We use 'inline' so they can be defined in the header and shared across TUs.
-// Note: RTC_DATA_ATTR requires special care with inline; if the compiler doesn't support it, 
-// we'll default to regular memory but keep the logic improvements.
-#include "esp_attr.h"
 
 inline RTC_DATA_ATTR bool g_ss_enabled = false; 
 inline RTC_DATA_ATTR bool g_ap_always_on = false;
@@ -23,21 +19,34 @@ inline RTC_DATA_ATTR char g_ap_password[64] = "";
 inline RTC_DATA_ATTR char g_active_screen[64] = "main";
 inline RTC_DATA_ATTR bool g_rtc_init_done = false;
 
-static const char* SYS_SETTINGS_FILE = "/spiffs/system.json";
+static const char* SYS_SETTINGS_FILE = "/littlefs/system.json";
 
 void system_settings_load() {
     if (g_rtc_init_done) return; // Already in RTC memory
 
-    static bool spiffs_init = false;
-    if (!spiffs_init) {
-        esp_vfs_spiffs_conf_t conf = {
-            .base_path = "/spiffs",
-            .partition_label = NULL,
-            .max_files = 10,
-            .format_if_mount_failed = true
+    static bool lfs_init = false;
+    if (!lfs_init) {
+        // Increase watchdog timeout to 20s to allow for LittleFS format if needed
+        esp_task_wdt_config_t twdt_config = {
+            .timeout_ms = 20000,
+            .idle_core_mask = (1 << portNUM_PROCESSORS) - 1,
+            .trigger_panic = true,
         };
-        esp_vfs_spiffs_register(&conf);
-        spiffs_init = true;
+        esp_task_wdt_reconfigure(&twdt_config);
+
+        esp_vfs_littlefs_conf_t conf = {
+            .base_path = "/littlefs",
+            .partition_label = "littlefs",
+            .format_if_mount_failed = true,
+            .dont_mount = false,
+        };
+        esp_vfs_littlefs_register(&conf);
+        
+        // Restore watchdog to a safer value (e.g., 5s)
+        twdt_config.timeout_ms = 5000;
+        esp_task_wdt_reconfigure(&twdt_config);
+        
+        lfs_init = true;
     }
 
     FILE* f = fopen(SYS_SETTINGS_FILE, "r");

@@ -4,6 +4,11 @@
 #include <cstdlib>
 #include "esp_wifi.h"
 
+struct ScanResult {
+  char ssid[33];
+  int8_t rssi;
+};
+
 // Returns a color hex based on RSSI strength
 static uint32_t _rssi_color(int8_t rssi) {
   if (rssi > -55) return 0x00cc44;  // excellent — green

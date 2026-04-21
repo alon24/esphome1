@@ -4,6 +4,7 @@
 #include "wifi_setup.h"
 #include <cstdio>
 #include <cstring>
+#include <vector>
 
 // ── WIFI TAB ──────────────────────────────────────────────────────────────────
 // Content area: 800×352 (parent), plus root (800×480) for floating keyboard.
@@ -30,6 +31,10 @@ static lv_obj_t *g_wifi_ap_sw      = nullptr;  // AP Mode switch
 static lv_obj_t *g_wifi_ap_ssid_ta = nullptr;  // AP SSID
 static lv_obj_t *g_wifi_ap_pass_ta = nullptr;  // AP Password
 static lv_obj_t *g_wifi_ap_ip_lbl   = nullptr;  // AP IP Status
+static volatile bool g_wifi_scanning  = false;
+static volatile bool g_wifi_scan_done = false;
+static TaskHandle_t g_wifi_scan_task_handle = nullptr;
+static std::vector<ScanResult> g_wifi_scan_results; // shared results for tab_wifi.h
 
 static void _wifi_on_delete(lv_event_t *e) {
     if (g_wifi_keyboard) {
@@ -67,118 +72,96 @@ static void _wifi_kb_hide() {
 }
 
 // ── Network list population (own version using lv_obj_create, not lv_btn) ────
-static void _wifi_populate_list(lv_obj_t *list, lv_obj_t *ssid_ta) {
-    ESP_LOGI("WIFI", "Starting scan...");
+static void _wifi_scan_task(void *pvParameters) {
+    ESP_LOGI("WIFI", "Background scan task started...");
     wifi_scan_config_t cfg = {};
     cfg.show_hidden = 0;
-    esp_err_t err = esp_wifi_scan_start(&cfg, true);   // blocking ~2-3 s
-    if (err != ESP_OK) {
-        ESP_LOGE("WIFI", "esp_wifi_scan_start failed: %d", err);
-        return;
+    esp_err_t err = esp_wifi_scan_start(&cfg, true);
+    if (err == ESP_OK) {
+        uint16_t count = 0;
+        esp_wifi_scan_get_ap_num(&count);
+        if (count > 24) count = 24;
+        wifi_ap_record_t *recs = (wifi_ap_record_t *)malloc(count * sizeof(wifi_ap_record_t));
+        if (recs) {
+            if (esp_wifi_scan_get_ap_records(&count, recs) == ESP_OK) {
+                g_wifi_scan_results.clear();
+                for (int i = 0; i < (int)count; i++) {
+                    if (recs[i].ssid[0] == '\0') continue;
+                    ScanResult rs;
+                    strncpy(rs.ssid, (char*)recs[i].ssid, 32);
+                    rs.ssid[32] = '\0';
+                    rs.rssi = recs[i].rssi;
+                    g_wifi_scan_results.push_back(rs);
+                }
+            }
+            free(recs);
+        }
+    } else {
+        ESP_LOGE("WIFI", "Background scan failed: %d", err);
     }
-    ESP_LOGI("WIFI", "Scan finished.");
+    g_wifi_scanning = false;
+    g_wifi_scan_done = true;
+    g_wifi_scan_task_handle = nullptr;
+    vTaskDelete(NULL);
+}
 
-    uint16_t count = 0;
-    esp_wifi_scan_get_ap_num(&count);
-    ESP_LOGI("WIFI", "Found %d networks.", count);
-    if (count > 24) count = 24;
-
-    wifi_ap_record_t *recs = (wifi_ap_record_t *)malloc(count * sizeof(wifi_ap_record_t));
-    if (!recs) {
-        ESP_LOGE("WIFI", "Failed to allocate memory for scan records!");
-        return;
-    }
-    esp_wifi_scan_get_ap_records(&count, recs);
-
-    for (int i = 0; i < (int)count; i++) {
-        ESP_LOGI("WIFI", "  [%d] SSID: %s, RSSI: %d", i, (char*)recs[i].ssid, recs[i].rssi);
-    }
-
+static void _wifi_populate_list_ui(lv_obj_t *list, lv_obj_t *ssid_ta) {
+    if (!list) return;
     lv_obj_clean(list);
-
     const lv_coord_t ROW_H = 52;
     const lv_coord_t GAP   = 2;
     lv_coord_t y = 0;
 
-    for (int i = 0; i < (int)count; i++) {
-        if (recs[i].ssid[0] == '\0') continue;
-
-        // Row container
+    for (const auto &res : g_wifi_scan_results) {
         lv_obj_t *row = lv_obj_create(list);
         lv_obj_set_pos(row, 0, y);
         lv_obj_set_size(row, 356, ROW_H);
         lv_obj_set_style_bg_color(row, lv_color_hex(TAB_WIFI_ROW_BG), LV_STATE_DEFAULT);
-        lv_obj_set_style_bg_color(row, lv_color_hex(TAB_WIFI_ROW_BG), LV_STATE_PRESSED);
         lv_obj_set_style_bg_opa(row, LV_OPA_COVER, LV_STATE_DEFAULT);
-        lv_obj_set_style_bg_opa(row, LV_OPA_COVER, LV_STATE_PRESSED);
         lv_obj_set_style_radius(row, 4, LV_STATE_DEFAULT);
         lv_obj_set_style_pad_all(row, 0, LV_STATE_DEFAULT);
         _panel_reset(row);
         lv_obj_clear_flag(row, LV_OBJ_FLAG_SCROLLABLE);
         lv_obj_add_flag(row, LV_OBJ_FLAG_CLICKABLE);
 
-        // Signal bars (5 vertical bars)
-        int bars = _rssi_bars(recs[i].rssi);
-        uint32_t col = _rssi_color(recs[i].rssi);
-
+        int bars = _rssi_bars(res.rssi);
+        uint32_t col = _rssi_color(res.rssi);
         for (int b = 0; b < 5; b++) {
             lv_coord_t bh = 6 + b * 7;
             lv_obj_t *bar = lv_obj_create(row);
             lv_obj_set_size(bar, 5, bh);
             lv_obj_set_pos(bar, 8 + b * 8, ROW_H - 8 - bh);
-            lv_obj_set_style_bg_color(bar,
-                b < bars ? lv_color_hex(col) : lv_color_hex(0x333333),
-                LV_STATE_DEFAULT);
+            lv_obj_set_style_bg_color(bar, b < bars ? lv_color_hex(col) : lv_color_hex(0x333333), LV_STATE_DEFAULT);
             lv_obj_set_style_bg_opa(bar, LV_OPA_COVER, LV_STATE_DEFAULT);
-            lv_obj_set_style_radius(bar, 1, LV_STATE_DEFAULT);
-            lv_obj_clear_flag(bar, LV_OBJ_FLAG_CLICKABLE);
             _panel_reset(bar);
+            lv_obj_clear_flag(bar, LV_OBJ_FLAG_CLICKABLE);
         }
 
-        // SSID label
         lv_obj_t *ssid_lbl = lv_label_create(row);
-        char sbuf[64];
-        snprintf(sbuf, sizeof(sbuf), "%s", (char *)recs[i].ssid);
-        lv_label_set_text(ssid_lbl, sbuf);
+        lv_label_set_text(ssid_lbl, res.ssid);
         lv_obj_set_style_text_color(ssid_lbl, lv_color_hex(0xdddddd), LV_STATE_DEFAULT);
         lv_obj_set_style_text_font(ssid_lbl, &lv_font_montserrat_18, LV_STATE_DEFAULT);
-        _lbl_bg(ssid_lbl, TAB_WIFI_ROW_BG);
         lv_obj_set_pos(ssid_lbl, 52, 8);
         lv_obj_set_width(ssid_lbl, 240);
         lv_label_set_long_mode(ssid_lbl, LV_LABEL_LONG_DOT);
-        lv_obj_clear_flag(ssid_lbl, LV_OBJ_FLAG_CLICKABLE);
 
-        // dBm label
         lv_obj_t *dbm_lbl = lv_label_create(row);
-        char dbuf[12];
-        snprintf(dbuf, sizeof(dbuf), "%d", (int)recs[i].rssi);
+        char dbuf[16]; snprintf(dbuf, sizeof(dbuf), "%d dBm", (int)res.rssi);
         lv_label_set_text(dbm_lbl, dbuf);
         lv_obj_set_style_text_color(dbm_lbl, lv_color_hex(0x666666), LV_STATE_DEFAULT);
-        lv_obj_set_style_text_font(dbm_lbl, &lv_font_montserrat_14, LV_STATE_DEFAULT);
-        _lbl_bg(dbm_lbl, TAB_WIFI_ROW_BG);
         lv_obj_set_pos(dbm_lbl, 52, 30);
-        lv_obj_clear_flag(dbm_lbl, LV_OBJ_FLAG_CLICKABLE);
 
-        // Click: copy SSID to ssid_ta
         lv_obj_set_user_data(row, ssid_ta);
         lv_obj_add_event_cb(row, [](lv_event_t *e) {
-            lv_obj_t *r  = (lv_obj_t *)lv_event_get_target(e);
+            lv_obj_t *r = (lv_obj_t *)lv_event_get_target(e);
             lv_obj_t *ta = (lv_obj_t *)lv_obj_get_user_data(r);
-            if (!ta) return;
-            // ssid_lbl is at child index 5 (5 bars + ssid_lbl)
             lv_obj_t *sl = lv_obj_get_child(r, 5);
-            if (!sl) return;
-            lv_textarea_set_text(ta, lv_label_get_text(sl));
-            // update status
-            if (g_wifi_status_lbl)
-                lv_label_set_text(g_wifi_status_lbl, "SSID selected - enter password");
+            if (ta && sl) lv_textarea_set_text(ta, lv_label_get_text(sl));
+            if (g_wifi_status_lbl) lv_label_set_text(g_wifi_status_lbl, "SSID Selected");
         }, LV_EVENT_CLICKED, nullptr);
 
         y += ROW_H + GAP;
     }
-
-    free(recs);
-    ESP_LOGI("WIFI", "List populated.");
 }
 
 // ── Button helper ─────────────────────────────────────────────────────────────
@@ -289,6 +272,8 @@ void tab_wifi_create(lv_obj_t *parent, lv_obj_t *root) {
     lv_obj_set_style_border_color(g_wifi_ssid_ta, lv_color_hex(0x333333), LV_STATE_DEFAULT);
     lv_obj_set_style_border_width(g_wifi_ssid_ta, 1, LV_STATE_DEFAULT);
     lv_obj_set_style_radius(g_wifi_ssid_ta, 6, LV_STATE_DEFAULT);
+    lv_obj_set_scroll_dir(g_wifi_ssid_ta, LV_DIR_HOR);
+    lv_obj_clear_flag(g_wifi_ssid_ta, LV_OBJ_FLAG_SCROLL_ON_FOCUS);
     // LV_EVENT_ALL + FOCUSED/DEFOCUSED — correct pattern per manufacturer example.
     // Our cb is registered FIRST; on FOCUSED it calls lv_keyboard_set_textarea which
     // adds lv_keyboard_def_event_cb. On DEFOCUSED, our cb fires first and calls
@@ -324,6 +309,8 @@ void tab_wifi_create(lv_obj_t *parent, lv_obj_t *root) {
     lv_obj_set_style_border_color(g_wifi_pass_ta, lv_color_hex(0x333333), LV_STATE_DEFAULT);
     lv_obj_set_style_border_width(g_wifi_pass_ta, 1, LV_STATE_DEFAULT);
     lv_obj_set_style_radius(g_wifi_pass_ta, 6, LV_STATE_DEFAULT);
+    lv_obj_set_scroll_dir(g_wifi_pass_ta, LV_DIR_HOR);
+    lv_obj_clear_flag(g_wifi_pass_ta, LV_OBJ_FLAG_SCROLL_ON_FOCUS);
     lv_obj_add_event_cb(g_wifi_pass_ta, [](lv_event_t *e) {
         lv_event_code_t code = lv_event_get_code(e);
         if (code == LV_EVENT_FOCUSED || code == LV_EVENT_CLICKED) _wifi_kb_show(g_wifi_pass_ta);
@@ -365,15 +352,15 @@ void tab_wifi_create(lv_obj_t *parent, lv_obj_t *root) {
     g_wifi_scan_lbl = lv_obj_get_child(g_wifi_scan_btn, 0);
 
     lv_obj_add_event_cb(g_wifi_scan_btn, [](lv_event_t *) {
-        ESP_LOGI("WIFI", "Scan button clicked!");
+        if (g_wifi_scanning) return;
         _wifi_kb_hide();
+        
         if (g_wifi_scan_lbl) lv_label_set_text(g_wifi_scan_lbl, "SCANNING...");
-        lv_refr_now(NULL);  // show "SCANNING..." before blocking
         if (g_wifi_status_lbl) lv_label_set_text(g_wifi_status_lbl, "Scanning for networks...");
-        lv_refr_now(NULL);
-        _wifi_populate_list(g_wifi_list, g_wifi_ssid_ta);
-        if (g_wifi_scan_lbl) lv_label_set_text(g_wifi_scan_lbl, "SCAN");
-        if (g_wifi_status_lbl) lv_label_set_text(g_wifi_status_lbl, "Tap a network to select");
+        
+        g_wifi_scanning = true;
+        g_wifi_scan_done = false;
+        xTaskCreate(_wifi_scan_task, "wifi_full_scan", 4096, nullptr, 5, &g_wifi_scan_task_handle);
     }, LV_EVENT_CLICKED, nullptr);
 
     lv_obj_add_event_cb(conn_btn, [](lv_event_t *) {
@@ -440,6 +427,8 @@ void tab_wifi_create(lv_obj_t *parent, lv_obj_t *root) {
     lv_obj_set_style_text_color(g_wifi_ap_ssid_ta, lv_color_hex(0xffffff), 0);
     lv_obj_set_style_text_font(g_wifi_ap_ssid_ta, &lv_font_montserrat_18, 0);
     lv_obj_set_style_radius(g_wifi_ap_ssid_ta, 6, 0);
+    lv_obj_set_scroll_dir(g_wifi_ap_ssid_ta, LV_DIR_HOR);
+    lv_obj_clear_flag(g_wifi_ap_ssid_ta, LV_OBJ_FLAG_SCROLL_ON_FOCUS);
     lv_obj_add_event_cb(g_wifi_ap_ssid_ta, [](lv_event_t *e) {
         lv_event_code_t code = lv_event_get_code(e);
         if (code == LV_EVENT_FOCUSED || code == LV_EVENT_CLICKED) _wifi_kb_show(g_wifi_ap_ssid_ta);
@@ -463,6 +452,8 @@ void tab_wifi_create(lv_obj_t *parent, lv_obj_t *root) {
     lv_obj_set_style_text_color(g_wifi_ap_pass_ta, lv_color_hex(0xffffff), 0);
     lv_obj_set_style_text_font(g_wifi_ap_pass_ta, &lv_font_montserrat_18, 0);
     lv_obj_set_style_radius(g_wifi_ap_pass_ta, 6, 0);
+    lv_obj_set_scroll_dir(g_wifi_ap_pass_ta, LV_DIR_HOR);
+    lv_obj_clear_flag(g_wifi_ap_pass_ta, LV_OBJ_FLAG_SCROLL_ON_FOCUS);
     lv_obj_add_event_cb(g_wifi_ap_pass_ta, [](lv_event_t *e) {
         lv_event_code_t code = lv_event_get_code(e);
         if (code == LV_EVENT_FOCUSED || code == LV_EVENT_CLICKED) _wifi_kb_show(g_wifi_ap_pass_ta);
@@ -536,6 +527,13 @@ void tab_wifi_on_show() {
 
 // Called every second from maindashboard
 static void tab_wifi_tick() {
+    if (g_wifi_scan_done) {
+        g_wifi_scan_done = false;
+        _wifi_populate_list_ui(g_wifi_list, g_wifi_ssid_ta);
+        if (g_wifi_scan_lbl) lv_label_set_text(g_wifi_scan_lbl, "SCAN");
+        if (g_wifi_status_lbl) lv_label_set_text(g_wifi_status_lbl, "Scan finished.");
+    }
+
     if (g_wifi_ap_ip_lbl) {
         esp_netif_ip_info_t ap_ip_info;
         esp_netif_t *ap_netif = esp_netif_get_handle_from_ifkey("WIFI_AP_DEF");

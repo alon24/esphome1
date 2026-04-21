@@ -34,15 +34,19 @@
 | `lv_obj_get_style_bg_color(obj, 0)` | second arg must be `LV_PART_MAIN` not `int 0` | tab_sd_embedded |
 | `lv_disp_drv_t` display driver | `lv_display_t` architecture | maindashboard |
 
-### Post-Migration Summary (April 20, 2026)
+### Post-Migration Summary (April 20-21, 2026)
 - **Stability**: Resolved Core 0/1 race condition by deferring LVGL operations from HTTP handlers to the main `loopTask`.
 - **Memory**: Fixed stack overflow crash by increasing `loop_task_stack_size` to 32KB.
 - **Performance**: Optimized I2C to 400kHz and normalized display update to 16ms (60fps).
 - **Core 1 vs Core 0**: All UI builds and deletions are now strictly thread-local to Core 1.
+- **UI UX (Web)**: Standardized React designer inputs (`s.input`) with `user-scalable=no` and fixed padding defaults to eradicate input-bouncing layout jitter.
+- **UI UX (Hardware)**: Eradicated input 'jumping' on the physical hardware by clearing LVGL's `LV_OBJ_FLAG_SCROLL_ON_FOCUS` and strictly enforcing `LV_DIR_HOR` across singe-line text widgets.
+- **Embedded WiFi**: Restored the original, functional, split-pane `tab_wifi_embedded.h` visual design while permanently baking in the newly developed AP-mode tools and logic updates.
 
 ### Todos & Verification
 - [x] Compilation and Linking successful (firmware.bin generated)
 - [x] Verify `tab_wifi_embedded.h` password eye toggle works (refactored for LVGL 9)
+- [x] Eliminate bouncing input jitter and stabilize LVGL scrolling properties.
 - [x] Run 30-minute stability test after successful flash
 - [x] Resolve "Stuck at Syncing" / httpd crash (LoadProhibited) - **FIXED via Deferral**
 

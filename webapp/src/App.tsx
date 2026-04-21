@@ -1371,7 +1371,7 @@ function GridTab({ isMobile, width, wifiStatus, onWifiUpdate, onSettingsUpdate }
 								{["roller", "dropdown"].includes(selectedItem.type) && (
 									<div style={{ background: "#f0fdf4", padding: "12px", borderRadius: "10px", border: "1px solid #bbf7d0" }}>
 										<label style={{...s.formLabel, color: "#16a34a"}}>OPTIONS (NEW LINE SEP)</label>
-										<textarea style={{...s.input, height: "80px", fontSize: "12px"}} placeholder="Option 1\nOption 2\nOption 3" value={selectedItem.options || ""} onChange={e => updateItem(selectedEntity.pageId!, selectedItem.id, {options: e.target.value})} />
+										<textarea style={{...s.input, height: "80px", fontSize: "12px", padding: "12px 16px"}} placeholder="Option 1\nOption 2\nOption 3" value={selectedItem.options || ""} onChange={e => updateItem(selectedEntity.pageId!, selectedItem.id, {options: e.target.value})} />
 									</div>
 								)}
 
@@ -1672,7 +1672,7 @@ const s: Record<string, React.CSSProperties> = {
 	cardTitle: { fontSize: "13px", fontWeight: 900, color: "#64748b", textTransform: "uppercase", letterSpacing: "2.5px" }, 
 	formGroup: { display: "flex", flexDirection: "column", gap: "10px" },
 	formLabel: { fontSize: "12px", fontWeight: 900, color: "#94a3b8", display: "block" }, 
-	input: { padding: "16px", background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: "14px", color: "#1e293b", fontSize: "15px", outline: "none", transition: "0.2s" },
+	input: { width: "100%", height: "48px", padding: "0 16px", background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: "14px", color: "#1e293b", fontSize: "15px", outline: "none", transition: "border-color 0.2s, box-shadow 0.2s" },
     addPageBtn: { background: "rgba(255,255,255,0.05)", border: "2px dashed #e2e8f0", borderRadius: "20px", color: "#64748b", fontWeight: 900, fontSize: "14px", cursor: "pointer", transition: "0.2s", display: "flex", alignItems: "center", justifyContent: "center", gap: "12px" },
     miniDelBtn: { background: "rgba(244, 63, 94, 0.15)", border: "1px solid rgba(244, 63, 94, 0.3)", color: "#f43f5e", width: "24px", height: "24px", borderRadius: "6px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "12px", fontWeight: 900, cursor: "pointer", transition: "0.2s" }
 };

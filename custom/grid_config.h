@@ -3,7 +3,6 @@
 #include <string>
 #include <map>
 #include <ArduinoJson.h>
-#include <esp_spiffs.h>
 #include "esp_log.h"
 #include "system_settings.h"
 
@@ -54,9 +53,9 @@ static std::string g_grid_clear_screen = "";
 inline std::string get_screen_path(const std::string& name) {
     std::string n = name;
     for (auto & c : n) c = tolower(c);
-    if (n == "main") return "/spiffs/grid.json";
-    if (n.compare(0, 4, "scr_") == 0) return "/spiffs/" + n + ".json";
-    return "/spiffs/scr_" + n + ".json";
+    if (n == "main") return "/littlefs/grid.json";
+    if (n.compare(0, 4, "scr_") == 0) return "/littlefs/" + n + ".json";
+    return "/littlefs/scr_" + n + ".json";
 }
 
 void ui_refresh_grid();
@@ -99,9 +98,9 @@ static void parse_grid_item(JsonObject eObj, GridItem& it) {
 }
 
 void grid_panels_load() {
-    FILE* f = fopen("/spiffs/panels.json", "r");
+    FILE* f = fopen("/littlefs/panels.json", "r");
     if (!f) {
-        ESP_LOGW("GRID", "[PANELS] panels.json not found on SPIFFS");
+        ESP_LOGW("GRID", "[PANELS] panels.json not found on LittleFS");
         return;
     }
     fseek(f, 0, SEEK_END);
@@ -155,18 +154,8 @@ void grid_config_load(const char* name, bool force = false) {
         g_current_screen = g_active_screen;
     }
     
-    // Ensure SPIFFS is mounted at least once
-    static bool spiffs_init = false;
-    if (!spiffs_init) {
-        esp_vfs_spiffs_conf_t conf = {
-            .base_path = "/spiffs",
-            .partition_label = NULL,
-            .max_files = 10,
-            .format_if_mount_failed = true
-        };
-        esp_vfs_spiffs_register(&conf);
-        spiffs_init = true;
-    }
+    // Ensure LittleFS is mounted via system_settings
+    system_settings_load();
 
     // Load panels first!
     grid_panels_load();
@@ -248,7 +237,7 @@ void ui_navigate_to(const char* name) {
 }
 
 void grid_panels_save(const char* json_str) {
-    FILE* f = fopen("/spiffs/panels.json", "w");
+    FILE* f = fopen("/littlefs/panels.json", "w");
     if (f) {
         fputs(json_str, f);
         fclose(f);
@@ -264,7 +253,7 @@ void grid_list_screens(char* out, size_t max_len) {
     JsonArray arr = doc["screens"].to<JsonArray>();
     
     // 5.2 Real screen listing
-    DIR *dir = opendir("/spiffs");
+    DIR *dir = opendir("/littlefs");
     if (dir) {
         struct dirent *e;
         while ((e = readdir(dir)) != nullptr) {
