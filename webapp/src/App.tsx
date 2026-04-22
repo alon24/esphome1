@@ -202,6 +202,23 @@ function App({ isMobile }: { isMobile: boolean }) {
 		return () => clearInterval(t);
 	}, [refreshWifi]);
 
+	const [propsLocation, setPropsLocation] = useState<'left' | 'right'>(() => {
+        return (localStorage.getItem("ds_props_location") as 'left' | 'right') || 'left';
+    });
+
+    useEffect(() => {
+        localStorage.setItem("ds_props_location", propsLocation);
+    }, [propsLocation]);
+
+	const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+        return (localStorage.getItem("ds_theme") as 'light' | 'dark') || 'light';
+    });
+
+    useEffect(() => {
+        localStorage.setItem("ds_theme", theme);
+        document.documentElement.setAttribute('data-theme', theme);
+    }, [theme]);
+
 	const handleAPToggle = async (active?: boolean) => {
 		const newState = active ?? !status?.ap_active;
 		const success = await API.updateSettings({ active: newState, always_on: status?.ap_always_on || false });
@@ -219,10 +236,14 @@ function App({ isMobile }: { isMobile: boolean }) {
                 remoteIp={remoteIp} 
                 setRemoteIp={setRemoteIp} 
                 isMobile={isMobile} 
+                propsLocation={propsLocation}
+                setPropsLocation={setPropsLocation}
+                theme={theme}
+                setTheme={setTheme}
             />
 
 			<main style={{ flex: 1, overflow: isMobile ? "hidden" : "auto", position: "relative" }}>
-				{activeTab === "grid" ? <GridTab isMobile={isMobile} width={width} wifiStatus={status} onWifiUpdate={refreshWifi} onSettingsUpdate={handleAPToggle} remoteIp={remoteIp} setRemoteIp={setRemoteIp} /> :
+				{activeTab === "grid" ? <GridTab isMobile={isMobile} width={width} wifiStatus={status} onWifiUpdate={refreshWifi} onSettingsUpdate={handleAPToggle} remoteIp={remoteIp} setRemoteIp={setRemoteIp} propsLocation={propsLocation} setPropsLocation={setPropsLocation} theme={theme} setTheme={setTheme} /> :
 				 activeTab === "mirror" ? <MirrorTab /> :
 				 activeTab === "logs" ? <LogsTab isMobile={isMobile} /> :
 				 activeTab === "wifi" ? <WifiTab status={status} onRefresh={refreshWifi} onAPToggle={handleAPToggle} /> :
@@ -252,7 +273,7 @@ function App({ isMobile }: { isMobile: boolean }) {
 
 // --- GRID TAB (BUILDER) ---
 
-function GridTab({ isMobile, width, wifiStatus, onWifiUpdate, onSettingsUpdate, remoteIp, setRemoteIp }: { isMobile: boolean, width: number, wifiStatus: WifiStatus, onWifiUpdate: () => void, onSettingsUpdate: (active?: boolean) => void, remoteIp: string, setRemoteIp: (ip: string) => void }) {
+function GridTab({ isMobile, width, wifiStatus, onWifiUpdate, onSettingsUpdate, remoteIp, setRemoteIp, propsLocation, setPropsLocation, theme, setTheme }: { isMobile: boolean, width: number, wifiStatus: WifiStatus, onWifiUpdate: () => void, onSettingsUpdate: (active?: boolean) => void, remoteIp: string, setRemoteIp: (ip: string) => void, propsLocation: 'left' | 'right', setPropsLocation: (loc: 'left' | 'right') => void, theme: 'light' | 'dark', setTheme: (t: 'light' | 'dark') => void }) {
 	const [project, setProject] = useState<Project>(() => {
 		const VERSION = "2026.4"; // 6.1 Version Guard
 		const savedVersion = localStorage.getItem("ds_project_version");
@@ -275,9 +296,7 @@ function GridTab({ isMobile, width, wifiStatus, onWifiUpdate, onSettingsUpdate, 
 	});
 	const [activeScreenId, setActiveScreenId] = useState<string>("main");
 	const [sidebarTab, setSidebarTab] = useState<'palette' | 'layers'>('layers');
-	const [selections, setSelections] = useState<Record<string, { type: 'screen' | 'page' | 'item' | 'panel' | 'component', id: string, pageId?: string } | null>>({
-		main: { type: 'screen', id: 'main' }
-	});
+	const [selections, setSelections] = useState<Record<string, { type: 'screen' | 'page' | 'item' | 'panel' | 'component', id: string, pageId?: string } | null>>({});
 	const selectedEntity = selections[activeScreenId] || null;
 
 	const setSelectedEntity = useCallback((ent: { type: 'screen' | 'page' | 'item' | 'panel' | 'component', id: string, pageId?: string } | null, screenId?: string, skipTabSwitch: boolean = false) => {
@@ -286,20 +305,14 @@ function GridTab({ isMobile, width, wifiStatus, onWifiUpdate, onSettingsUpdate, 
 			const scr = project.screens.find(s => s.id === ent.id);
 			if (scr?.pages[0]) {
                 const pageEnt = { type: 'page' as const, id: scr.pages[0].id };
-				setSelections(prev => {
-                    const next = { ...prev, [ent.id]: pageEnt };
-                    return next;
-                });
+				setSelections(prev => ({ ...prev, [ent.id]: pageEnt }));
 				return;
 			}
 		}
 		if (!skipTabSwitch && (ent?.type === 'item' || ent?.type === 'page')) {
 			setSidebarTab('layers');
 		}
-		setSelections(prev => {
-            const next = { ...prev, [targetScreenId]: ent };
-            return next;
-        });
+		setSelections(prev => ({ ...prev, [targetScreenId]: ent }));
 	}, [activeScreenId, project.screens]);
 
 	const addPage = (screenId: string, x: number, y: number) => {
@@ -358,13 +371,24 @@ function GridTab({ isMobile, width, wifiStatus, onWifiUpdate, onSettingsUpdate, 
 	
 	const updateProject = (patch: Partial<Project>) => setProject(prev => ({ ...prev, ...patch }));
 	const updateScreen = (id: string, patch: Partial<Screen>) => setProject(prev => ({ ...prev, screens: prev.screens.map(s => s.id === id ? { ...s, ...patch } : s) }));
+	const addScreen = () => {
+		const newScreen: Screen = {
+			id: `scr_${Math.random().toString(36).substr(2, 5)}`,
+			name: `Screen ${project.screens.length + 1}`,
+			pages: [{ id: `p${Math.random().toString(36).substr(2, 5)}`, name: "Page 1", items: [], x: 0, y: 0 }]
+		};
+		setProject(prev => ({ ...prev, screens: [...prev.screens, newScreen] }));
+		setActiveScreenId(newScreen.id);
+		setSelectedEntity({ type: 'screen', id: newScreen.id }, newScreen.id);
+	};
+
 	const removeScreen = (id: string) => {
 		if (id === "main") return;
 		setProject(prev => ({ ...prev, screens: prev.screens.filter(s => s.id !== id) }));
 		setActiveScreenId("main");
 	};
 
-	const addPanel = () => {
+	const addPanel = (override?: Partial<Panel>) => {
 		const newPanel: Panel = {
 			id: `pan_${Math.random().toString(36).substr(2, 5)}`,
 			name: `Navigation ${project.panels.length+1}`,
@@ -372,7 +396,8 @@ function GridTab({ isMobile, width, wifiStatus, onWifiUpdate, onSettingsUpdate, 
 			height: 480,
 			bg: 0x4f46e5,
 			itemBg: 0x6366f1,
-			elements: []
+			elements: [],
+            ...override
 		};
 		setProject(prev => ({ ...prev, panels: [...prev.panels, newPanel] }));
 		setSelectedEntity({ type: 'panel', id: newPanel.id });
@@ -438,7 +463,27 @@ function GridTab({ isMobile, width, wifiStatus, onWifiUpdate, onSettingsUpdate, 
 
 	const addItem = useCallback((type: ElementType, pageId: string, parentId?: string, panelId?: string, forceX?: number, forceY?: number, itemOverride?: Partial<GridItem>, skipTabSwitch: boolean = false) => {
 		const newId = `${type}_${Math.random().toString(36).substr(2, 5)}`;
-		const newItem: GridItem = { id: newId, name: `New ${type}`, type, x: forceX ?? 20, y: forceY ?? 20, width: type === 'panel-ref' ? 160 : 120, height: type === 'panel-ref' ? 416 : 40, textColor: 0xffffff, color: 0x4f46e5, value: 50, min: 0, max: 100, options: "Item 1\nItem 2\nItem 3", borderWidth: 0, radius: 0, panelId, ...itemOverride };
+		const isMenu = type === 'menu-item' || type === 'nav-item';
+		const newItem: GridItem = { 
+            id: newId, 
+            name: isMenu ? `Menu Item ${Math.floor(Math.random()*100)}` : `New ${type}`, 
+            type, 
+            x: forceX ?? (type === 'panel-ref' ? 0 : 20), 
+            y: forceY ?? (type === 'panel-ref' ? 0 : 20), 
+            width: type === 'panel-ref' ? 160 : (isMenu ? 160 : 120), 
+            height: type === 'panel-ref' ? 480 : 40, 
+            textColor: 0xffffff, 
+            color: isMenu ? 0x2d2d3f : 0x4f46e5, 
+            value: 50, 
+            min: 0, 
+            max: 100, 
+            options: "Item 1\nItem 2\nItem 3", 
+            borderWidth: 0, 
+            radius: type === 'panel-ref' ? 0 : 8, 
+            panelId, 
+            fontSize: isMenu ? 13 : 10,
+            ...itemOverride 
+        };
 		
 		if (pageId === 'panel' && editingPanel) {
 			setProject(prev => ({
@@ -470,10 +515,11 @@ function GridTab({ isMobile, width, wifiStatus, onWifiUpdate, onSettingsUpdate, 
 	}, [editingPanel, setSelectedEntity]);
 
 	const updateItem = useCallback((pageId: string, id: string, patch: Partial<GridItem>) => {
-		if (pageId === 'panel' && editingPanel) {
+		const targetPanel = project.panels.find(p => p.id === pageId);
+		if (targetPanel) {
 			setProject(prev => ({
 				...prev,
-				panels: prev.panels.map(p => p.id === editingPanel.id ? { ...p, elements: p.elements.map(e => e.id === id ? { ...e, ...patch } : e) } : p)
+				panels: prev.panels.map(p => p.id === pageId ? { ...p, elements: p.elements.map(e => e.id === id ? { ...e, ...patch } : e) } : p)
 			}));
 			return;
 		}
@@ -491,21 +537,22 @@ function GridTab({ isMobile, width, wifiStatus, onWifiUpdate, onSettingsUpdate, 
 				})
 			}))
 		}));
-	}, [editingPanel, applyRecursive]);
+	}, [project.panels, applyRecursive]);
 
 	const removeItem = useCallback((pageId: string, id: string) => {
 		let siblingToSelect: any = null;
 		
-		if (pageId === 'panel' && editingPanel) {
-			const idx = editingPanel.elements.findIndex(e => e.id === id);
+		const targetPanel = project.panels.find(p => p.id === pageId);
+		if (targetPanel) {
+			const idx = targetPanel.elements.findIndex(e => e.id === id);
 			if (idx !== -1) {
-				const sib = editingPanel.elements[idx + 1] || editingPanel.elements[idx - 1];
-				if (sib) siblingToSelect = { type: 'item', id: sib.id, pageId: 'panel' };
-				else siblingToSelect = { type: 'panel', id: editingPanel.id };
+				const sib = targetPanel.elements[idx + 1] || targetPanel.elements[idx - 1];
+				if (sib) siblingToSelect = { type: 'item', id: sib.id, pageId };
+				else siblingToSelect = { type: 'panel', id: targetPanel.id };
 			}
 			setProject(prev => ({
 				...prev,
-				panels: prev.panels.map(p => p.id === editingPanel.id ? { ...p, elements: p.elements.filter(e => e.id !== id) } : p)
+				panels: prev.panels.map(p => p.id === pageId ? { ...p, elements: p.elements.filter(e => e.id !== id) } : p)
 			}));
 			setSelectedEntity(siblingToSelect);
 			return;
@@ -596,7 +643,13 @@ function GridTab({ isMobile, width, wifiStatus, onWifiUpdate, onSettingsUpdate, 
 				})
 			}));
 
-			return { ...prev, screens: newScreens };
+            const newPanels = prev.panels.map(p => {
+                let elements = findAndRemove(p.elements || []);
+                elements = findAndInsert(elements);
+                return { ...p, elements };
+            });
+
+			return { ...prev, screens: newScreens, panels: newPanels };
 		});
 	};
 
@@ -633,6 +686,7 @@ function GridTab({ isMobile, width, wifiStatus, onWifiUpdate, onSettingsUpdate, 
 			for (const scr of screensToSync) {
 				const flatItems = scr.pages.flatMap(p => p.items.map(it => ({ ...it, x: it.x + p.x, y: it.y + p.y })));
 				const scrData = { 
+					name: scr.name,
 					items: flatItems, 
 					bg: scr.bg || 0x0e0e12, 
 					borderColor: scr.borderColor || 0x222222, 
@@ -669,7 +723,7 @@ function GridTab({ isMobile, width, wifiStatus, onWifiUpdate, onSettingsUpdate, 
 
 
 	return (
-		<GridContext.Provider value={{ project, selectedEntity, setSelectedEntity, selections, setSelections, setShowEditor, addItem, removeItem, moveItemHierarchy, setActiveScreenId, updateScreen, removeScreen, moveScreen, updatePage, removePage, updateItem, addPage, addPanel, updatePanel, removePanel, scale, setScale, baseWidth, baseHeight, sidebarTab, setSidebarTab }}>
+		<GridContext.Provider value={{ project, selectedEntity, setSelectedEntity, selections, setSelections, setShowEditor, addItem, removeItem, moveItemHierarchy, activeScreenId, setActiveScreenId, updateScreen, addScreen, removeScreen, moveScreen, updatePage, removePage, updateItem, addPage, addPanel, updatePanel, removePanel, scale, setScale, baseWidth, baseHeight, sidebarTab, setSidebarTab, propsLocation, setPropsLocation, theme, setTheme }}>
 			<div style={{ display: "flex", flex: 1, height: "100%", width: "100%", position: "relative", flexDirection: "column" }}>
             <div style={{ height: "54px", background: "white", borderBottom: "1px solid #e2e8f0", display: "flex", alignItems: "center", padding: "0 24px", justifyContent: "space-between", zIndex: 1100 }}>
                 <div style={{ display: "flex", gap: "10px" }}><span style={{ fontSize: "11px", fontWeight: 900, color: "#94a3b8", letterSpacing: "1px" }}>BUILDER MODE: {activeScreen.name}</span></div>
@@ -704,8 +758,9 @@ function GridTab({ isMobile, width, wifiStatus, onWifiUpdate, onSettingsUpdate, 
 
             <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
                 {!isMobile && <Sidebar />}
-                {!isMobile && <PropertiesPanel />}
+                {!isMobile && propsLocation === 'left' && <PropertiesPanel />}
                 <CanvasArea isMobile={isMobile} />
+                {!isMobile && propsLocation === 'right' && <PropertiesPanel />}
             </div>
 
 			{isMobile && showLib && (

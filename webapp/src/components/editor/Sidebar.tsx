@@ -18,6 +18,8 @@ export const Sidebar: React.FC = () => {
         setSelectedEntity, 
         addItem,
         addScreen,
+        updatePanel,
+        addPanel,
         sidebarTab,
         setSidebarTab
     } = useContext(GridContext) as any;
@@ -83,6 +85,7 @@ export const Sidebar: React.FC = () => {
                             { type: 'clock', label: 'Clock', icon: '🕐', cls: 'wc-clock' },
                             { type: 'border', label: 'Border', icon: '▭', cls: 'wc-border' },
                             { type: 'nav-menu', label: 'Nav Menu', icon: '☰', cls: 'wc-nav' },
+                            { type: 'menu-item', label: 'Menu Item', icon: '🔘', cls: 'wc-menu' },
                         ].map((w: any) => (
                             <div 
                                 key={w.type} 
@@ -121,10 +124,17 @@ export const Sidebar: React.FC = () => {
                         ))}
                         <div 
                             className="panel-card" 
-                            style={{borderStyle:'dashed', color:'#94a3b8', justifyContent:'center', gap:'6px', fontSize:'13px', fontWeight:700}}
-                            onClick={() => addItem('panel-ref', selections[activeScreenId]?.id || 'p1')}
+                            style={{borderStyle:'dashed', color:'#94a3b8', justifyContent:'center', gap:'6px', fontSize:'13px', fontWeight:700, marginBottom: '4px'}}
+                            onClick={() => addPanel({ name: "Sidebar Menu", width: 160, height: 480, bg: 0x1e1e2d })}
                         >
-                            <span>＋</span> New Panel
+                            <span>＋</span> New Sidebar
+                        </div>
+                        <div 
+                            className="panel-card" 
+                            style={{borderStyle:'dashed', color:'#94a3b8', justifyContent:'center', gap:'6px', fontSize:'11px', fontWeight:700}}
+                            onClick={() => addPanel({ name: "Top Bar", width: 800, height: 60, bg: 0x2d2d3f })}
+                        >
+                            <span>＋</span> New Header
                         </div>
                     </div>
                 </div>
@@ -180,10 +190,14 @@ export const Sidebar: React.FC = () => {
 };
 
 const HierarchyItem = ({ it, pageId, screenId }: { it: GridItem, pageId: string, screenId: string }) => {
-	const { project, selections, setSelectedEntity, setActiveScreenId, addItem, removeItem, updateItem } = useContext(GridContext) as any;
+	const { project, selections, setSelectedEntity, setActiveScreenId, addItem, removeItem, updateItem, moveItemHierarchy } = useContext(GridContext) as any;
 	const [isOpen, setIsOpen] = useState(true);
+    const [isEditing, setIsEditing] = useState(false);
+    const [editName, setEditName] = useState(it.name);
     const isSelected = selections[screenId]?.id === it.id;
     const isContainer = it.type === "panel-ref" || it.type === "nav-menu";
+
+    useEffect(() => { setEditName(it.name); }, [it.name]);
 
 	let children: GridItem[] = [];
 	if (it.type === "panel-ref") {
@@ -193,16 +207,55 @@ const HierarchyItem = ({ it, pageId, screenId }: { it: GridItem, pageId: string,
 		children = it.children || [];
 	}
 
+    const saveEdit = () => {
+        updateItem(pageId, it.id, { name: editName });
+        setIsEditing(false);
+    };
+
 	return (
-        <div className="item-node">
+        <div 
+            className="item-node"
+            draggable
+            onDragStart={(e) => {
+                e.stopPropagation();
+                e.dataTransfer.setData("draggedId", it.id);
+                e.dataTransfer.effectAllowed = "move";
+            }}
+            onDragOver={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                e.dataTransfer.dropEffect = "move";
+            }}
+            onDrop={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const draggedId = e.dataTransfer.getData("draggedId");
+                if (draggedId && draggedId !== it.id) {
+                    moveItemHierarchy(draggedId, it.id);
+                }
+            }}
+        >
             <div 
                 className={`item-row ${isSelected ? 'selected' : ''}`}
                 onClick={(e) => { e.stopPropagation(); setActiveScreenId(screenId); setSelectedEntity({ type: 'item', id: it.id, pageId }, screenId); }}
+                onDoubleClick={(e) => { e.stopPropagation(); setIsEditing(true); }}
             >
                 <div className="item-dot"></div>
-                <span className="item-name">{it.name}</span>
+                {isEditing ? (
+                    <input 
+                        autoFocus
+                        className="node-input"
+                        value={editName}
+                        onChange={e => setEditName(e.target.value)}
+                        onBlur={saveEdit}
+                        onKeyDown={e => { if (e.key === 'Enter') saveEdit(); }}
+                        onClick={e => e.stopPropagation()}
+                    />
+                ) : (
+                    <span className="item-name">{it.name}</span>
+                )}
                 <span className="item-type">{it.type}</span>
-                {isContainer && (
+                {isContainer && children.length > 0 && (
                     <button onClick={(e) => { e.stopPropagation(); setIsOpen(!isOpen); }} style={{ background: 'none', border: 'none', fontSize: '10px', color: '#94a3b8', cursor: 'pointer' }}>
                         {isOpen ? '▼' : '▶'}
                     </button>
@@ -211,7 +264,7 @@ const HierarchyItem = ({ it, pageId, screenId }: { it: GridItem, pageId: string,
             {isOpen && children.length > 0 && (
                 <div className="item-list">
                     {children.map((child: any) => (
-                        <HierarchyItem key={child.id} it={child} pageId={pageId} screenId={screenId} />
+                        <HierarchyItem key={child.id} it={child} pageId={it.type === 'panel-ref' ? it.panelId! : pageId} screenId={screenId} />
                     ))}
                 </div>
             )}
@@ -220,8 +273,10 @@ const HierarchyItem = ({ it, pageId, screenId }: { it: GridItem, pageId: string,
 };
 
 const PageNode = ({ pg, screenId }: { pg: Page, screenId: string }) => {
-	const { selections, setSelectedEntity, setActiveScreenId, addItem } = useContext(GridContext) as any;
+	const { selections, setSelectedEntity, setActiveScreenId, updatePage } = useContext(GridContext) as any;
 	const [isOpen, setIsOpen] = useState(true);
+    const [isEditing, setIsEditing] = useState(false);
+    const [editName, setEditName] = useState(pg.name);
 	const isSelected = selections[screenId]?.type === 'page' && selections[screenId]?.id === pg.id;
     const isChildSelected = pg.items.some((it: any) => selections[screenId]?.id === it.id);
 
@@ -229,15 +284,35 @@ const PageNode = ({ pg, screenId }: { pg: Page, screenId: string }) => {
         if (isSelected || isChildSelected) setIsOpen(true);
     }, [isSelected, isChildSelected]);
 
+    useEffect(() => { setEditName(pg.name); }, [pg.name]);
+
+    const saveEdit = () => {
+        updatePage(screenId, pg.id, { name: editName });
+        setIsEditing(false);
+    };
+
 	return (
 		<div className="page-node">
 			<div 
                 className={`page-row ${isSelected ? 'selected' : ''}`}
                 onClick={(e) => { e.stopPropagation(); setActiveScreenId(screenId); setSelectedEntity({ type: 'page', id: pg.id }, screenId); }}
+                onDoubleClick={(e) => { e.stopPropagation(); setIsEditing(true); }}
             >
 				<span className={`screen-chevron ${isOpen ? 'active' : ''}`} onClick={(e) => { e.stopPropagation(); setIsOpen(!isOpen); }}>{isOpen ? '▼' : '▶'}</span>
 				<span className="page-icon">📄</span>
-				<span className="page-name">{pg.name}</span>
+				{isEditing ? (
+                    <input 
+                        autoFocus
+                        className="node-input"
+                        value={editName}
+                        onChange={e => setEditName(e.target.value)}
+                        onBlur={saveEdit}
+                        onKeyDown={e => { if (e.key === 'Enter') saveEdit(); }}
+                        onClick={e => e.stopPropagation()}
+                    />
+                ) : (
+                    <span className="page-name">{pg.name}</span>
+                )}
 			</div>
 			{isOpen && (
                 <div className="item-list">
@@ -252,23 +327,49 @@ const PageNode = ({ pg, screenId }: { pg: Page, screenId: string }) => {
 };
 
 const ScreenNode = ({ scr, isActive }: { scr: Screen, isActive: boolean }) => {
-	const { setActiveScreenId, setSelectedEntity, selections } = useContext(GridContext) as any;
+	const { setActiveScreenId, setSelectedEntity, selections, updateScreen } = useContext(GridContext) as any;
 	const [isOpen, setIsOpen] = useState(isActive);
+    const [isEditing, setIsEditing] = useState(false);
+    const [editName, setEditName] = useState(scr.name);
 
     useEffect(() => {
         const hasSelection = selections[scr.id] !== null;
         if (hasSelection) setIsOpen(true);
     }, [selections, scr.id]);
 
+    useEffect(() => { setEditName(scr.name); }, [scr.name]);
+
+    useEffect(() => {
+        if (isActive) setIsOpen(true);
+    }, [isActive]);
+
+    const saveEdit = () => {
+        updateScreen(scr.id, { name: editName });
+        setIsEditing(false);
+    };
+
 	return (
 		<div className="screen-node">
 			<div 
                 className={`screen-row ${isActive ? 'active' : ''}`}
                 onClick={() => { setActiveScreenId(scr.id); setSelectedEntity({ type: 'screen', id: scr.id }); }}
+                onDoubleClick={(e) => { e.stopPropagation(); setIsEditing(true); }}
             >
 				<span className="screen-chevron" onClick={(e) => { e.stopPropagation(); setIsOpen(!isOpen); }}>{isOpen ? '▼' : '▶'}</span>
 				<span className="screen-icon">🖥</span>
-				<span className="screen-name">{scr.name}</span>
+				{isEditing ? (
+                    <input 
+                        autoFocus
+                        className="node-input"
+                        value={editName}
+                        onChange={e => setEditName(e.target.value)}
+                        onBlur={saveEdit}
+                        onKeyDown={e => { if (e.key === 'Enter') saveEdit(); }}
+                        onClick={e => e.stopPropagation()}
+                    />
+                ) : (
+                    <span className="screen-name">{scr.name}</span>
+                )}
 				<span className="screen-badge">{scr.pages.length} pages</span>
 			</div>
 			{isOpen && (
@@ -299,7 +400,7 @@ const PanelNode = ({ pan, isActive }: { pan: Panel, isActive: boolean }) => {
 							<div 
                                 key={it.id} 
                                 className={`item-row ${isSelected ? 'selected' : ''}`}
-                                onClick={() => setSelectedEntity({ type: 'item', id: it.id, pageId: 'panel' })}
+                                onClick={() => setSelectedEntity({ type: 'item', id: it.id, pageId: pan.id })}
                             >
 								<div className="item-dot"></div>
 								<span className="item-name">{it.name}</span>

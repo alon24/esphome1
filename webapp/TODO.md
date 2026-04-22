@@ -43,3 +43,11 @@
 - [x] Implemented background scanning and network list rendering with signal indicators.
 - [x] Integrated connection modal for joining secure networks.
 - [x] Modernized the Soft AP configuration interface to match the new design system.
+
+## Phase 6: Accessibility & Advanced Properties (COMPLETE)
+- [x] Implement **High Contrast Theme** as default for vision-impaired users (Pure black backgrounds, white text, 3px borders).
+- [x] Add **Text Styling** properties (Font Size, Text Alignment) to all widgets.
+- [x] Implement **Sub-item Management** for Rollers and Dropdowns (Newline separated options).
+- [x] Support **Nested Elements** management in Nav Menus (Add/Remove children menu items).
+- [x] Enhance **WidgetRenderer** to handle dynamic options and alignment.
+- [x] Update **Selection Pulse** for high-visibility.

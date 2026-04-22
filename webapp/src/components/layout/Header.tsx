@@ -19,6 +19,10 @@ interface HeaderProps {
     remoteIp: string;
     setRemoteIp: (ip: string) => void;
     isMobile: boolean;
+    propsLocation?: 'left' | 'right';
+    setPropsLocation?: (loc: 'left' | 'right') => void;
+    theme?: 'light' | 'dark';
+    setTheme?: (theme: 'light' | 'dark') => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({ 
@@ -27,7 +31,11 @@ export const Header: React.FC<HeaderProps> = ({
     status, 
     remoteIp, 
     setRemoteIp, 
-    isMobile 
+    isMobile,
+    propsLocation,
+    setPropsLocation,
+    theme,
+    setTheme
 }) => {
     return (
         <header className="header">
@@ -64,6 +72,62 @@ export const Header: React.FC<HeaderProps> = ({
                         placeholder="device ip..." 
                     />
                     <button className="sync-btn" onClick={() => console.log("SYNC CLICKED")}>⬆ SYNC</button>
+
+                    <div style={{ display: 'flex', gap: '4px', background: 'rgba(0,0,0,0.05)', padding: '4px', borderRadius: '8px', marginLeft: '12px' }}>
+                        <div 
+                            onClick={() => setPropsLocation?.('left')}
+                            style={{ 
+                                cursor: 'pointer', 
+                                padding: '4px 8px', 
+                                borderRadius: '6px', 
+                                background: propsLocation === 'left' ? '#6d28d9' : 'transparent',
+                                border: '1px solid transparent',
+                                transition: 'all 0.2s',
+                                display: 'flex',
+                                alignItems: 'center'
+                            }}
+                        >
+                            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <rect x="1" y="2" width="14" height="12" rx="1.5" stroke={propsLocation === 'left' ? "white" : "#94a3b8"} strokeWidth="1.5"/>
+                                <line x1="5.5" y1="2" x2="5.5" y2="14" stroke={propsLocation === 'left' ? "white" : "#94a3b8"} strokeWidth="1.5"/>
+                            </svg>
+                        </div>
+                        <div 
+                            onClick={() => setPropsLocation?.('right')}
+                            style={{ 
+                                cursor: 'pointer', 
+                                padding: '4px 8px', 
+                                borderRadius: '6px', 
+                                background: propsLocation === 'right' ? '#6d28d9' : 'transparent',
+                                transition: 'all 0.2s',
+                                display: 'flex',
+                                alignItems: 'center'
+                            }}
+                        >
+                            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <rect x="1" y="2" width="14" height="12" rx="1.5" stroke={propsLocation === 'right' ? "white" : "#94a3b8"} strokeWidth="1.5"/>
+                                <line x1="10.5" y1="2" x2="10.5" y2="14" stroke={propsLocation === 'right' ? "white" : "#94a3b8"} strokeWidth="1.5"/>
+                            </svg>
+                        </div>
+                    </div>
+
+                    <div 
+                        onClick={() => setTheme?.(theme === 'light' ? 'dark' : 'light')}
+                        style={{ 
+                            cursor: 'pointer', 
+                            padding: '6px 12px', 
+                            borderRadius: '100px', 
+                            background: 'rgba(0,0,0,0.05)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            marginLeft: '12px',
+                            gap: '8px',
+                            transition: 'all 0.2s'
+                        }}
+                    >
+                        <span style={{ fontSize: '16px' }}>{theme === 'light' ? '🌙' : '☀️'}</span>
+                        <span style={{ fontSize: '10px', fontWeight: 900, color: '#64748b' }}>{theme?.toUpperCase()}</span>
+                    </div>
                 </>
             )}
             <div 

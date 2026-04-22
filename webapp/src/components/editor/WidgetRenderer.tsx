@@ -15,32 +15,43 @@ export const WidgetRenderer: React.FC<{
         borderRadius: it.radius || 8, 
         display: "flex", 
         alignItems: "center", 
-        justifyContent: "center", 
+        justifyContent: it.textAlign === "left" ? "flex-start" : (it.textAlign === "right" ? "flex-end" : "center"), 
+        textAlign: it.textAlign || "center",
         color: txt, 
         fontWeight: 900, 
-        fontSize: `${it.fontSize || 10}px`, 
+        fontSize: `${it.fontSize || 16}px`, 
         width: "100%", 
         height: "100%", 
         position: "relative", 
         overflow: "hidden",
         border: it.borderWidth ? `${it.borderWidth}px solid ${txt}` : "none",
-        background: (it.type === "panel-ref" || it.type === "border") ? "none" : (it.type === "label" || it.type === "clock" ? "none" : color)
+        background: (it.type === "panel-ref" || it.type === "border") ? "none" : (it.type === "label" || it.type === "clock" ? "none" : color),
+        padding: "0 10px",
+        boxSizing: "border-box"
     };
 
     if (it.type === "panel-ref") {
         const pt = panels.find(pd => pd.id === it.panelId);
-        const localItems = it.children || [];
+        const elements = pt?.elements || it.children || [];
         return (
-            <div style={{ width: "100%", height: "100%", position: "relative", background: pt ? `#${safeHex(pt.bg)}` : "rgba(255,255,255,0.05)", borderRadius: it.radius || 0, overflow: "hidden" }}>
-                <div style={{ display: "flex", flexDirection: "column", gap: "10px", padding: "10px", height: "100%" }}>
-                    {pt?.elements.map(el => (
-                        <div key={el.id} style={{ cursor: onSelect ? "pointer" : "default", width: "100%" }} onMouseDown={(e) => { if(onSelect) { e.stopPropagation(); onSelect(el.id, pageId); } }}>
-                            <WidgetRenderer it={{ ...el, radius: 8 }} panels={panels} pageId={pageId} onSelect={onSelect} selectedId={selectedId} />
-                        </div>
-                    ))}
-                    {localItems.map(el => (
-                        <div key={el.id} style={{ cursor: onSelect ? "pointer" : "default", width: "100%" }} onMouseDown={(e) => { if(onSelect) { e.stopPropagation(); onSelect(el.id, pageId); } }}>
-                            <WidgetRenderer it={{ ...el, radius: 8 }} panels={panels} pageId={pageId} onSelect={onSelect} selectedId={selectedId} />
+            <div style={{ 
+                width: "100%", 
+                height: "100%", 
+                position: "relative", 
+                background: pt ? `#${safeHex(pt.bg)}` : "rgba(255,255,255,0.05)", 
+                borderRadius: it.radius || 0, 
+                overflow: "hidden" 
+            }}>
+                <div style={{ 
+                    display: "flex", 
+                    flexDirection: "column", 
+                    gap: "0px", 
+                    height: "100%",
+                    overflowY: "auto"
+                }}>
+                    {elements.map(el => (
+                        <div key={el.id} style={{ cursor: onSelect ? "pointer" : "default", width: "100%", borderBottom: "1px solid rgba(255,255,255,0.05)" }} onMouseDown={(e) => { if(onSelect) { e.stopPropagation(); onSelect(el.id, pageId); } }}>
+                            <WidgetRenderer it={el} panels={panels} pageId={pageId} onSelect={onSelect} selectedId={selectedId} />
                         </div>
                     ))}
                 </div>
@@ -77,15 +88,18 @@ export const WidgetRenderer: React.FC<{
         </div>
     );
 
-    if (it.type === "roller") return (
-        <div style={{ ...baseStyle, border: `1px solid ${color}`, background: "rgba(0,0,0,0.2)" }}>
-            <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: "10px", opacity: 0.3, transform: "translateY(-10px)" }}>
-                <div style={{ textAlign: "center" }}>ITEM A</div>
-                <div style={{ textAlign: "center", opacity: 1, color: "white", fontWeight: 900, background: color, padding: "4px 0" }}>ITEM B</div>
-                <div style={{ textAlign: "center" }}>ITEM C</div>
+    if (it.type === "roller") {
+        const opts = (it.options || "Option 1\nOption 2\nOption 3").split("\n");
+        return (
+            <div style={{ ...baseStyle, border: `1px solid ${color}`, background: "rgba(0,0,0,0.2)", padding: 0 }}>
+                <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: "8px", justifyContent: "center" }}>
+                    <div style={{ textAlign: "center", opacity: 0.4, fontSize: '0.8em' }}>{opts[0] || ""}</div>
+                    <div style={{ textAlign: "center", color: "white", fontWeight: 900, background: color, padding: "4px 0", width: '100%' }}>{opts[1] || opts[0] || ""}</div>
+                    <div style={{ textAlign: "center", opacity: 0.4, fontSize: '0.8em' }}>{opts[2] || ""}</div>
+                </div>
             </div>
-        </div>
-    );
+        );
+    }
 
     if (it.type === "clock") return (
         <div style={{ ...baseStyle, fontSize: "28px", letterSpacing: "2px", textShadow: `0 0 15px ${color}` }}>12:45</div>
@@ -117,26 +131,29 @@ export const WidgetRenderer: React.FC<{
         );
     }
 
-    if (it.type === "menu-item") {
+    if (it.type === "menu-item" || it.type === "nav-item") {
+        const isSelected = selectedId === it.id;
         return (
             <div style={{ 
-                padding: "12px", 
+                padding: "16px 20px", 
                 background: color, 
-                borderRadius: `${it.radius || 8}px`, 
-                fontSize: `${it.fontSize || 12}px`, 
+                borderRadius: `${it.radius || 0}px`, 
+                fontSize: `${it.fontSize || 13}px`, 
                 color: txt, 
                 width: "100%", 
-                textAlign: "center", 
-                border: `${it.borderWidth || 0}px solid rgba(255,255,255,0.3)`,
-                outline: selectedId === it.id ? "2px dashed #6366f1" : "none",
-                outlineOffset: "2px",
+                textAlign: it.textAlign || "left", 
+                borderLeft: isSelected ? "4px solid #6366f1" : "4px solid transparent",
                 display: "flex",
                 alignItems: "center",
-                justifyContent: "center",
+                justifyContent: it.textAlign === "center" ? "center" : "flex-start",
                 boxSizing: "border-box",
-                minHeight: "40px",
-                flexShrink: 0
+                minHeight: "50px",
+                flexShrink: 0,
+                transition: "all 0.2s",
+                fontWeight: isSelected ? 800 : 500,
+                cursor: "pointer"
             }}>
+                <span style={{ marginRight: "12px", opacity: 0.7 }}>●</span>
                 {it.name}
             </div>
         );
@@ -161,7 +178,7 @@ export const WidgetRenderer: React.FC<{
 
     if (it.type === "dropdown") return (
         <div style={{ ...baseStyle, background: "rgba(255,255,255,0.05)", border: `1px solid rgba(255,255,255,0.1)`, padding: "0 15px", justifyContent: "space-between" }}>
-            <span>{it.name}</span>
+            <span>{(it.options || "Option 1").split("\n")[0]}</span>
             <span style={{ fontSize: "10px" }}>▼</span>
         </div>
     );

@@ -1,4 +1,4 @@
-export type ElementType = "btn" | "switch" | "slider" | "label" | "clock" | "panel-ref" | "arc" | "checkbox" | "dropdown" | "roller" | "bar" | "border" | "nav-menu" | "menu-item" | "native-wifi" | "native-system" | "native-sd" | "native-tests" | "component";
+export type ElementType = "btn" | "switch" | "slider" | "label" | "clock" | "panel-ref" | "arc" | "checkbox" | "dropdown" | "roller" | "bar" | "border" | "nav-menu" | "menu-item" | "nav-item" | "native-wifi" | "native-system" | "native-sd" | "native-tests" | "component";
 
 export type GridItem = {
 	id: string;
@@ -21,6 +21,7 @@ export type GridItem = {
 	radius?: number;
 	orientation?: "v" | "h";
 	fontSize?: number;
+	textAlign?: "left" | "center" | "right";
 	children?: GridItem[];
 	component?: string;
 	mqttTopic?: string;
