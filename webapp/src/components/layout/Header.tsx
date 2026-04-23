@@ -39,7 +39,7 @@ export const Header: React.FC<HeaderProps> = ({
     setTheme
 }) => {
     const context = useContext(GridContext) as any;
-    const { resetProject } = context || {};
+    const { exportProject, importProject, syncToDevice } = context || {};
 
     return (
         <header className="header" style={{ display: 'flex', alignItems: 'center', padding: '0 20px', height: '60px', background: theme === 'dark' ? '#1e293b' : '#fff', borderBottom: '1px solid rgba(0,0,0,0.1)' }}>
@@ -78,24 +78,6 @@ export const Header: React.FC<HeaderProps> = ({
             <div className="spacer" style={{ flex: 1 }} />
             {!isMobile && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <button 
-                        onClick={resetProject}
-                        style={{ 
-                            background: 'transparent', 
-                            border: '1px solid #ef4444', 
-                            color: '#ef4444', 
-                            padding: '6px 16px', 
-                            borderRadius: '8px', 
-                            fontSize: '11px', 
-                            fontWeight: 800, 
-                            cursor: 'pointer',
-                            transition: 'all 0.2s'
-                        }}
-                        onMouseOver={e => e.currentTarget.style.background = '#fee2e2'}
-                        onMouseOut={e => e.currentTarget.style.background = 'transparent'}
-                    >
-                        RESET PROJECT
-                    </button>
 
                     <button 
                         onClick={context?.exportProject}

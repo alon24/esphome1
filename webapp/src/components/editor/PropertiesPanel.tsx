@@ -29,7 +29,6 @@ export const PropertiesPanel: React.FC = () => {
         removeScreen, 
         updatePanel, 
         removePanel,
-        resetProject,
         baseWidth, setBaseWidth,
         baseHeight, setBaseHeight,
         propsLocation,
@@ -79,13 +78,6 @@ export const PropertiesPanel: React.FC = () => {
                             <input className="prop-input" type="number" value={baseHeight} onChange={e => setBaseHeight(parseInt(e.target.value) || 1)} />
                         </div>
                         <hr className="prop-divider" />
-                        <button 
-                            className="prop-input" 
-                            style={{ color: "#ef4444", borderColor: "#ef4444", cursor: "pointer", background: "#fff", border: '2px solid #ef4444' }}
-                            onClick={resetProject}
-                        >
-                            ⚠️ RESET PROJECT
-                        </button>
                     </div>
                 </div>
             </div>
@@ -138,14 +130,74 @@ export const PropertiesPanel: React.FC = () => {
                     <div className="prop-group"><div className="prop-label">Height</div><input className="prop-input" type="number" value={item.height} onChange={e => updateItem(selectedEntity.pageId, item.id, { height: parseInt(e.target.value) || 0 })} /></div>
                 </div>
                 <hr className="prop-divider" />
-                <div className="prop-group">
-                    <div className="prop-label">Background Color</div>
-                    <div className="prop-color">
-                        <input type="color" style={{visibility:'hidden', width:0, height:0, position:'absolute'}} id="cp-item-bg" value={`#${safeHex(item.color)}`} onChange={e => updateItem(selectedEntity.pageId, item.id, { color: parseInt(e.target.value.substring(1), 16) })} />
-                        <label htmlFor="cp-item-bg" style={{display:'flex', alignItems:'center', gap:'8px', cursor:'pointer', width:'100%'}}>
-                            <div className="color-swatch" style={{ background: `#${safeHex(item.color)}` }}></div>
-                            <span className="color-val">#{safeHex(item.color)}</span>
-                        </label>
+                <div className="prop-row">
+                    <div className="prop-group">
+                        <div className="prop-label">Background Color</div>
+                        <div className="prop-color">
+                            <input type="color" style={{visibility:'hidden', width:0, height:0, position:'absolute'}} id="cp-item-bg" value={`#${safeHex(item.color)}`} onChange={e => updateItem(selectedEntity.pageId, item.id, { color: parseInt(e.target.value.substring(1), 16) })} />
+                            <label htmlFor="cp-item-bg" style={{display:'flex', alignItems:'center', gap:'8px', cursor:'pointer', width:'100%'}}>
+                                <div className="color-swatch" style={{ background: `#${safeHex(item.color)}` }}></div>
+                                <span className="color-val">#{safeHex(item.color)}</span>
+                            </label>
+                        </div>
+                    </div>
+                    <div className="prop-group">
+                        <div className="prop-label">Text Color</div>
+                        <div className="prop-color">
+                            <input type="color" style={{visibility:'hidden', width:0, height:0, position:'absolute'}} id="cp-item-txt" value={`#${safeHex(item.textColor)}`} onChange={e => updateItem(selectedEntity.pageId, item.id, { textColor: parseInt(e.target.value.substring(1), 16) })} />
+                            <label htmlFor="cp-item-txt" style={{display:'flex', alignItems:'center', gap:'8px', cursor:'pointer', width:'100%'}}>
+                                <div className="color-swatch" style={{ background: `#${safeHex(item.textColor)}` }}></div>
+                                <span className="color-val">#{safeHex(item.textColor)}</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                <div className="prop-row">
+                    <div className="prop-group">
+                        <div className="prop-label">Font Size</div>
+                        <input className="prop-input" type="number" value={item.fontSize || 16} onChange={e => updateItem(selectedEntity.pageId, item.id, { fontSize: parseInt(e.target.value) || 1 })} />
+                    </div>
+                    <div className="prop-group">
+                        <div className="prop-label">Alignment</div>
+                        <div style={{ display: 'flex', gap: '4px', background: '#f1f5f9', padding: '4px', borderRadius: '8px' }}>
+                            {['left', 'center', 'right'].map(align => (
+                                <button 
+                                    key={align}
+                                    onClick={() => updateItem(selectedEntity.pageId, item.id, { textAlign: align })}
+                                    style={{ 
+                                        flex: 1, 
+                                        padding: '6px', 
+                                        border: 'none', 
+                                        borderRadius: '6px', 
+                                        background: (item.textAlign || 'center') === align ? 'white' : 'transparent',
+                                        boxShadow: (item.textAlign || 'center') === align ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                                        cursor: 'pointer',
+                                        fontSize: '11px',
+                                        fontWeight: (item.textAlign || 'center') === align ? 'bold' : 'normal',
+                                        color: (item.textAlign || 'center') === align ? '#6366f1' : '#64748b',
+                                        transition: 'all 0.2s'
+                                    }}
+                                >
+                                    {align.toUpperCase()}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+                <div className="prop-row">
+                    <div className="prop-group">
+                        <div className="prop-label">Border Width</div>
+                        <input className="prop-input" type="number" value={item.borderWidth || 0} onChange={e => updateItem(selectedEntity.pageId, item.id, { borderWidth: parseInt(e.target.value) || 0 })} />
+                    </div>
+                    <div className="prop-group">
+                        <div className="prop-label">Border Color</div>
+                        <div className="prop-color">
+                            <input type="color" style={{visibility:'hidden', width:0, height:0, position:'absolute'}} id="cp-item-border" value={`#${safeHex(item.borderColor)}`} onChange={e => updateItem(selectedEntity.pageId, item.id, { borderColor: parseInt(e.target.value.substring(1), 16) })} />
+                            <label htmlFor="cp-item-border" style={{display:'flex', alignItems:'center', gap:'8px', cursor:'pointer', width:'100%'}}>
+                                <div className="color-swatch" style={{ background: `#${safeHex(item.borderColor)}` }}></div>
+                                <span className="color-val">#{safeHex(item.borderColor)}</span>
+                            </label>
+                        </div>
                     </div>
                 </div>
                 {(item.type === 'nav-item' || item.type === 'menu-item' || item.type === 'btn') && (

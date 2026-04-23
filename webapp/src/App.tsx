@@ -45,6 +45,7 @@ const applyRecursive = (items: GridItem[], targetId: string, transform: (it: Gri
     }).filter(x => x) as GridItem[];
 };
 
+
 // --- STYLES ---
 const s: Record<string, React.CSSProperties> = { 
 	app: { display: "flex", flexDirection: "column", height: "100vh", overflow: "hidden", userSelect: "none", fontFamily: "'Outfit', sans-serif" }, 
@@ -162,12 +163,12 @@ function GridTab({ isMobile, width, wifiStatus, remoteIp, setRemoteIp, propsLoca
 			localStorage.setItem("ds_project_version", VERSION);
 			return {
 				screens: [{ id: "main", name: "Main Screen", bg: 0x0e0e12, pages: [{ id: "p1", name: "Page (0,0)", x: 0, y: 0, items: [] }] }],
-				panels: [{ id: "sidebar", name: "Sidebar", width: 160, height: 480, bg: 0x000000, itemBg: 0x000000, elements: [] }]
+				panels: [{ id: "sidebar", name: "Sidebar", width: 160, height: 416, bg: 0x000000, itemBg: 0x000000, elements: [] }]
 			};
 		}
 		return saved ? JSON.parse(saved) : {
 			screens: [{ id: "main", name: "Main Screen", bg: 0x0e0e12, pages: [{ id: "p1", name: "Page (0,0)", x: 0, y: 0, items: [] }] }],
-			panels: [{ id: "sidebar", name: "Sidebar", width: 160, height: 480, bg: 0x000000, itemBg: 0x000000, elements: [] }]
+			panels: [{ id: "sidebar", name: "Sidebar", width: 160, height: 416, bg: 0x000000, itemBg: 0x000000, elements: [] }]
 		};
 	});
 
@@ -177,31 +178,43 @@ function GridTab({ isMobile, width, wifiStatus, remoteIp, setRemoteIp, propsLoca
     const [lastSelectedEntity, setLastSelectedEntity] = useState<any>(null);
 	const [scale, setScale] = useState(1.0);
     const [baseWidth, setBaseWidth] = useState(800);
-	const [baseHeight, setBaseHeight] = useState(416);
-    const [showResetConfirm, setShowResetConfirm] = useState(false);
+    const [baseHeight, setBaseHeight] = useState(416);
+
+    // Auto-fix panel heights if they are still at the old 480 resolution
+    useEffect(() => {
+        const needsFix = project.panels.some(p => p.height === 480);
+        if (needsFix) {
+            setProject(prev => ({
+                ...prev,
+                panels: prev.panels.map(p => p.height === 480 ? { ...p, height: 416 } : p)
+            }));
+        }
+    }, [project.panels]);
 
     const setSelectedEntity = useCallback((ent: any, screenId?: string) => {
 		const targetScreenId = screenId || activeScreenId;
 		setSelections(prev => ({ ...prev, [targetScreenId]: ent }));
         setLastSelectedEntity(ent);
-	}, [activeScreenId]);
+    }, [activeScreenId]);
 
-    const performReset = useCallback(() => {
-        console.log("Reset project confirmed, executing...");
-        setProject({
-            screens: [{ id: "main", name: "Main Screen", bg: 0x0e0e12, pages: [{ id: "p1", name: "Page (0,0)", x: 0, y: 0, items: [] }] }],
-            panels: []
-        });
-        setActiveScreenId("main");
-        setSelections({});
-        setLastSelectedEntity(null);
-        setShowResetConfirm(false);
-    }, []);
-
-    const resetProject = useCallback(() => {
-        console.log("Reset project requested");
-        setShowResetConfirm(true);
-    }, []);
+    // Ensure all panel-ref items are correctly sized and positioned
+    useEffect(() => {
+        setProject(prev => ({
+            ...prev,
+            screens: prev.screens.map(s => ({
+                ...s,
+                pages: s.pages.map(p => ({
+                    ...p,
+                    items: p.items.map(it => {
+                        if (it.type === 'panel-ref') {
+                            return { ...it, y: 32, height: baseHeight - 32 };
+                        }
+                        return it;
+                    })
+                }))
+            }))
+        }));
+    }, [baseHeight]);
 
     const updateScreen = useCallback((id: string, patch: any) => {
         setProject(prev => ({ ...prev, screens: prev.screens.map(s => s.id === id ? { ...s, ...patch } : s) }));
@@ -322,7 +335,7 @@ function GridTab({ isMobile, width, wifiStatus, remoteIp, setRemoteIp, propsLoca
 
     const addItem = useCallback((type: ElementType, pageId: string, parentId?: string, panelId?: string, fx?: number, fy?: number) => {
         const id = `${type}_${Math.random().toString(36).substr(2, 5)}`;
-        const newItem: GridItem = { id, name: `New ${type}`, type, x: fx??20, y: fy??20, width: 120, height: 40, color: 0x4f46e5, textColor: 0xffffff, radius: 8, panelId };
+        const newItem: GridItem = { id, name: `New ${type}`, type, x: fx??20, y: fy??0, width: 120, height: 40, color: 0x4f46e5, textColor: 0xffffff, radius: 8, panelId };
         
         setProject(prev => {
             const isPanel = prev.panels.some(p => p.id === pageId);
@@ -339,7 +352,7 @@ function GridTab({ isMobile, width, wifiStatus, remoteIp, setRemoteIp, propsLoca
                     panels: prev.panels.map(p => p.id === pageId ? { ...p, elements: [...p.elements, newNavItem] } : p)
                 };
             } else {
-                let pageItem = { ...newItem, y: Math.max(24, newItem.y) };
+                let pageItem = { ...newItem };
                 
                 // Special handling for adding Sidebars (panel-ref) to a page
                 if (type === 'panel-ref' && panelId) {
@@ -347,9 +360,9 @@ function GridTab({ isMobile, width, wifiStatus, remoteIp, setRemoteIp, propsLoca
                     pageItem = {
                         ...pageItem,
                         x: 0,
-                        y: 24,
+                        y: 0,
                         width: panel?.width || 160,
-                        height: baseHeight - 24
+                        height: baseHeight
                     };
                 }
 
@@ -396,9 +409,9 @@ function GridTab({ isMobile, width, wifiStatus, remoteIp, setRemoteIp, propsLoca
                     }
                     return p;
                 });
-            } else if (finalPatch.y !== undefined) {
-                finalPatch.y = Math.max(24, finalPatch.y);
             }
+
+
 
             return {
                 ...prev,
@@ -428,7 +441,7 @@ function GridTab({ isMobile, width, wifiStatus, remoteIp, setRemoteIp, propsLoca
 
     const addPanel = useCallback((patch?: any) => {
         const id = `pan_${Math.random().toString(36).substr(2, 5)}`;
-        setProject(prev => ({ ...prev, panels: [...prev.panels, { id, name: 'New Panel', width: 160, height: 480, bg: 0x000000, elements: [], ...patch }] }));
+        setProject(prev => ({ ...prev, panels: [...prev.panels, { id, name: 'New Panel', width: 160, height: 416, bg: 0x000000, elements: [], ...patch }] }));
         setSelectedEntity({ type: 'panel', id });
     }, [setSelectedEntity]);
 
@@ -439,6 +452,44 @@ function GridTab({ isMobile, width, wifiStatus, remoteIp, setRemoteIp, propsLoca
     const removePanel = useCallback((id: string) => {
         setProject(prev => ({ ...prev, panels: prev.panels.filter(p => p.id !== id) }));
         setSelectedEntity(null);
+    }, [setSelectedEntity]);
+
+    const moveItemToPage = useCallback((oldPageId: string, newPageId: string, itemId: string, patch: any) => {
+        setProject(prev => {
+            let itemToMove: any = null;
+            
+            // 1. Remove from old page and capture item
+            const newScreens = prev.screens.map(s => ({
+                ...s,
+                pages: s.pages.map(p => {
+                    if (p.id === oldPageId) {
+                        const found = findItemRecursive(p.items, itemId);
+                        if (found) {
+                            itemToMove = { ...found, ...patch };
+                            return { ...p, items: applyRecursive(p.items, itemId, () => null) };
+                        }
+                    }
+                    return p;
+                })
+            }));
+
+            if (!itemToMove) return prev;
+
+            // 2. Add to new page
+            return {
+                ...prev,
+                screens: newScreens.map(s => ({
+                    ...s,
+                    pages: s.pages.map(p => {
+                        if (p.id === newPageId) {
+                            return { ...p, items: [...p.items, itemToMove] };
+                        }
+                        return p;
+                    })
+                }))
+            };
+        });
+        setSelectedEntity({ type: 'item', id: itemId, pageId: newPageId });
     }, [setSelectedEntity]);
 
     const exportProject = useCallback(() => {
@@ -459,12 +510,12 @@ function GridTab({ isMobile, width, wifiStatus, remoteIp, setRemoteIp, propsLoca
                 if (json && json.screens) {
                     setProject(json);
                     setActiveScreenId(json.screens[0]?.id || "main");
-                    alert("Project imported successfully!");
+                    console.log("Project imported successfully!");
                 } else {
-                    alert("Invalid project file");
+                    console.error("Invalid project file");
                 }
             } catch (err) {
-                alert("Error parsing JSON file");
+                console.error("Error parsing JSON file", err);
             }
         };
         reader.readAsText(file);
@@ -472,7 +523,7 @@ function GridTab({ isMobile, width, wifiStatus, remoteIp, setRemoteIp, propsLoca
 
     const syncToDevice = useCallback(async () => {
         if (!remoteIp) {
-            alert("Please enter the device IP address first.");
+            console.warn("Sync attempted without device IP address.");
             return;
         }
 
@@ -536,10 +587,9 @@ function GridTab({ isMobile, width, wifiStatus, remoteIp, setRemoteIp, propsLoca
             });
             if (!panelsRes.ok) throw new Error("Failed to sync Master Panels.");
 
-            alert("Project synced successfully!");
+            console.log("Project synced successfully!");
         } catch (err: any) {
             console.error("Sync error:", err);
-            alert(`Sync failed: ${err.message}`);
         }
     }, [project, remoteIp, activeScreenId, baseWidth, baseHeight]);
 
@@ -549,11 +599,10 @@ function GridTab({ isMobile, width, wifiStatus, remoteIp, setRemoteIp, propsLoca
     const contextValue = useMemo(() => ({
         project, activeScreenId, setActiveScreenId, selections, setSelections, setSelectedEntity,
         selectedEntity: lastSelectedEntity,
-        addScreen, removeScreen, updateScreen, addPage, removePage, updatePage, resetProject,
-        addItem, updateItem, removeItem, addPanel, updatePanel, removePanel, syncToDevice,
-        exportProject, importProject,
-        scale, setScale, baseWidth, setBaseWidth, baseHeight, setBaseHeight, sidebarTab, setSidebarTab, theme, setTheme, propsLocation, setPropsLocation
-    }), [project, activeScreenId, selections, lastSelectedEntity, scale, sidebarTab, theme, propsLocation, baseWidth, baseHeight, addScreen, removeScreen, updateScreen, addPage, removePage, updatePage, resetProject, addItem, updateItem, removeItem, addPanel, updatePanel, removePanel, syncToDevice, exportProject, importProject, setSelectedEntity, setTheme, setPropsLocation]);
+        addScreen, removeScreen, updateScreen, addPage, removePage, updatePage,
+        addItem, updateItem, removeItem, addPanel, updatePanel, removePanel, moveItemToPage, syncToDevice,
+        baseWidth, setBaseWidth, baseHeight, setBaseHeight, scale, setScale, propsLocation, setPropsLocation, theme, setTheme, activeTab, setActiveTab
+    }), [project, activeScreenId, selections, lastSelectedEntity, addScreen, removeScreen, updateScreen, addPage, removePage, updatePage, addItem, updateItem, removeItem, addPanel, updatePanel, removePanel, moveItemToPage, syncToDevice, baseWidth, setBaseWidth, baseHeight, setBaseHeight, scale, setScale, propsLocation, setPropsLocation, theme, setTheme, activeTab, setActiveTab]);
 
 	return (
 		<GridContext.Provider value={contextValue}>
@@ -576,67 +625,6 @@ function GridTab({ isMobile, width, wifiStatus, remoteIp, setRemoteIp, propsLoca
                     <CanvasArea isMobile={isMobile} />
                     {propsLocation === 'right' && !isMobile && <PropertiesPanel />}
                 </div>
-                
-                {showResetConfirm && (
-                    <div style={{
-                        position: 'fixed',
-                        top: 0, left: 0, right: 0, bottom: 0,
-                        background: 'rgba(0,0,0,0.6)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        zIndex: 9999,
-                        backdropFilter: 'blur(4px)'
-                    }}>
-                        <div style={{
-                            background: theme === 'dark' ? '#1e293b' : '#fff',
-                            padding: '32px',
-                            borderRadius: '24px',
-                            width: '400px',
-                            textAlign: 'center',
-                            boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04)'
-                        }}>
-                            <div style={{ fontSize: '48px', marginBottom: '16px' }}>⚠️</div>
-                            <h2 style={{ fontSize: '20px', fontWeight: 900, marginBottom: '12px', color: theme === 'dark' ? '#f8fafc' : '#1e293b' }}>Reset Project?</h2>
-                            <p style={{ color: theme === 'dark' ? '#94a3b8' : '#64748b', fontSize: '14px', marginBottom: '32px', lineHeight: '1.5' }}>
-                                This will permanently delete all screens, pages, and widgets. This action cannot be undone.
-                            </p>
-                            <div style={{ display: 'flex', gap: '12px' }}>
-                                <button 
-                                    onClick={() => setShowResetConfirm(false)}
-                                    style={{ 
-                                        flex: 1, 
-                                        padding: '12px', 
-                                        borderRadius: '12px', 
-                                        border: '1px solid #e2e8f0', 
-                                        background: 'transparent', 
-                                        color: theme === 'dark' ? '#94a3b8' : '#64748b',
-                                        fontWeight: 800,
-                                        cursor: 'pointer'
-                                    }}
-                                >
-                                    CANCEL
-                                </button>
-                                <button 
-                                    id="confirm-reset-btn"
-                                    onClick={performReset}
-                                    style={{ 
-                                        flex: 1, 
-                                        padding: '12px', 
-                                        borderRadius: '12px', 
-                                        border: 'none', 
-                                        background: '#ef4444', 
-                                        color: '#fff',
-                                        fontWeight: 800,
-                                        cursor: 'pointer'
-                                    }}
-                                >
-                                    RESET EVERYTHING
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                )}
             </div>
 		</GridContext.Provider>
 	);

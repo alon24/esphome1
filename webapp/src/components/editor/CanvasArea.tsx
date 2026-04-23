@@ -38,7 +38,7 @@ export const CanvasArea: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
                 x: worldX,
                 y: worldY,
                 offsetX: worldX - (minX * (baseWidth || 800)),
-                offsetY: worldY - (minY * (baseHeight || 480)),
+                offsetY: worldY - (minY * (baseHeight || 416)),
                 width: scrWidth
             };
             
@@ -69,7 +69,7 @@ export const CanvasArea: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
                 x: worldX,
                 y: worldY,
                 width: pan.width || 160,
-                height: pan.height || 480
+                height: pan.height || 416
             };
             
             autoX = Math.max(autoX, worldX + (pan.width || 160) + 200);
@@ -100,8 +100,6 @@ export const CanvasArea: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
                     if (isPanel) {
                         newX = 0;
                         newW = panel.width;
-                    } else {
-                        newY = Math.max(24, newY);
                     }
                     setPreview({ id: dragInfo.id, x: newX, y: newY, w: newW, h: newH });
                 } else if (dragInfo.mode === 'resize') {
@@ -129,7 +127,44 @@ export const CanvasArea: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
         };
         const onUp = () => {
             if (dragInfo && preview) {
-                updateItem(dragInfo.pageId, dragInfo.id, { x: preview.x, y: preview.y, width: preview.w, height: preview.h });
+                const startScreen = worldScreens.find((e:any) => e.scr.id === dragInfo.scrId);
+                if (startScreen && dragInfo.mode === 'move') {
+                    const startPage = startScreen.scr.pages.find((p:any) => p.id === dragInfo.pageId);
+                    if (startPage) {
+                        const worldX = startScreen.offsetX + (startPage.x || 0) * baseWidth + preview.x;
+                        const worldY = startScreen.offsetY + (startPage.y || 0) * baseHeight + preview.y;
+
+                        // NEW: Search ALL screens for the target page
+                        let targetPage: any = null;
+                        let targetScr: any = null;
+                        
+                        for (const sEntry of worldScreens) {
+                            const tp = sEntry.scr.pages.find((p:any) => {
+                                const pX = sEntry.offsetX + (p.x || 0) * baseWidth;
+                                const pY = sEntry.offsetY + (p.y || 0) * baseHeight;
+                                return worldX >= pX && worldX < pX + baseWidth &&
+                                       worldY >= pY && worldY < pY + baseHeight;
+                            });
+                            if (tp) {
+                                targetPage = tp;
+                                targetScr = sEntry;
+                                break;
+                            }
+                        }
+
+                        if (targetPage && targetPage.id !== dragInfo.pageId) {
+                            const newRelX = worldX - (targetScr.offsetX + (targetPage.x || 0) * baseWidth);
+                            const newRelY = worldY - (targetScr.offsetY + (targetPage.y || 0) * baseHeight);
+                            context.moveItemToPage(dragInfo.pageId, targetPage.id, dragInfo.id, { x: newRelX, y: newRelY, width: preview.w, height: preview.h });
+                        } else {
+                            updateItem(dragInfo.pageId, dragInfo.id, { x: preview.x, y: preview.y, width: preview.w, height: preview.h });
+                        }
+                    } else {
+                        updateItem(dragInfo.pageId, dragInfo.id, { x: preview.x, y: preview.y, width: preview.w, height: preview.h });
+                    }
+                } else {
+                    updateItem(dragInfo.pageId, dragInfo.id, { x: preview.x, y: preview.y, width: preview.w, height: preview.h });
+                }
             }
             if (screenDragInfo) {
                 if (screenDragInfo.type === 'panel' && panelPreview) {
@@ -214,48 +249,71 @@ export const CanvasArea: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
     const selectedEntity = selections?.[activeScreenId];
 
     return (
-        <div className="canvas-area" ref={containerRef} style={{ background: theme === 'dark' ? '#020617' : '#f1f5f9', overflow: 'auto', position: 'relative', width: '100%', height: '100%' }}>
+        <div className="canvas-area" ref={containerRef} onClick={() => setSelectedEntity(null)} style={{ background: theme === 'dark' ? '#020617' : '#f1f5f9', overflow: 'auto', position: 'relative', width: '100%', height: '100%' }}>
             <div className="world-map-container" style={{ width: worldWidth, height: worldHeight, transform: `scale(${scale})`, transformOrigin: '0 0', position: 'absolute', top: 0, left: 0 }}>
                 {worldScreens.map((entry: any) => {
                     const scr = entry.scr;
-                    const isActive = scr.id === activeScreenId;
-                    const isPv = screenPreview?.id === scr.id;
-                    const x = isPv ? screenPreview.x : entry.x;
-                    const y = isPv ? screenPreview.y : entry.y;
-                    const offsetX = isPv ? x - (Math.min(...scr.pages.map((p: any) => p.x || 0)) * (baseWidth || 800)) : entry.offsetX;
-                    const offsetY = isPv ? y - (Math.min(...scr.pages.map((p: any) => p.y || 0)) * (baseHeight || 480)) : entry.offsetY;
+                    const isActive = activeScreenId === scr.id;
+                    const x = entry.x;
+                    const y = entry.y;
+
+                    // Calculate screen bounding box
+                    const pages = scr.pages || [];
+                    const minX = pages.length > 0 ? Math.min(...pages.map((p: any) => p.x || 0)) : 0;
+                    const minY = pages.length > 0 ? Math.min(...pages.map((p: any) => p.y || 0)) : 0;
+                    const maxX = pages.length > 0 ? Math.max(...pages.map((p: any) => p.x || 0)) : 0;
+                    const maxY = pages.length > 0 ? Math.max(...pages.map((p: any) => p.y || 0)) : 0;
+
+                    const screenX = entry.offsetX + minX * baseWidth;
+                    const screenY = entry.offsetY + minY * baseHeight;
+                    const screenWidth = (maxX - minX + 1) * baseWidth;
+                    const screenHeight = (maxY - minY + 1) * baseHeight;
 
                     return (
                         <div key={scr.id} style={{ position: 'absolute', left: 0, top: 0 }}>
+                            {/* Screen Frame (Background & Solid Border) */}
+                            <div style={{
+                                position: 'absolute',
+                                left: screenX,
+                                top: screenY,
+                                width: screenWidth,
+                                height: screenHeight,
+                                background: scr.bg !== undefined ? `#${safeHex(scr.bg)}` : '#0e0e12',
+                                border: `2px solid ${isActive ? '#6366f1' : '#334155'}`,
+                                borderRadius: '16px',
+                                boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.1)',
+                                zIndex: isActive ? 5 : 1,
+                                overflow: 'hidden'
+                            }} />
+
+                            {/* Screen Header / Drag Handle */}
                             <div 
                                 onMouseDown={(e) => { 
                                     e.stopPropagation(); 
-                                    setScreenDragInfo({ 
-                                        id: scr.id, 
-                                        startX: e.clientX, 
-                                        startY: e.clientY, 
-                                        initialX: x, 
-                                        initialY: y, 
-                                        type: 'screen' 
-                                    }); 
+                                    setActiveScreenId(scr.id); 
+                                    setScreenDragInfo({ id: scr.id, startX: e.clientX, startY: e.clientY, initialX: x, initialY: y, type: 'screen' }); 
                                 }}
                                 style={{ 
                                     position: 'absolute', 
-                                    left: x, 
-                                    top: y - 100, 
-                                    padding: '20px 30px', 
-                                    background: isActive ? 'rgba(99, 102, 241, 0.15)' : 'rgba(148, 163, 184, 0.05)', 
+                                    left: screenX, 
+                                    top: screenY - 50, 
+                                    width: screenWidth,
+                                    height: 50,
+                                    padding: '0 20px', 
+                                    background: isActive ? 'rgba(99, 102, 241, 0.05)' : 'rgba(148, 163, 184, 0.02)', 
                                     border: `2px dashed ${isActive ? '#6366f1' : '#cbd5e1'}`,
-                                    borderRadius: '16px', 
-                                    cursor: 'move', 
-                                    userSelect: 'none',
-                                    zIndex: 20
+                                    borderBottom: 'none',
+                                    borderRadius: '12px 12px 0 0', 
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    zIndex: 20,
+                                    cursor: 'move'
                                 }}
                             >
-                                <div style={{ fontSize: '48px', fontWeight: 900, color: isActive ? '#6366f1' : '#94a3b8', whiteSpace: 'nowrap', textShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>
+                                <div style={{ fontSize: '18px', fontWeight: 900, color: isActive ? '#6366f1' : '#94a3b8', whiteSpace: 'nowrap' }}>
                                     {scr.name}
                                 </div>
-                                <div style={{ fontSize: '14px', color: '#64748b', fontWeight: 800, letterSpacing: '1px' }}>⠿ DRAG HANDLE</div>
+                                <div style={{ marginLeft: '15px', fontSize: '10px', color: '#64748b', fontWeight: 800, letterSpacing: '1px', opacity: 0.5 }}>⠿ DRAG HANDLE</div>
                             </div>
                             {scr.pages.map((pg: any) => (
                                 <div 
@@ -263,15 +321,12 @@ export const CanvasArea: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
                                     onClick={(e) => { e.stopPropagation(); setActiveScreenId(scr.id); setSelectedEntity({ type: 'page', id: pg.id }); }}
                                     style={{
                                         position: 'absolute', 
-                                        left: offsetX + (pg.x||0)*baseWidth, 
-                                        top: offsetY + (pg.y||0)*baseHeight, 
+                                        left: entry.offsetX + (pg.x||0)*baseWidth, 
+                                        top: entry.offsetY + (pg.y||0)*baseHeight, 
                                         width: baseWidth, height: baseHeight,
-                                        background: scr.bg !== undefined ? `#${safeHex(scr.bg)}` : '#0e0e12',
-                                        border: `2px solid ${selections[scr.id]?.id === pg.id ? '#6366f1' : '#e2e8f0'}`,
-                                        borderRadius: '12px',
-                                        boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
-                                        zIndex: isActive ? 10 : 1,
-                                        overflow: 'hidden'
+                                        background: 'transparent',
+                                        border: `1px dashed ${isActive ? 'rgba(99, 102, 241, 0.3)' : 'rgba(148, 163, 184, 0.2)'}`,
+                                        zIndex: 10
                                     }}
                                     onDragOver={e => e.preventDefault()}
                                     onDrop={e => {
@@ -283,47 +338,35 @@ export const CanvasArea: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
                                         addItem(data.type, pg.id, undefined, data.panelId, Math.round((e.clientX - rect.left)/scale), Math.round((e.clientY - rect.top)/scale));
                                     }}
                                 >
-                                    {/* Editor Overlay Labels */}
-                                    <div style={{ position: 'absolute', top: 0, left: 0, padding: '4px 8px', fontSize: '10px', color: '#6366f1', background: 'rgba(255,255,255,0.9)', borderRadius: '0 0 8px 0', zIndex: 100, pointerEvents: 'none', fontWeight: 900, border: '1px solid #e2e8f0' }}>
-                                        ID: ({pg.x||0},{pg.y||0}) {pg.name}
-                                    </div>
-                                    {(pg.x !== 0 || pg.y !== 0) && (
-                                        <button 
-                                            onClick={(e) => { e.stopPropagation(); removePage(scr.id, pg.id); }}
-                                            style={{ position: 'absolute', top: 4, right: 4, background: '#fee2e2', color: '#ef4444', border: 'none', borderRadius: '4px', width: 20, height: 20, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 'bold', zIndex: 100 }}
-                                        >✕</button>
-                                    )}
-
                                     <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}>
-                                        {/* Page Header Representation - Acts as a secondary drag handle for the screen */}
-                                        <div 
-                                            onMouseDown={(e) => { 
-                                                e.stopPropagation(); 
-                                                setActiveScreenId(scr.id); 
-                                                setSelectedEntity({ type: 'page', id: pg.id });
-                                                setScreenDragInfo({ id: scr.id, startX: e.clientX, startY: e.clientY, initialX: entry.x, initialY: entry.y, type: 'screen' }); 
-                                            }}
-                                            style={{ 
-                                                position: 'absolute', top: 0, left: 0, right: 0, height: 28, 
-                                                background: isActive ? '#4338ca' : '#475569', 
-                                                color: 'white', display: 'flex', alignItems: 'center', padding: '0 10px', 
-                                                fontSize: '11px', fontWeight: 'bold', zIndex: 20, cursor: 'move' 
-                                            }}
-                                        >
-                                            <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                                <span style={{ fontSize: '14px' }}>⠿</span>
-                                                <span>{scr.name}</span>
-                                            </span>
-                                            <span style={{ flex: 1 }}></span>
-                                            <span style={{ opacity: 0.7, fontSize: '9px' }}>PAGE {pg.x},{pg.y}</span>
-                                            {(pg.x !== 0 || pg.y !== 0) && (
-                                                <button 
-                                                    onClick={(e) => { e.stopPropagation(); if(window.confirm(`Delete page ${pg.x},${pg.y}?`)) removePage(scr.id, pg.id); }}
-                                                    style={{ background: 'transparent', color: '#fca5a5', border: 'none', cursor: 'pointer', marginLeft: '6px', fontSize: '10px', padding: 0 }}
-                                                    title="Delete this page"
-                                                >✕</button>
-                                            )}
-                                        </div>
+                                        {/* Page Indicator */}
+                                        {(pg.x === 0 && pg.y === 0) ? (
+                                            <div 
+                                                style={{ 
+                                                    position: 'absolute', top: 5, left: 5, 
+                                                    background: 'rgba(99, 102, 241, 0.1)', 
+                                                    color: '#6366f1', padding: '2px 8px', 
+                                                    borderRadius: '4px', fontSize: '9px', fontWeight: 'bold'
+                                                }}
+                                            >
+                                                PRIMARY PAGE
+                                            </div>
+                                        ) : (
+                                            <button 
+                                                onClick={(e) => { e.stopPropagation(); removePage(scr.id, pg.id); }}
+                                                style={{ 
+                                                    position: 'absolute', top: 5, right: 5, 
+                                                    background: '#fee2e2', color: '#ef4444', 
+                                                    border: 'none', borderRadius: '4px', 
+                                                    width: 18, height: 18, cursor: 'pointer', 
+                                                    display: 'flex', alignItems: 'center', justifyContent: 'center', 
+                                                    fontSize: '11px', fontWeight: 'bold', zIndex: 100,
+                                                    opacity: 0.6, transition: 'opacity 0.2s'
+                                                }}
+                                                onMouseEnter={e => e.currentTarget.style.opacity = '1'}
+                                                onMouseLeave={e => e.currentTarget.style.opacity = '0.6'}
+                                            >✕</button>
+                                        )}
 
                                         {pg.items?.map((it: any) => {
                                             const isSelected = selectedEntity?.id === it.id;
@@ -334,14 +377,21 @@ export const CanvasArea: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
                                             const y = isPv ? preview.y : it.y;
                                             return (
                                                 <div key={it.id} 
-                                                    onMouseDown={e => { e.stopPropagation(); setActiveScreenId(scr.id); setSelectedEntity({ type: 'item', id: it.id, pageId: pg.id }); setDragInfo({ id: it.id, pageId: pg.id, startX: e.clientX, startY: e.clientY, initialX: it.x, initialY: it.y, initialWidth: w, initialHeight: h, mode: 'move' }); }}
-                                                    style={{ position: 'absolute', left: x, top: y, width: w, height: h, zIndex: isSelected ? 100 : 1, outline: isSelected ? '2px solid #6366f1' : 'none', outlineOffset: '-2px', userSelect: 'none' }}>
-                                                    <WidgetRenderer it={it} panels={project.panels} pageId={pg.id} />
+                                                    onMouseDown={e => { e.stopPropagation(); setActiveScreenId(scr.id); setSelectedEntity({ type: 'item', id: it.id, pageId: pg.id }); setDragInfo({ id: it.id, pageId: pg.id, scrId: scr.id, startX: e.clientX, startY: e.clientY, initialX: it.x, initialY: it.y, initialWidth: w, initialHeight: h, mode: 'move' }); }}
+                                                    onClick={e => e.stopPropagation()}
+                                                    style={{ position: 'absolute', left: x, top: y, width: w, height: h, zIndex: isSelected ? 100 : 1, outline: isSelected ? '2px dashed #6366f1' : 'none', outlineOffset: '-2px', userSelect: 'none' }}>
+                                                    <WidgetRenderer 
+                                                        it={it} 
+                                                        panels={project.panels} 
+                                                        pageId={pg.id} 
+                                                        selectedId={selectedEntity?.id}
+                                                        onSelect={(id, pid) => setSelectedEntity({ type: 'item', id, pageId: pid })}
+                                                    />
                                                     {isSelected && (
                                                         <>
-                                                            <div style={{ position: 'absolute', bottom: -4, right: -4, width: 8, height: 8, background: '#6366f1', cursor: 'nwse-resize' }} onMouseDown={e => { e.stopPropagation(); setDragInfo({...dragInfo, mode: 'resize'}); }} />
+                                                            <div style={{ position: 'absolute', bottom: -6, right: -6, width: 12, height: 12, background: '#6366f1', cursor: 'nwse-resize', zIndex: 1000, borderRadius: '2px', border: '1px solid white' }} onMouseDown={e => { e.stopPropagation(); setDragInfo({ id: it.id, pageId: pg.id, scrId: scr.id, startX: e.clientX, startY: e.clientY, initialX: it.x, initialY: it.y, initialWidth: w, initialHeight: h, mode: 'resize' }); }} />
                                                             <button 
-                                                                onClick={(e) => { e.stopPropagation(); if(window.confirm(`Delete ${it.name}?`)) removeItem(pg.id, it.id); }}
+                                                                onClick={(e) => { e.stopPropagation(); removeItem(pg.id, it.id); }}
                                                                 style={{ position: 'absolute', top: -10, right: -10, width: 20, height: 20, background: '#ef4444', color: 'white', border: 'none', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', zIndex: 101, boxShadow: '0 2px 4px rgba(0,0,0,0.2)' }}
                                                             >✕</button>
                                                         </>
@@ -453,13 +503,20 @@ export const CanvasArea: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
                                             return (
                                                 <div key={it.id} 
                                                     onMouseDown={e => { e.stopPropagation(); setActiveScreenId('panel'); setSelectedEntity({ type: 'item', id: it.id, pageId: pan.id }, 'panel'); setDragInfo({ id: it.id, pageId: pan.id, startX: e.clientX, startY: e.clientY, initialX: it.x, initialY: it.y, initialWidth: w, initialHeight: h, mode: 'move' }); }}
-                                                    style={{ position: 'absolute', left: x, top: y, width: w, height: h, zIndex: isItSelected ? 100 : 1, outline: isItSelected ? '2px solid #6366f1' : 'none', outlineOffset: '-2px', userSelect: 'none', transition: isPv ? 'none' : 'top 0.2s cubic-bezier(0.4, 0, 0.2, 1)' }}>
-                                                    <WidgetRenderer it={it} panels={project.panels} pageId={pan.id} />
+                                                    onClick={e => e.stopPropagation()}
+                                                    style={{ position: 'absolute', left: x, top: y, width: w, height: h, zIndex: isItSelected ? 100 : 1, outline: isItSelected ? '2px dashed #6366f1' : 'none', outlineOffset: '-2px', userSelect: 'none', transition: isPv ? 'none' : 'top 0.2s cubic-bezier(0.4, 0, 0.2, 1)' }}>
+                                                    <WidgetRenderer 
+                                                        it={it} 
+                                                        panels={project.panels} 
+                                                        pageId={pan.id} 
+                                                        selectedId={selectedEntity?.id}
+                                                        onSelect={(id, pid) => setSelectedEntity({ type: 'item', id, pageId: pid }, 'panel')}
+                                                    />
                                                     {isItSelected && (
                                                         <>
-                                                            <div style={{ position: 'absolute', bottom: -4, right: -4, width: 8, height: 8, background: '#6366f1', cursor: 'ns-resize' }} onMouseDown={e => { e.stopPropagation(); setDragInfo({...dragInfo, mode: 'resize'}); }} />
+                                                            <div style={{ position: 'absolute', bottom: -6, right: -6, width: 12, height: 12, background: '#6366f1', cursor: 'ns-resize', zIndex: 1000, borderRadius: '2px', border: '1px solid white' }} onMouseDown={e => { e.stopPropagation(); setDragInfo({ id: it.id, pageId: pan.id, startX: e.clientX, startY: e.clientY, initialX: it.x, initialY: it.y, initialWidth: w, initialHeight: h, mode: 'resize' }); }} />
                                                             <button 
-                                                                onClick={(e) => { e.stopPropagation(); if(window.confirm(`Delete ${it.name}?`)) removeItem(pan.id, it.id); }}
+                                                                onClick={(e) => { e.stopPropagation(); removeItem(pan.id, it.id); }}
                                                                 style={{ position: 'absolute', top: -10, right: -10, width: 20, height: 20, background: '#ef4444', color: 'white', border: 'none', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', zIndex: 101, boxShadow: '0 2px 4px rgba(0,0,0,0.2)' }}
                                                             >✕</button>
                                                         </>

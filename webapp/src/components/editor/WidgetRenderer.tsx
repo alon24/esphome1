@@ -14,6 +14,8 @@ export const WidgetRenderer: React.FC<{
     const { setActiveScreenId } = React.useContext(GridContext) as any;
     const color = `#${safeHex(it.color)}`;
     const txt = `#${safeHex(it.textColor)}`;
+    const bColor = it.borderColor !== undefined ? `#${safeHex(it.borderColor)}` : txt;
+
     const baseStyle: React.CSSProperties = { 
         borderRadius: it.radius || 8, 
         display: "flex", 
@@ -27,8 +29,8 @@ export const WidgetRenderer: React.FC<{
         height: "100%", 
         position: "relative", 
         overflow: "hidden",
-        border: it.borderWidth ? `${it.borderWidth}px solid ${txt}` : "none",
-        background: (it.type === "panel-ref" || it.type === "border") ? "none" : (it.type === "label" || it.type === "clock" ? "none" : color),
+        border: it.borderWidth ? `${it.borderWidth}px solid ${bColor}` : "none",
+        background: (it.type === "panel-ref" || it.type === "border") ? "none" : color,
         padding: "0 10px",
         boxSizing: "border-box"
     };
@@ -106,7 +108,7 @@ export const WidgetRenderer: React.FC<{
     }
 
     if (it.type === "clock") return (
-        <div style={{ ...baseStyle, fontSize: "28px", letterSpacing: "2px", textShadow: `0 0 15px ${color}` }}>12:45</div>
+        <div style={{ ...baseStyle, letterSpacing: "2px", textShadow: `0 0 15px ${color}` }}>12:45</div>
     );
 
     if (it.type == "nav-menu") {
@@ -165,7 +167,6 @@ export const WidgetRenderer: React.FC<{
                 }
             }}
             >
-                <span style={{ marginRight: "12px", opacity: 0.7 }}>●</span>
                 {it.name}
             </div>
         );

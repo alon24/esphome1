@@ -21,7 +21,10 @@ struct GridItem {
     int value, min, max;
     std::string options;
     int borderWidth;
+    uint32_t borderColor;
     int radius;
+    int fontSize;
+    std::string textAlign;
     std::string orientation;
     std::string component;      // A1: used when type == "component"
     std::string mqttTopic;      // NEW: MQTT Binding
@@ -82,7 +85,10 @@ static void parse_grid_item(JsonObject eObj, GridItem& it) {
     it.max       = eObj["max"]       | 100;
     it.options   = eObj["options"]   | "";
     it.borderWidth = eObj["borderWidth"] | 0;
+    it.borderColor = eObj["borderColor"] | it.textColor;
     it.radius    = eObj["radius"]    | 0;
+    it.fontSize  = eObj["fontSize"]  | 16;
+    it.textAlign = eObj["textAlign"] | "center";
     it.orientation = eObj["orientation"] | "v";
     it.component   = eObj["component"]   | "";  // A2: smart component id
     it.mqttTopic   = eObj["mqttTopic"]   | "";  // NEW

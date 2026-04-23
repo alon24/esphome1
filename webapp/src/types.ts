@@ -24,8 +24,9 @@ export type GridItem = {
 	textAlign?: "left" | "center" | "right";
 	children?: GridItem[];
 	component?: string;
-	mqttTopic?: string;
-    targetScreenId?: string;
+	borderColor?: number;
+	bg?: number;
+	targetScreenId?: string;
 };
 
 export type Page = {

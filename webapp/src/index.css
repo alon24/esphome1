@@ -22,7 +22,7 @@
     --bg-input: #f8fafc;
     
 	--device-width: 800px;
-	--device-height: 480px;
+	--device-height: 416px;
 	--panel-radius: 12px;
 }
 
@@ -183,7 +183,7 @@ body {
 
 .device-screen {
 	width: 800px;
-	height: 480px;
+	height: 416px;
 	background: #000;
 	overflow: hidden;
 	position: relative;

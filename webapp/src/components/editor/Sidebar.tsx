@@ -113,7 +113,7 @@ export const Sidebar: React.FC = () => {
                             <div className="layers-header" style={{ paddingLeft: 0, paddingRight: 0, background: 'transparent', borderBottom: '1px solid var(--border-dim)' }}>
                                 <span className="layers-title">Master Panels</span>
                                 <div style={{display:'flex', gap:'4px'}}>
-                                    <button className="add-screen-btn" style={{fontSize:'10px', padding:'4px 8px'}} onClick={() => addPanel({ name: "New Sidebar", width: 160, height: 480, bg: 0x1e1e2d })}>＋ Sidebar</button>
+                                    <button className="add-screen-btn" style={{fontSize:'10px', padding:'4px 8px'}} onClick={() => addPanel({ name: "New Sidebar", width: 160, height: 416, bg: 0x1e1e2d })}>＋ Sidebar</button>
                                     <button className="add-screen-btn" style={{fontSize:'10px', padding:'4px 8px'}} onClick={() => addPanel({ name: "New Header", width: 800, height: 60, bg: 0x2d2d3f })}>＋ Header</button>
                                 </div>
                             </div>
@@ -248,6 +248,8 @@ const HierarchyItem = ({ it, pageId, screenId }: { it: GridItem, pageId: string,
                 className={`item-row ${isSelected ? 'selected' : ''}`}
                 onClick={(e) => { e.stopPropagation(); setActiveScreenId(screenId); setSelectedEntity({ type: 'item', id: it.id, pageId }, screenId); }}
                 onDoubleClick={(e) => { e.stopPropagation(); setIsEditing(true); }}
+                tabIndex={0}
+                onKeyDown={e => { if (e.key === 'Delete' || e.key === 'Backspace') { e.stopPropagation(); removeItem(pageId, it.id); } }}
             >
                 <div className="item-dot"></div>
                 {isEditing ? (
@@ -257,7 +259,7 @@ const HierarchyItem = ({ it, pageId, screenId }: { it: GridItem, pageId: string,
                         value={editName}
                         onChange={e => setEditName(e.target.value)}
                         onBlur={saveEdit}
-                        onKeyDown={e => { if (e.key === 'Enter') saveEdit(); }}
+                        onKeyDown={e => { e.stopPropagation(); if (e.key === 'Enter') saveEdit(); }}
                         onClick={e => e.stopPropagation()}
                     />
                 ) : (
@@ -273,7 +275,7 @@ const HierarchyItem = ({ it, pageId, screenId }: { it: GridItem, pageId: string,
                     <button 
                         className="delete-item-btn"
                         style={{ background: 'none', border: 'none', color: '#ef4444', fontSize: '10px', cursor: 'pointer', opacity: isSelected ? 1 : 0.4, padding: '2px 4px' }}
-                        onClick={(e) => { e.stopPropagation(); if(window.confirm(`Delete ${it.name}?`)) removeItem(pageId, it.id); }}
+                        onClick={(e) => { e.stopPropagation(); removeItem(pageId, it.id); }}
                         title="Delete Item"
                     >✕</button>
                 </div>
@@ -290,7 +292,8 @@ const HierarchyItem = ({ it, pageId, screenId }: { it: GridItem, pageId: string,
 };
 
 const PageNode = ({ pg, screenId }: { pg: Page, screenId: string }) => {
-	const { selections, setSelectedEntity, setActiveScreenId, updatePage } = useContext(GridContext) as any;
+	const context = useContext(GridContext) as any;
+    const { selections, setSelectedEntity, setActiveScreenId, updatePage } = context;
 	const [isOpen, setIsOpen] = useState(true);
     const [isEditing, setIsEditing] = useState(false);
     const [editName, setEditName] = useState(pg.name);
@@ -314,6 +317,8 @@ const PageNode = ({ pg, screenId }: { pg: Page, screenId: string }) => {
                 className={`page-row ${isSelected ? 'selected' : ''}`}
                 onClick={(e) => { e.stopPropagation(); setActiveScreenId(screenId); setSelectedEntity({ type: 'page', id: pg.id }, screenId); }}
                 onDoubleClick={(e) => { e.stopPropagation(); setIsEditing(true); }}
+                tabIndex={0}
+                onKeyDown={e => { if ((e.key === 'Delete' || e.key === 'Backspace') && (pg.x !== 0 || pg.y !== 0)) { e.stopPropagation(); context.removePage(screenId, pg.id); } }}
             >
 				<span className={`screen-chevron ${isOpen ? 'active' : ''}`} onClick={(e) => { e.stopPropagation(); setIsOpen(!isOpen); }}>{isOpen ? '▼' : '▶'}</span>
 				<span className="page-icon">📄</span>
@@ -324,12 +329,22 @@ const PageNode = ({ pg, screenId }: { pg: Page, screenId: string }) => {
                         value={editName}
                         onChange={e => setEditName(e.target.value)}
                         onBlur={saveEdit}
-                        onKeyDown={e => { if (e.key === 'Enter') saveEdit(); }}
+                        onKeyDown={e => { e.stopPropagation(); if (e.key === 'Enter') saveEdit(); }}
                         onClick={e => e.stopPropagation()}
                     />
                 ) : (
                     <span className="page-name">{pg.name}</span>
                 )}
+                <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    {(pg.x !== 0 || pg.y !== 0) && (
+                        <button 
+                            className="delete-item-btn"
+                            style={{ background: 'none', border: 'none', color: '#ef4444', fontSize: '10px', cursor: 'pointer', opacity: isSelected ? 1 : 0.4, padding: '2px 4px' }}
+                            onClick={(e) => { e.stopPropagation(); context.removePage(screenId, pg.id); }}
+                            title="Delete Page"
+                        >✕</button>
+                    )}
+                </div>
 			</div>
 			{isOpen && (
                 <div className="item-list">

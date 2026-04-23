@@ -105,7 +105,7 @@ void ui_refresh_grid() {
     // Temporarily don't hide others yet to keep current view visible as long as possible
     lv_obj_t* scr_cont = lv_obj_create(g_home_grid_cont);
     _panel_reset(scr_cont);
-    lv_obj_set_size(scr_cont, lv_pct(100), lv_pct(100));
+    lv_obj_set_size(scr_cont, lv_pct(100), LV_SIZE_CONTENT);
     g_lv_screen_cache[g_current_screen] = scr_cont;
 
     // Build the content...
@@ -247,6 +247,8 @@ static void _home_render_item(lv_obj_t *parent, const GridItem &it, int offsetX,
             lv_obj_set_flex_align(panel_obj, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
             lv_obj_set_style_pad_all(panel_obj, 0, 0);
             lv_obj_set_style_pad_gap(panel_obj, 0, 0);
+            lv_obj_add_flag(panel_obj, LV_OBJ_FLAG_SCROLLABLE);
+            lv_obj_set_scrollbar_mode(panel_obj, LV_SCROLLBAR_MODE_AUTO);
             for (const auto &child : pDef->elements) _home_render_item(panel_obj, child, 0, 0);
             return;
         } else {
@@ -269,13 +271,18 @@ static void _home_render_item(lv_obj_t *parent, const GridItem &it, int offsetX,
         lv_slider_set_range(obj, it.min, it.max);
         lv_slider_set_value(obj, it.value, LV_ANIM_OFF);
     } else if (it.type == "clock") {
-        obj = lv_label_create(parent);
-        lv_obj_set_user_data(obj, (void*)"clock");
-        lv_label_set_text(obj, "00:00:00");
+        obj = lv_obj_create(parent);
+        _panel_reset(obj);
+        lv_obj_t *lbl = lv_label_create(obj);
+        lv_obj_set_user_data(lbl, (void*)"clock");
+        lv_label_set_text(lbl, "00:00:00");
+        lv_obj_center(lbl);
     } else if (it.type == "label") {
-        obj = lv_label_create(parent);
-        lv_label_set_text(obj, it.name.empty() ? "LABEL" : it.name.c_str());
-        lv_obj_set_style_text_align(obj, LV_TEXT_ALIGN_CENTER, 0);
+        obj = lv_obj_create(parent);
+        _panel_reset(obj);
+        lv_obj_t *lbl = lv_label_create(obj);
+        lv_label_set_text(lbl, it.name.empty() ? "LABEL" : it.name.c_str());
+        lv_obj_center(lbl);
     } else if (it.type == "arc") {
         obj = lv_arc_create(parent);
         lv_arc_set_range(obj, it.min, it.max);
@@ -333,6 +340,8 @@ static void _home_render_item(lv_obj_t *parent, const GridItem &it, int offsetX,
         lv_obj_set_flex_flow(obj, it.orientation == "h" ? LV_FLEX_FLOW_ROW : LV_FLEX_FLOW_COLUMN);
         lv_obj_set_flex_align(obj, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
         lv_obj_set_style_pad_all(obj, 10, 0); lv_obj_set_style_pad_gap(obj, 10, 0);
+        lv_obj_add_flag(obj, LV_OBJ_FLAG_SCROLLABLE);
+        lv_obj_set_scrollbar_mode(obj, LV_SCROLLBAR_MODE_AUTO);
         for (const auto& child : it.children) _home_render_item(obj, child, 0, 0);
     }
 
@@ -346,15 +355,32 @@ static void _home_render_item(lv_obj_t *parent, const GridItem &it, int offsetX,
         }
 
         // Colors & Shape
-        if (it.color > 0) {
-            lv_obj_set_style_bg_color(obj, lv_color_hex(it.color), 0);
-            lv_obj_set_style_bg_opa(obj, LV_OPA_COVER, 0);
-        }
-        if (it.textColor > 0) lv_obj_set_style_text_color(obj, lv_color_hex(it.textColor), 0);
+        // Colors & Shape
+        lv_obj_set_style_bg_color(obj, lv_color_hex(it.color), 0);
+        lv_obj_set_style_bg_opa(obj, LV_OPA_COVER, 0);
+        
+        lv_obj_set_style_text_color(obj, lv_color_hex(it.textColor), 0);
+        
+        // Font Size (Map to available montserrat fonts)
+        const lv_font_t* font = &lv_font_montserrat_16;
+        if (it.fontSize <= 12) font = &lv_font_montserrat_12;
+        else if (it.fontSize <= 14) font = &lv_font_montserrat_14;
+        else if (it.fontSize <= 16) font = &lv_font_montserrat_16;
+        else if (it.fontSize <= 18) font = &lv_font_montserrat_18;
+        else if (it.fontSize <= 20) font = &lv_font_montserrat_20;
+        else if (it.fontSize <= 22) font = &lv_font_montserrat_22;
+        else font = &lv_font_montserrat_24;
+        lv_obj_set_style_text_font(obj, font, 0);
+
+        // Text Alignment
+        if (it.textAlign == "left") lv_obj_set_style_text_align(obj, LV_TEXT_ALIGN_LEFT, 0);
+        else if (it.textAlign == "right") lv_obj_set_style_text_align(obj, LV_TEXT_ALIGN_RIGHT, 0);
+        else lv_obj_set_style_text_align(obj, LV_TEXT_ALIGN_CENTER, 0);
+
         if (it.radius > 0) lv_obj_set_style_radius(obj, it.radius, 0);
         if (it.borderWidth > 0) {
             lv_obj_set_style_border_width(obj, it.borderWidth, 0);
-            lv_obj_set_style_border_color(obj, lv_color_hex(it.textColor), 0); // border uses textColor if set
+            lv_obj_set_style_border_color(obj, lv_color_hex(it.borderColor), 0);
         }
 
         // Navigation Action
