@@ -25,6 +25,7 @@ struct GridItem {
     std::string orientation;
     std::string component;      // A1: used when type == "component"
     std::string mqttTopic;      // NEW: MQTT Binding
+    std::string targetScreenId; // NEW: Screen navigation
     std::vector<GridItem> children;
 };
 
@@ -85,6 +86,7 @@ static void parse_grid_item(JsonObject eObj, GridItem& it) {
     it.orientation = eObj["orientation"] | "v";
     it.component   = eObj["component"]   | "";  // A2: smart component id
     it.mqttTopic   = eObj["mqttTopic"]   | "";  // NEW
+    it.targetScreenId = eObj["targetScreenId"] | ""; // NEW
     
     it.children.clear();
     if (eObj["children"].is<JsonArray>()) {

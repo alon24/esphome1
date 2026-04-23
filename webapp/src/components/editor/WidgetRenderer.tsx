@@ -2,6 +2,8 @@ import React from "react";
 import { type GridItem, type Panel } from "../../types";
 import { safeHex } from "../../utils";
 
+import { GridContext } from "../../context/GridContext";
+
 export const WidgetRenderer: React.FC<{
     it: GridItem;
     panels: Panel[];
@@ -9,6 +11,7 @@ export const WidgetRenderer: React.FC<{
     onSelect?: (id: string, pgId: string) => void;
     selectedId?: string;
 }> = ({ it, panels, pageId, onSelect, selectedId }) => {
+    const { setActiveScreenId } = React.useContext(GridContext) as any;
     const color = `#${safeHex(it.color)}`;
     const txt = `#${safeHex(it.textColor)}`;
     const baseStyle: React.CSSProperties = { 
@@ -47,10 +50,11 @@ export const WidgetRenderer: React.FC<{
                     flexDirection: "column", 
                     gap: "0px", 
                     height: "100%",
-                    overflowY: "auto"
+                    overflowY: "auto",
+                    boxSizing: "border-box"
                 }}>
                     {elements.map(el => (
-                        <div key={el.id} style={{ cursor: onSelect ? "pointer" : "default", width: "100%", borderBottom: "1px solid rgba(255,255,255,0.05)" }} onMouseDown={(e) => { if(onSelect) { e.stopPropagation(); onSelect(el.id, pageId); } }}>
+                        <div key={el.id} style={{ cursor: onSelect ? "pointer" : "default", width: "100%", height: el.height || 50, flexShrink: 0 }} onMouseDown={(e) => { if(onSelect) { e.stopPropagation(); onSelect(el.id, pageId); } }}>
                             <WidgetRenderer it={el} panels={panels} pageId={pageId} onSelect={onSelect} selectedId={selectedId} />
                         </div>
                     ))}
@@ -135,24 +139,32 @@ export const WidgetRenderer: React.FC<{
         const isSelected = selectedId === it.id;
         return (
             <div style={{ 
-                padding: "16px 20px", 
+                padding: "0 20px", 
                 background: color, 
                 borderRadius: `${it.radius || 0}px`, 
                 fontSize: `${it.fontSize || 13}px`, 
                 color: txt, 
                 width: "100%", 
+                height: "100%",
                 textAlign: it.textAlign || "left", 
                 borderLeft: isSelected ? "4px solid #6366f1" : "4px solid transparent",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: it.textAlign === "center" ? "center" : "flex-start",
                 boxSizing: "border-box",
-                minHeight: "50px",
                 flexShrink: 0,
                 transition: "all 0.2s",
                 fontWeight: isSelected ? 800 : 500,
-                cursor: "pointer"
-            }}>
+                cursor: "pointer",
+                borderBottom: '1px solid rgba(0,0,0,0.1)'
+            }}
+            onClick={(e) => {
+                if (it.targetScreenId) {
+                    e.stopPropagation();
+                    setActiveScreenId(it.targetScreenId);
+                }
+            }}
+            >
                 <span style={{ marginRight: "12px", opacity: 0.7 }}>●</span>
                 {it.name}
             </div>
@@ -186,6 +198,16 @@ export const WidgetRenderer: React.FC<{
     if (it.type === "border") return (
         <div style={{ ...baseStyle }} />
     );
+
+    if (it.type === "native-wifi" || it.type === "native-system" || it.type === "native-sd" || it.type === "native-tests") {
+        const iconMap: any = { "native-wifi": "📶", "native-system": "⚙️", "native-sd": "💾", "native-tests": "🛠️" };
+        return (
+            <div style={{ ...baseStyle, flexDirection: 'column', gap: '4px', background: 'rgba(99, 102, 241, 0.1)', border: '2px dashed #6366f1' }}>
+                <span style={{ fontSize: '24px' }}>{iconMap[it.type]}</span>
+                <span style={{ fontSize: '10px', opacity: 0.8 }}>NATIVE {it.type.split('-')[1].toUpperCase()}</span>
+            </div>
+        );
+    }
 
     return (
         <div style={baseStyle}>

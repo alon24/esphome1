@@ -1,4 +1,5 @@
-import React from "react";
+import React, { useContext } from "react";
+import { GridContext } from "../../context/GridContext";
 
 export type WifiStatus = {
 	connected: boolean;
@@ -37,11 +38,14 @@ export const Header: React.FC<HeaderProps> = ({
     theme,
     setTheme
 }) => {
+    const context = useContext(GridContext) as any;
+    const { resetProject } = context || {};
+
     return (
-        <header className="header">
-            <div className="logo">GRIDOS</div>
+        <header className="header" style={{ display: 'flex', alignItems: 'center', padding: '0 20px', height: '60px', background: theme === 'dark' ? '#1e293b' : '#fff', borderBottom: '1px solid rgba(0,0,0,0.1)' }}>
+            <div className="logo" style={{ fontSize: '20px', fontWeight: 900, color: '#6366f1', letterSpacing: '1px' }}>GRIDOS</div>
             {!isMobile && (
-                <div className="tab-bar">
+                <div className="tab-bar" style={{ display: 'flex', marginLeft: '40px', gap: '20px' }}>
                     {(["grid", "mirror", "wifi", "logs", "settings"] as const).map((id) => {
                         const labels: Record<string, string> = {
                             grid: "BUILDER",
@@ -50,11 +54,20 @@ export const Header: React.FC<HeaderProps> = ({
                             logs: "CONSOLE",
                             settings: "SETTINGS"
                         };
+                        const active = activeTab === id;
                         return (
                             <div 
                                 key={id} 
-                                className={`htab ${activeTab === id ? 'active' : ''}`}
                                 onClick={() => setActiveTab(id)}
+                                style={{ 
+                                    cursor: 'pointer', 
+                                    fontSize: '12px', 
+                                    fontWeight: 800, 
+                                    color: active ? '#6366f1' : '#94a3b8',
+                                    padding: '20px 0',
+                                    borderBottom: active ? '2px solid #6366f1' : '2px solid transparent',
+                                    transition: 'all 0.2s'
+                                }}
                             >
                                 {labels[id]}
                             </div>
@@ -62,73 +75,74 @@ export const Header: React.FC<HeaderProps> = ({
                     })}
                 </div>
             )}
-            <div className="spacer" />
+            <div className="spacer" style={{ flex: 1 }} />
             {!isMobile && (
-                <>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <button 
+                        onClick={resetProject}
+                        style={{ 
+                            background: 'transparent', 
+                            border: '1px solid #ef4444', 
+                            color: '#ef4444', 
+                            padding: '6px 16px', 
+                            borderRadius: '8px', 
+                            fontSize: '11px', 
+                            fontWeight: 800, 
+                            cursor: 'pointer',
+                            transition: 'all 0.2s'
+                        }}
+                        onMouseOver={e => e.currentTarget.style.background = '#fee2e2'}
+                        onMouseOut={e => e.currentTarget.style.background = 'transparent'}
+                    >
+                        RESET PROJECT
+                    </button>
+
+                    <button 
+                        onClick={context?.exportProject}
+                        style={{ background: '#3b82f6', color: 'white', border: 'none', padding: '8px 16px', borderRadius: '8px', fontSize: '11px', fontWeight: 800, cursor: 'pointer', transition: 'all 0.2s' }}
+                    >
+                        ⬇ EXPORT
+                    </button>
+                    
+                    <label 
+                        style={{ background: '#8b5cf6', color: 'white', border: 'none', padding: '8px 16px', borderRadius: '8px', fontSize: '11px', fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', transition: 'all 0.2s' }}
+                    >
+                        ⬆ IMPORT
+                        <input type="file" accept=".json" onChange={context?.importProject} style={{ display: 'none' }} />
+                    </label>
+
                     <input 
                         className="ip-input" 
                         value={remoteIp} 
                         onChange={(e) => setRemoteIp(e.target.value)}
                         placeholder="device ip..." 
+                        style={{ background: 'rgba(0,0,0,0.05)', border: 'none', padding: '8px 12px', borderRadius: '8px', fontSize: '12px', width: '140px' }}
                     />
-                    <button className="sync-btn" onClick={() => console.log("SYNC CLICKED")}>⬆ SYNC</button>
+                    <button 
+                        className="sync-btn" 
+                        onClick={context?.syncToDevice}
+                        style={{ background: '#16a34a', color: 'white', border: 'none', padding: '8px 16px', borderRadius: '8px', fontSize: '11px', fontWeight: 800, cursor: 'pointer' }}
+                    >
+                        ⬆ SYNC
+                    </button>
 
-                    <div style={{ display: 'flex', gap: '4px', background: 'rgba(0,0,0,0.05)', padding: '4px', borderRadius: '8px', marginLeft: '12px' }}>
-                        <div 
-                            onClick={() => setPropsLocation?.('left')}
-                            style={{ 
-                                cursor: 'pointer', 
-                                padding: '4px 8px', 
-                                borderRadius: '6px', 
-                                background: propsLocation === 'left' ? '#6d28d9' : 'transparent',
-                                border: '1px solid transparent',
-                                transition: 'all 0.2s',
-                                display: 'flex',
-                                alignItems: 'center'
-                            }}
-                        >
-                            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <rect x="1" y="2" width="14" height="12" rx="1.5" stroke={propsLocation === 'left' ? "white" : "#94a3b8"} strokeWidth="1.5"/>
-                                <line x1="5.5" y1="2" x2="5.5" y2="14" stroke={propsLocation === 'left' ? "white" : "#94a3b8"} strokeWidth="1.5"/>
-                            </svg>
+                    <div style={{ display: 'flex', gap: '4px', background: 'rgba(0,0,0,0.05)', padding: '4px', borderRadius: '8px' }}>
+                        <div onClick={() => setPropsLocation?.('left')} style={{ cursor: 'pointer', padding: '4px 8px', borderRadius: '6px', background: propsLocation === 'left' ? '#6366f1' : 'transparent', display: 'flex' }}>
+                            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="1" y="2" width="14" height="12" rx="1.5" stroke={propsLocation === 'left' ? "white" : "#94a3b8"} strokeWidth="1.5"/><line x1="5.5" y1="2" x2="5.5" y2="14" stroke={propsLocation === 'left' ? "white" : "#94a3b8"} strokeWidth="1.5"/></svg>
                         </div>
-                        <div 
-                            onClick={() => setPropsLocation?.('right')}
-                            style={{ 
-                                cursor: 'pointer', 
-                                padding: '4px 8px', 
-                                borderRadius: '6px', 
-                                background: propsLocation === 'right' ? '#6d28d9' : 'transparent',
-                                transition: 'all 0.2s',
-                                display: 'flex',
-                                alignItems: 'center'
-                            }}
-                        >
-                            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <rect x="1" y="2" width="14" height="12" rx="1.5" stroke={propsLocation === 'right' ? "white" : "#94a3b8"} strokeWidth="1.5"/>
-                                <line x1="10.5" y1="2" x2="10.5" y2="14" stroke={propsLocation === 'right' ? "white" : "#94a3b8"} strokeWidth="1.5"/>
-                            </svg>
+                        <div onClick={() => setPropsLocation?.('right')} style={{ cursor: 'pointer', padding: '4px 8px', borderRadius: '6px', background: propsLocation === 'right' ? '#6366f1' : 'transparent', display: 'flex' }}>
+                            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="1" y="2" width="14" height="12" rx="1.5" stroke={propsLocation === 'right' ? "white" : "#94a3b8"} strokeWidth="1.5"/><line x1="10.5" y1="2" x2="10.5" y2="14" stroke={propsLocation === 'right' ? "white" : "#94a3b8"} strokeWidth="1.5"/></svg>
                         </div>
                     </div>
 
                     <div 
                         onClick={() => setTheme?.(theme === 'light' ? 'dark' : 'light')}
-                        style={{ 
-                            cursor: 'pointer', 
-                            padding: '6px 12px', 
-                            borderRadius: '100px', 
-                            background: 'rgba(0,0,0,0.05)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            marginLeft: '12px',
-                            gap: '8px',
-                            transition: 'all 0.2s'
-                        }}
+                        style={{ cursor: 'pointer', padding: '6px 12px', borderRadius: '100px', background: 'rgba(0,0,0,0.05)', display: 'flex', alignItems: 'center', gap: '8px' }}
                     >
                         <span style={{ fontSize: '16px' }}>{theme === 'light' ? '🌙' : '☀️'}</span>
                         <span style={{ fontSize: '10px', fontWeight: 900, color: '#64748b' }}>{theme?.toUpperCase()}</span>
                     </div>
-                </>
+                </div>
             )}
             <div 
                 onClick={() => setActiveTab("wifi")} 
@@ -140,20 +154,11 @@ export const Header: React.FC<HeaderProps> = ({
                     padding: '6px 12px',
                     borderRadius: '8px',
                     background: status?.connected ? 'rgba(22, 163, 74, 0.1)' : 'rgba(239, 68, 68, 0.1)',
-                    transition: 'all 0.2s'
+                    marginLeft: '20px'
                 }}
             >
                 <span style={{ fontSize: '18px' }}>{status?.connected ? '📶' : '❌'}</span>
-                {!isMobile && (
-                    <span style={{ 
-                        fontSize: '11px', 
-                        fontWeight: 800, 
-                        color: status?.connected ? '#16a34a' : '#ef4444',
-                        letterSpacing: '0.5px'
-                    }}>
-                        {status?.connected ? 'ONLINE' : 'OFFLINE'}
-                    </span>
-                )}
+                {!isMobile && <span style={{ fontSize: '11px', fontWeight: 800, color: status?.connected ? '#16a34a' : '#ef4444' }}>{status?.connected ? 'ONLINE' : 'OFFLINE'}</span>}
             </div>
         </header>
     );

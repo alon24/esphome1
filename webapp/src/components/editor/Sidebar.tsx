@@ -9,6 +9,27 @@ import {
     SMART_COMPONENTS 
 } from "../../types";
 
+const createGhostImage = (label: string, w: number, h: number) => {
+    const ghost = document.createElement('div');
+    ghost.style.width = `${w}px`;
+    ghost.style.height = `${h}px`;
+    ghost.style.background = '#6366f1';
+    ghost.style.color = 'white';
+    ghost.style.borderRadius = '8px';
+    ghost.style.display = 'flex';
+    ghost.style.alignItems = 'center';
+    ghost.style.justifyContent = 'center';
+    ghost.style.fontWeight = '900';
+    ghost.style.fontSize = '12px';
+    ghost.style.position = 'absolute';
+    ghost.style.top = '-1000px';
+    ghost.style.fontFamily = 'system-ui, sans-serif';
+    ghost.style.boxShadow = '0 10px 15px -3px rgba(0,0,0,0.3)';
+    ghost.innerText = label;
+    document.body.appendChild(ghost);
+    return ghost;
+};
+
 export const Sidebar: React.FC = () => {
     const { 
         project, 
@@ -20,29 +41,44 @@ export const Sidebar: React.FC = () => {
         addScreen,
         updatePanel,
         addPanel,
-        sidebarTab,
-        setSidebarTab
+        removePanel,
+        selectedEntity
     } = useContext(GridContext) as any;
 
+    const [editingScreenId, setEditingScreenId] = useState<string | null>(null);
+    const [editName, setEditName] = useState("");
+
+    const [showPalette, setShowPalette] = useState(true);
+
     const handlePaletteClick = (e: React.MouseEvent, type: ElementType, meta?: any, panelId?: string) => {
-        const screen = project.screens.find((s: any) => s.id === activeScreenId) || project.screens[0];
+        const screen = project?.screens?.find((s: any) => s.id === activeScreenId) || project?.screens?.[0];
         if (!screen) return;
 
-        const activeTarget = selections[activeScreenId];
+        const activeTarget = selectedEntity;
         let targetPageId = '';
+        let parentId: string | undefined = undefined;
 
         if (activeTarget?.type === 'page') {
             targetPageId = activeTarget.id;
-        } else if (activeTarget?.type === 'item' && activeTarget.pageId) {
-            targetPageId = activeTarget.pageId;
-        } else if (screen.pages.length > 0) {
+        } else if (activeTarget?.type === 'panel') {
+            targetPageId = activeTarget.id;
+        } else if (activeTarget?.type === 'item') {
+            // Check if selected item is a container
+            const item = project?.screens?.find((s: any) => s.id === activeScreenId)?.pages.flatMap((p: any) => p.items).find((it: any) => it.id === activeTarget.id);
+            if (item && item.type === 'nav-menu') {
+                parentId = item.id;
+                targetPageId = activeTarget.pageId!;
+            } else {
+                targetPageId = activeTarget.pageId!;
+            }
+        } else if (screen?.pages?.length > 0) {
             targetPageId = screen.pages[0].id;
         }
 
         if (!targetPageId) return;
 
         if (e.detail >= 2) {
-            addItem(type, targetPageId, undefined, panelId, 20, 20, meta, true);
+            addItem(type, targetPageId, parentId, panelId, 20, 20, meta, true);
         } else {
             if (activeTarget?.type !== 'page' && activeTarget?.type !== 'item') {
                 setSelectedEntity({ type: 'page', id: targetPageId }, activeScreenId, true);
@@ -51,26 +87,52 @@ export const Sidebar: React.FC = () => {
     };
 
     return (
-        <div className="sidebar" onClick={(e) => e.stopPropagation()}>
-            <div className="sidebar-tabs">
-                <div 
-                    className={`stab ${sidebarTab === 'palette' ? 'active' : ''}`} 
-                    onClick={() => setSidebarTab('palette')}
-                >
-                    PALETTE
+        <div className={`sidebar ${!showPalette ? 'palette-hidden' : ''}`} onClick={(e) => e.stopPropagation()}>
+            {/* LAYERS SIDE */}
+            <div className="layers-side">
+                <div className="layers-header">
+                    <span className="layers-title">Project</span>
+                    <div style={{ display: 'flex', gap: '6px' }}>
+                        <button 
+                            className="add-screen-btn" 
+                            style={{ background: 'none', border: '1px solid var(--border-main)', color: 'var(--text-muted)', padding: '5px 8px', fontSize: '14px' }}
+                            onClick={() => setShowPalette(!showPalette)}
+                            title="Toggle Palette"
+                        >
+                            🧰
+                        </button>
+                        <button className="add-screen-btn" onClick={() => addScreen && addScreen()}>＋ Screen</button>
+                    </div>
                 </div>
-                <div 
-                    className={`stab ${sidebarTab === 'layers' ? 'active' : ''}`} 
-                    onClick={() => setSidebarTab('layers')}
-                >
-                    LAYERS
+                <div className="sidebar-panel visible">
+                    <div className="tree">
+                        {project.screens.map((scr: Screen) => (
+                            <ScreenNode key={scr.id} scr={scr} isActive={activeScreenId === scr.id} />
+                        ))}
+                        <div style={{ marginTop: '20px' }}>
+                            <div className="layers-header" style={{ paddingLeft: 0, paddingRight: 0, background: 'transparent', borderBottom: '1px solid var(--border-dim)' }}>
+                                <span className="layers-title">Master Panels</span>
+                                <div style={{display:'flex', gap:'4px'}}>
+                                    <button className="add-screen-btn" style={{fontSize:'10px', padding:'4px 8px'}} onClick={() => addPanel({ name: "New Sidebar", width: 160, height: 480, bg: 0x1e1e2d })}>＋ Sidebar</button>
+                                    <button className="add-screen-btn" style={{fontSize:'10px', padding:'4px 8px'}} onClick={() => addPanel({ name: "New Header", width: 800, height: 60, bg: 0x2d2d3f })}>＋ Header</button>
+                                </div>
+                            </div>
+                            {project.panels.map((pan: Panel) => (
+                                <PanelNode key={pan.id} pan={pan} isActive={selections['panel']?.id === pan.id} />
+                            ))}
+                        </div>
+                    </div>
+                    <div className="quick-add-hint">
+                        <span>💡</span>
+                        <span>Click an item to select it on the canvas — and vice versa.</span>
+                    </div>
                 </div>
             </div>
 
-            {/* PALETTE PANEL */}
-            <div className={`sidebar-panel ${sidebarTab === 'palette' ? 'visible' : ''}`}>
-                <div>
-                    <div className="section-label">Basic Widgets</div>
+            {/* PALETTE STRIP */}
+            {showPalette && (
+                <div className="palette-side">
+                    <div className="section-label" style={{marginTop:'10px'}}>Widgets</div>
                     <div className="widget-grid">
                         {[
                             { type: 'btn', label: 'Button', icon: '🔘', cls: 'wc-btn' },
@@ -84,8 +146,9 @@ export const Sidebar: React.FC = () => {
                             { type: 'bar', label: 'Bar', icon: '📊', cls: 'wc-bar' },
                             { type: 'clock', label: 'Clock', icon: '🕐', cls: 'wc-clock' },
                             { type: 'border', label: 'Border', icon: '▭', cls: 'wc-border' },
-                            { type: 'nav-menu', label: 'Nav Menu', icon: '☰', cls: 'wc-nav' },
-                            { type: 'menu-item', label: 'Menu Item', icon: '🔘', cls: 'wc-menu' },
+                            { type: 'nav-menu', label: 'Nav', icon: '☰', cls: 'wc-nav' },
+                            { type: 'side-menu', label: 'Side', icon: '𝄃', cls: 'wc-nav' },
+                            { type: 'menu-item', label: 'Menu', icon: '🔘', cls: 'wc-menu' },
                         ].map((w: any) => (
                             <div 
                                 key={w.type} 
@@ -95,52 +158,20 @@ export const Sidebar: React.FC = () => {
                                 onDragStart={(e) => {
                                     e.dataTransfer.setData("application/gridos-item", JSON.stringify({ type: w.type }));
                                     e.dataTransfer.effectAllowed = "copy";
+                                    const ghost = createGhostImage(w.label, 120, 40);
+                                    e.dataTransfer.setDragImage(ghost, 60, 20);
+                                    setTimeout(() => ghost.remove(), 0);
                                 }}
+                                title={w.label}
                             >
                                 <span className="wicon">{w.icon}</span>
-                                {w.label}
+                                <span style={{fontSize:'8px', marginTop:'2px'}}>{w.label}</span>
                             </div>
                         ))}
                     </div>
-                </div>
-                <div>
-                    <div className="section-label">Master Panels</div>
-                    <div style={{display:'flex', flexDirection:'column', gap:'7px'}}>
-                        {project.panels.map((pan: Panel) => (
-                            <div 
-                                key={pan.id} 
-                                className="panel-card" 
-                                onMouseDown={(e) => handlePaletteClick(e, 'panel-ref', undefined, pan.id)}
-                                draggable={true}
-                                onDragStart={(e) => {
-                                    e.dataTransfer.setData("application/gridos-item", JSON.stringify({ type: 'panel-ref', panelId: pan.id }));
-                                    e.dataTransfer.effectAllowed = "copy";
-                                }}
-                            >
-                                <span style={{fontSize:'18px'}}>🧩</span>
-                                <span className="pname">{pan.name}</span>
-                                <span className="pdim">{pan.width}×{pan.height}</span>
-                            </div>
-                        ))}
-                        <div 
-                            className="panel-card" 
-                            style={{borderStyle:'dashed', color:'#94a3b8', justifyContent:'center', gap:'6px', fontSize:'13px', fontWeight:700, marginBottom: '4px'}}
-                            onClick={() => addPanel({ name: "Sidebar Menu", width: 160, height: 480, bg: 0x1e1e2d })}
-                        >
-                            <span>＋</span> New Sidebar
-                        </div>
-                        <div 
-                            className="panel-card" 
-                            style={{borderStyle:'dashed', color:'#94a3b8', justifyContent:'center', gap:'6px', fontSize:'11px', fontWeight:700}}
-                            onClick={() => addPanel({ name: "Top Bar", width: 800, height: 60, bg: 0x2d2d3f })}
-                        >
-                            <span>＋</span> New Header
-                        </div>
-                    </div>
-                </div>
-                <div>
-                    <div className="section-label">Smart Components</div>
-                    <div style={{display:'flex', flexDirection:'column', gap:'7px'}}>
+
+                    <div className="section-label" style={{marginTop:'20px'}}>Smart</div>
+                    <div className="widget-grid" style={{marginBottom:'20px'}}>
                         {SMART_COMPONENTS.map((comp: any) => (
                             <div 
                                 key={comp.id} 
@@ -150,41 +181,19 @@ export const Sidebar: React.FC = () => {
                                 onDragStart={(e) => {
                                     e.dataTransfer.setData("application/gridos-item", JSON.stringify({ type: 'component', meta: { component: comp.id } }));
                                     e.dataTransfer.effectAllowed = "copy";
+                                    const ghost = createGhostImage(comp.label, 140, 60);
+                                    e.dataTransfer.setDragImage(ghost, 70, 30);
+                                    setTimeout(() => ghost.remove(), 0);
                                 }}
+                                data-label={comp.label.split(' ')[1]}
+                                title={comp.label}
                             >
                                 <span className="comp-icon">{comp.icon}</span>
-                                <div className="comp-info">
-                                    <div className="cname">{comp.label}</div>
-                                    <div className="cdesc">{comp.desc}</div>
-                                </div>
                             </div>
                         ))}
                     </div>
                 </div>
-            </div>
-
-            {/* LAYERS PANEL */}
-            <div className={`layers-panel ${sidebarTab === 'layers' ? 'visible' : ''}`}>
-                <div className="layers-header">
-                    <span className="layers-title">Project</span>
-                    <button className="add-screen-btn" onClick={() => addScreen && addScreen()}>＋ Screen</button>
-                </div>
-                <div className="tree">
-                    {project.screens.map((scr: Screen) => (
-                        <ScreenNode key={scr.id} scr={scr} isActive={activeScreenId === scr.id} />
-                    ))}
-                    <div style={{ marginTop: '20px' }}>
-                        <div className="section-label">Master Panels</div>
-                        {project.panels.map((pan: Panel) => (
-                            <PanelNode key={pan.id} pan={pan} isActive={selections['panel']?.id === pan.id} />
-                        ))}
-                    </div>
-                </div>
-                <div className="quick-add-hint">
-                    <span>💡</span>
-                    <span>Click an item to select it on the canvas — and vice versa.</span>
-                </div>
-            </div>
+            )}
         </div>
     );
 };
@@ -255,11 +264,19 @@ const HierarchyItem = ({ it, pageId, screenId }: { it: GridItem, pageId: string,
                     <span className="item-name">{it.name}</span>
                 )}
                 <span className="item-type">{it.type}</span>
-                {isContainer && children.length > 0 && (
-                    <button onClick={(e) => { e.stopPropagation(); setIsOpen(!isOpen); }} style={{ background: 'none', border: 'none', fontSize: '10px', color: '#94a3b8', cursor: 'pointer' }}>
-                        {isOpen ? '▼' : '▶'}
-                    </button>
-                )}
+                <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    {isContainer && children.length > 0 && (
+                        <button onClick={(e) => { e.stopPropagation(); setIsOpen(!isOpen); }} style={{ background: 'none', border: 'none', fontSize: '10px', color: '#94a3b8', cursor: 'pointer', padding: '2px 4px' }}>
+                            {isOpen ? '▼' : '▶'}
+                        </button>
+                    )}
+                    <button 
+                        className="delete-item-btn"
+                        style={{ background: 'none', border: 'none', color: '#ef4444', fontSize: '10px', cursor: 'pointer', opacity: isSelected ? 1 : 0.4, padding: '2px 4px' }}
+                        onClick={(e) => { e.stopPropagation(); if(window.confirm(`Delete ${it.name}?`)) removeItem(pageId, it.id); }}
+                        title="Delete Item"
+                    >✕</button>
+                </div>
             </div>
             {isOpen && children.length > 0 && (
                 <div className="item-list">
@@ -333,7 +350,7 @@ const ScreenNode = ({ scr, isActive }: { scr: Screen, isActive: boolean }) => {
     const [editName, setEditName] = useState(scr.name);
 
     useEffect(() => {
-        const hasSelection = selections[scr.id] !== null;
+        const hasSelection = selections?.[scr.id] != null;
         if (hasSelection) setIsOpen(true);
     }, [selections, scr.id]);
 
@@ -383,31 +400,70 @@ const ScreenNode = ({ scr, isActive }: { scr: Screen, isActive: boolean }) => {
 
 const PanelNode = ({ pan, isActive }: { pan: Panel, isActive: boolean }) => {
 	const [isOpen, setIsOpen] = useState(true);
-	const { setSelectedEntity, selections } = useContext(GridContext) as any;
+    const [isEditing, setIsEditing] = useState(false);
+    const [editName, setEditName] = useState(pan.name);
+	const { setSelectedEntity, setActiveScreenId, selections, activeScreenId, addItem, updatePanel, removePanel } = useContext(GridContext) as any;
+    const isPanelMode = activeScreenId === 'panel';
+
+    useEffect(() => { setEditName(pan.name); }, [pan.name]);
+
+    const saveEdit = () => {
+        updatePanel(pan.id, { name: editName });
+        setIsEditing(false);
+    };
 	
 	return (
-		<div className="screen-node">
-			<div onClick={() => setSelectedEntity({ type: 'panel', id: pan.id })} className={`screen-row ${isActive ? 'active' : ''}`}>
+		<div 
+            className="screen-node"
+            draggable={true}
+            onDragStart={(e) => {
+                e.dataTransfer.setData("application/gridos-item", JSON.stringify({ type: 'panel-ref', panelId: pan.id }));
+                e.dataTransfer.effectAllowed = "copy";
+                const ghost = createGhostImage(pan.name, 160, 160);
+                e.dataTransfer.setDragImage(ghost, 80, 80);
+                setTimeout(() => ghost.remove(), 0);
+            }}
+        >
+			<div 
+                className={`screen-row ${isPanelMode && isActive ? 'active' : ''}`}
+                onClick={() => { setActiveScreenId('panel'); setSelectedEntity({ type: 'panel', id: pan.id }, 'panel'); }}
+                onDoubleClick={(e) => { e.stopPropagation(); setIsEditing(true); }}
+            >
 				<span className="screen-chevron" onClick={(e) => { e.stopPropagation(); setIsOpen(!isOpen); }}>{isOpen ? '▼' : '▶'}</span>
 				<span className="screen-icon">🔲</span>
-				<span className="screen-name">{pan.name}</span>
+				{isEditing ? (
+                    <input 
+                        autoFocus
+                        className="node-input"
+                        value={editName}
+                        onChange={e => setEditName(e.target.value)}
+                        onBlur={saveEdit}
+                        onKeyDown={e => { if (e.key === 'Enter') saveEdit(); }}
+                        onClick={e => e.stopPropagation()}
+                    />
+                ) : (
+                    <span className="screen-name">{pan.name}</span>
+                )}
+                <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <button 
+                        className="add-item-mini"
+                        onClick={(e) => { e.stopPropagation(); addItem('nav-item', pan.id); }}
+                        title="Add Nav Item"
+                    >＋</button>
+                    <button 
+                        className="add-item-mini"
+                        style={{ background: '#fee2e2', color: '#ef4444', fontSize: '10px' }}
+                        onClick={(e) => { e.stopPropagation(); if(window.confirm('Delete this Master Panel?')) removePanel(pan.id); }}
+                        title="Delete Panel"
+                    >✕</button>
+                </div>
 			</div>
 			{isOpen && (
 				<div className="item-list">
-					{pan.elements.map((it: any) => {
-						const isSelected = selections['panel']?.id === it.id;
-						return (
-							<div 
-                                key={it.id} 
-                                className={`item-row ${isSelected ? 'selected' : ''}`}
-                                onClick={() => setSelectedEntity({ type: 'item', id: it.id, pageId: pan.id })}
-                            >
-								<div className="item-dot"></div>
-								<span className="item-name">{it.name}</span>
-								<span className="item-type">{it.type}</span>
-							</div>
-						);
-					})}
+					{pan.elements.map((it: any) => (
+                        <HierarchyItem key={it.id} it={it} pageId={pan.id} screenId="panel" />
+                    ))}
+                    {pan.elements.length === 0 && <div style={{ padding: '4px 20px', fontSize: '11px', color: '#cbd5e1' }}>Empty Panel</div>}
 				</div>
 			)}
 		</div>

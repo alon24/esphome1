@@ -245,8 +245,8 @@ static void _home_render_item(lv_obj_t *parent, const GridItem &it, int offsetX,
             lv_obj_set_style_clip_corner(panel_obj, true, 0);
             lv_obj_set_flex_flow(panel_obj, LV_FLEX_FLOW_COLUMN);
             lv_obj_set_flex_align(panel_obj, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-            lv_obj_set_style_pad_all(panel_obj, 10, 0);
-            lv_obj_set_style_pad_gap(panel_obj, 10, 0);
+            lv_obj_set_style_pad_all(panel_obj, 0, 0);
+            lv_obj_set_style_pad_gap(panel_obj, 0, 0);
             for (const auto &child : pDef->elements) _home_render_item(panel_obj, child, 0, 0);
             return;
         } else {
@@ -301,12 +301,19 @@ static void _home_render_item(lv_obj_t *parent, const GridItem &it, int offsetX,
     } else if (it.type == "border") {
         obj = lv_obj_create(parent);
         _panel_reset(obj);
-    } else if (it.type == "menu-item") {
+    } else if (it.type == "menu-item" || it.type == "nav-item") {
         obj = lv_button_create(parent);
         lv_obj_t *lbl = lv_label_create(obj);
         lv_label_set_text(lbl, it.name.empty() ? "MENU ITEM" : it.name.c_str());
         lv_obj_center(lbl);
         lv_obj_set_style_text_color(lbl, lv_color_hex(it.textColor), 0);
+        
+        // Visual indicator like React
+        lv_obj_t *dot = lv_label_create(obj);
+        lv_label_set_text(dot, LV_SYMBOL_PLAY); // Small arrow
+        lv_obj_set_style_text_font(dot, &lv_font_montserrat_14, 0);
+        lv_obj_align(dot, LV_ALIGN_LEFT_MID, 8, 0);
+        lv_obj_set_style_opa(dot, LV_OPA_50, 0);
     } else if (it.type == "native-wifi") {
         obj = lv_obj_create(parent); _panel_reset(obj); lv_obj_clear_flag(obj, LV_OBJ_FLAG_SCROLLABLE);
         tab_wifi_create(obj, lv_screen_active()); tab_wifi_on_show();
@@ -331,8 +338,8 @@ static void _home_render_item(lv_obj_t *parent, const GridItem &it, int offsetX,
 
     // 2. Apply common properties
     if (obj) {
-        if (it.type == "menu-item") {
-            lv_obj_set_size(obj, lv_pct(100), 54); // Improved touch target
+        if (it.type == "menu-item" || it.type == "nav-item") {
+            lv_obj_set_size(obj, lv_pct(100), 50); // Improved touch target
         } else {
             lv_obj_set_pos(obj, it.x + offsetX, it.y + offsetY);
             lv_obj_set_size(obj, it.width, it.height);
@@ -351,9 +358,14 @@ static void _home_render_item(lv_obj_t *parent, const GridItem &it, int offsetX,
         }
 
         // Navigation Action
-        if (!it.action.empty()) {
+        std::string final_action = it.action;
+        if (final_action.empty() && !it.targetScreenId.empty()) {
+            final_action = "scr:" + it.targetScreenId;
+        }
+
+        if (!final_action.empty()) {
             lv_obj_add_flag(obj, LV_OBJ_FLAG_CLICKABLE);
-            char *persist_act = strdup(it.action.c_str());
+            char *persist_act = strdup(final_action.c_str());
             lv_obj_add_event_cb(obj, _item_event_cb, LV_EVENT_CLICKED, persist_act);
         }
 

@@ -1,4 +1,4 @@
-export type ElementType = "btn" | "switch" | "slider" | "label" | "clock" | "panel-ref" | "arc" | "checkbox" | "dropdown" | "roller" | "bar" | "border" | "nav-menu" | "menu-item" | "nav-item" | "native-wifi" | "native-system" | "native-sd" | "native-tests" | "component";
+export type ElementType = "btn" | "switch" | "slider" | "label" | "clock" | "panel-ref" | "arc" | "checkbox" | "dropdown" | "roller" | "bar" | "border" | "nav-menu" | "side-menu" | "menu-item" | "nav-item" | "native-wifi" | "native-system" | "native-sd" | "native-tests" | "component";
 
 export type GridItem = {
 	id: string;
@@ -25,6 +25,7 @@ export type GridItem = {
 	children?: GridItem[];
 	component?: string;
 	mqttTopic?: string;
+    targetScreenId?: string;
 };
 
 export type Page = {
@@ -39,6 +40,8 @@ export type Screen = {
 	id: string;
 	name: string;
 	pages: Page[];
+	x?: number;
+	y?: number;
 	bg?: number;
 	borderColor?: number;
 	borderWidth?: number;

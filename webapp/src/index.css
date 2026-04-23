@@ -347,25 +347,31 @@ body {
 .ip-input { background: var(--bg-input); border: 2px solid var(--border-main); color: var(--text-dim); border-radius: 7px; padding: 6px 12px; font-size: 13px; width: 140px; transition: all 0.2s; }
 
 /* ── LEFT SIDEBAR — High Contrast Light ── */
-.sidebar { width: 300px; background: var(--bg-sidebar); border-right: 2px solid var(--border-main); display: flex; flex-direction: column; flex-shrink: 0; }
-.sidebar-tabs { display: flex; border-bottom: 2px solid var(--border-main); background: var(--bg-panel); flex-shrink: 0; }
-.stab { flex: 1; text-align: center; padding: 15px 0; font-size: 14px; font-weight: 900; letter-spacing: 2px; cursor: pointer; color: var(--text-muted); border-bottom: 4px solid transparent; transition: all 0.15s; }
-.stab.active { color: var(--primary); border-bottom-color: var(--primary); background: var(--bg-sidebar); }
-.stab:hover:not(.active) { color: var(--text-main); background: var(--border-dim); }
-.sidebar-panel { flex: 1; overflow-y: auto; display: none; padding: 15px; gap: 20px; flex-direction: column; background: var(--bg-sidebar); }
-.sidebar-panel.visible { display: flex; }
-.section-label { font-size: 11px; font-weight: 900; letter-spacing: 3px; color: var(--text-muted); padding: 4px 2px 8px; text-transform: uppercase; border-bottom: 2px solid var(--border-dim); margin-bottom: 4px; }
+.sidebar { width: 380px; background: var(--bg-sidebar); border-right: 2px solid var(--border-main); display: flex; flex-direction: row; flex-shrink: 0; position: relative; transition: width 0.3s ease; }
+.sidebar.palette-hidden { width: 300px; }
+
+.layers-side { flex: 1; display: flex; flex-direction: column; overflow: hidden; border-right: 1px solid var(--border-dim); }
+.palette-side { width: 74px; flex-shrink: 0; display: flex; flex-direction: column; background: var(--bg-panel); overflow-y: auto; overflow-x: hidden; border-left: 1px solid var(--border-main); }
+
+.sidebar-tabs { display: none; } /* Removed tabs */
+
+.sidebar-panel { flex: 1; overflow-y: auto; display: flex; padding: 10px; gap: 15px; flex-direction: column; background: var(--bg-sidebar); }
+
+.section-label { font-size: 9px; font-weight: 900; letter-spacing: 1px; color: var(--text-muted); padding: 4px 2px; text-transform: uppercase; border-bottom: 1px solid var(--border-dim); margin-bottom: 4px; text-align: center; }
 
 /* Widget chips — colorful! */
-.widget-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+/* Widget chips — condensed for strip */
+.widget-grid { display: flex; flex-direction: column; gap: 6px; align-items: center; }
 .widget-chip {
-  border-radius: 10px; padding: 10px 6px; text-align: center; cursor: grab;
-  font-size: 12px; font-weight: 700; transition: all 0.15s;
-  display: flex; flex-direction: column; align-items: center; gap: 5px;
-  border: 2px solid transparent;
+  width: 54px; height: 54px;
+  border-radius: 8px; padding: 6px; text-align: center; cursor: grab;
+  font-size: 8px; font-weight: 800; transition: all 0.15s;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  border: 1.5px solid transparent;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.widget-chip .wicon { font-size: 22px; }
-.widget-chip:hover { transform: translateY(-2px); box-shadow: 0 4px 14px rgba(0,0,0,0.15); }
+.widget-chip .wicon { font-size: 18px; }
+.widget-chip:hover { transform: scale(1.05); box-shadow: 0 4px 10px rgba(0,0,0,0.1); z-index: 10; }
 
 /* Each widget type gets its own color */
 .wc-btn      { background: #ede9fe; color: #5b21b6; border-color: #c4b5fd; }
@@ -400,17 +406,19 @@ body {
 .panel-card .pdim { font-size: 11px; color: #64748b; background: #e2e8f0; border-radius: 4px; padding: 2px 7px; font-weight: 600; }
 
 /* Smart component cards */
-.comp-card { border-radius: 10px; padding: 12px; cursor: grab; display: flex; align-items: center; gap: 12px; transition: all 0.15s; border: 2px solid transparent; }
-.comp-card:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(0,0,0,0.12); }
-.comp-wifi   { background: #eff6ff; border-color: #3b82f6; }
-.comp-wifi:hover { background: #dbeafe; }
-.comp-sd     { background: #f0fdf4; border-color: #22c55e; }
-.comp-sd:hover { background: #dcfce7; }
-.comp-sys    { background: #fff7ed; border-color: #f97316; }
-.comp-sys:hover { background: #fed7aa; }
-.comp-icon { font-size: 26px; }
-.comp-info .cname { font-size: 13px; font-weight: 800; color: #1e293b; }
-.comp-info .cdesc { font-size: 11px; color: #64748b; margin-top: 3px; font-weight: 600; }
+/* Smart component cards — condensed */
+.comp-card { width: 54px; height: 54px; border-radius: 8px; cursor: grab; display: flex; align-items: center; justify-content: center; transition: all 0.15s; border: 1.5px solid transparent; position: relative; }
+.comp-card:hover { transform: scale(1.05); box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+.comp-icon { font-size: 20px; }
+.comp-info { display: none; } /* Hide text in condensed view */
+.comp-card::after {
+    content: attr(data-label);
+    position: absolute;
+    bottom: 2px;
+    font-size: 7px;
+    font-weight: 900;
+    text-transform: uppercase;
+}
 
 /* ── LAYERS ── */
 .layers-panel { flex: 1; overflow-y: auto; display: none; flex-direction: column; background: var(--bg-sidebar); }
@@ -787,4 +795,61 @@ body {
   letter-spacing: 0.5px;
   border-right: 1px solid rgba(255,255,255,0.1);
   margin-right: 4px;
+}/* Nav Menu and Menu Items */
+.wc-nav {
+    display: flex;
+    background: #1e1e2d;
+    border-radius: 0;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.wc-nav.sidebar-mode {
+    height: 100% !important;
+    width: 200px !important;
+    box-shadow: 10px 0 30px rgba(0,0,0,0.2);
+}
+
+.wc-menu {
+    transition: all 0.2s;
+    border-left: 4px solid transparent;
+}
+
+.wc-menu:hover {
+    background: rgba(99, 102, 241, 0.1);
+    transform: translateX(4px);
+}
+
+.item-row.selected {
+    background: rgba(99, 102, 241, 0.15) !important;
+    border-left: 3px solid #6366f1;
+}
+
+.item-list {
+    margin-left: 16px;
+    border-left: 1px dashed #e2e8f0;
+    padding-left: 8px;
+    margin-top: 4px;
+    margin-bottom: 4px;
+}
+
+/* Sidebar Add Item Button */
+.add-item-mini {
+    background: #4f46e5;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: bold;
+    cursor: pointer;
+    margin-left: auto;
+    opacity: 0.6;
+    transition: opacity 0.2s;
+}
+.add-item-mini:hover {
+    opacity: 1;
 }
