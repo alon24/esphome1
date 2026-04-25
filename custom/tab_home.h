@@ -135,12 +135,25 @@ void ui_refresh_grid() {
     }
 
     ESP_LOGI("GRID", "Building new screen: %s", g_current_screen.c_str());
-    lv_obj_set_style_bg_color(scr_cont, lv_color_hex(g_grid_bg), 0);
+    lv_color_t bg_color = lv_color_hex(g_grid_bg);
+    lv_obj_set_style_bg_color(scr_cont, bg_color, 0);
     lv_obj_set_style_bg_opa(scr_cont, LV_OPA_COVER, 0);
+    
+    // Also set parent container bg to prevent white flash during flick/overshoot
+    if (g_home_grid_cont) {
+        lv_obj_set_style_bg_color(g_home_grid_cont, bg_color, 0);
+        lv_obj_set_style_bg_opa(g_home_grid_cont, LV_OPA_COVER, 0);
+    }
 
+    int max_y = 416; // Minimum 1 page height
     for (const auto &it : g_grid_items) {
         _home_render_item(scr_cont, it);
+        int bottom = it.y + it.height;
+        if (bottom > max_y) max_y = bottom;
     }
+    
+    // Set explicit height to prevent 'white space' beyond content
+    lv_obj_set_height(scr_cont, max_y);
 
     // Hide others AFTER build is done
     for (auto const& [name, obj] : g_lv_screen_cache) {
@@ -366,6 +379,28 @@ static void _home_render_item(lv_obj_t *parent, const GridItem &it, int offsetX,
         // Bigger item height
         lv_obj_set_style_text_line_space(obj, 20, 0); 
         lv_obj_set_style_pad_ver(obj, 10, LV_PART_MAIN);
+    } else if (it.type == "shape_circle") {
+        obj = lv_obj_create(parent);
+        _panel_reset(obj);
+        lv_obj_set_style_radius(obj, LV_RADIUS_CIRCLE, 0);
+        lv_obj_set_style_border_width(obj, 4, 0);
+        lv_obj_set_style_bg_opa(obj, 0, 0);
+    } else if (it.type == "battery_icon") {
+        obj = lv_obj_create(parent);
+        _panel_reset(obj);
+        lv_obj_set_style_bg_opa(obj, 0, 0);
+        lv_obj_set_style_border_width(obj, 0, 0);
+        
+        lv_obj_t *icon = lv_label_create(obj);
+        lv_label_set_text(icon, "\uF0082"); // Default battery-90
+        lv_obj_center(icon);
+        lv_obj_set_style_text_font(icon, &lv_font_montserrat_24, 0); // Using available font
+    } else if (it.type == "rounded_rect") {
+        obj = lv_obj_create(parent);
+        _panel_reset(obj);
+        lv_obj_set_style_radius(obj, 15, 0);
+        lv_obj_set_style_border_width(obj, 4, 0);
+        lv_obj_set_style_bg_opa(obj, 0, 0);
     } else if (it.type == "bar") {
         obj = lv_bar_create(parent);
         lv_bar_set_range(obj, it.min, it.max);
@@ -508,6 +543,7 @@ void tab_home_create(lv_obj_t *parent) {
     lv_obj_set_size(g_home_grid_cont, 800, 416);
     _panel_reset(g_home_grid_cont);
     lv_obj_add_flag(g_home_grid_cont, (lv_obj_flag_t)(LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_SCROLL_MOMENTUM));
+    lv_obj_clear_flag(g_home_grid_cont, LV_OBJ_FLAG_SCROLL_ELASTIC); // Remove white 'spring' overshoot effect
     lv_obj_set_scrollbar_mode(g_home_grid_cont, LV_SCROLLBAR_MODE_AUTO);
     
     // Pulse arrow hint at bottom

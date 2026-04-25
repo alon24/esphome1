@@ -1,4 +1,4 @@
-export type ElementType = "btn" | "switch" | "slider" | "label" | "clock" | "panel-ref" | "arc" | "checkbox" | "dropdown" | "roller" | "bar" | "border" | "nav-menu" | "side-menu" | "menu-item" | "nav-item" | "native-wifi" | "native-system" | "native-sd" | "native-tests" | "component";
+export type ElementType = "btn" | "switch" | "slider" | "label" | "clock" | "panel-ref" | "arc" | "checkbox" | "dropdown" | "roller" | "bar" | "border" | "nav-menu" | "side-menu" | "menu-item" | "nav-item" | "native-wifi" | "native-system" | "native-sd" | "native-tests" | "component" | "shape_circle" | "battery_icon" | "rounded_rect";
 
 export type GridItem = {
 	id: string;
@@ -74,4 +74,7 @@ export const SMART_COMPONENTS = [
 	{ id: "wifi-panel",       label: "📡 WiFi",     desc: "Scan & connect to networks",    preview: "/assets/wifi_preview.png",     defaultW: 640, defaultH: 350, icon: "📶" },
 	{ id: "sd-browser",       label: "💾 SD Card",   desc: "Browse & view SD card files",   preview: "/assets/sd_preview.png",       defaultW: 640, defaultH: 350, icon: "💾" },
 	{ id: "system-settings",  label: "⚙️ Settings",  desc: "System configuration panel",    preview: "/assets/settings_preview.png", defaultW: 640, defaultH: 350, icon: "⚙️" },
+	{ id: "shape-circle",     label: "⭕ Circle",    desc: "Native ESPHome circle primitive", preview: "", defaultW: 100, defaultH: 100, icon: "⭕", type: "shape_circle" },
+	{ id: "battery-icon",     label: "🔋 Battery",   desc: "Dynamic battery indicator",     preview: "", defaultW: 60,  defaultH: 80,  icon: "🔋", type: "battery_icon" },
+	{ id: "rounded-rect",     label: "▢ RoundRect",  desc: "Custom rounded rectangle",      preview: "", defaultW: 100, defaultH: 100, icon: "▢", type: "rounded_rect" },
 ];

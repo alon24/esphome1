@@ -271,6 +271,33 @@ export const WidgetRenderer: React.FC<{
         );
     }
 
+    if (it.type === "shape_circle") return (
+        <div style={{ ...baseStyle, background: 'none', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{ 
+                aspectRatio: "1/1", 
+                height: "90%", 
+                maxHeight: "90%", 
+                maxWidth: "90%", 
+                borderRadius: '50%', 
+                border: `4px solid ${color}`, 
+                boxSizing: 'border-box' 
+            }} />
+        </div>
+    );
+
+    if (it.type === "battery_icon") return (
+        <div style={{ ...baseStyle, background: 'none', border: 'none', flexDirection: 'column', gap: '2px' }}>
+            <div style={{ fontSize: '32px', color: color }}>🔋</div>
+            <div style={{ fontSize: '12px', fontWeight: 900 }}>90%</div>
+        </div>
+    );
+
+    if (it.type === "rounded_rect") return (
+        <div style={{ ...baseStyle, background: 'none', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{ width: '100%', height: '100%', borderRadius: '15px', border: `4px solid ${color}`, boxSizing: 'border-box' }} />
+        </div>
+    );
+
     return (
         <div style={baseStyle}>
             {it.name} ({it.type})

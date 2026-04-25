@@ -176,10 +176,10 @@ export const Sidebar: React.FC = () => {
                             <div 
                                 key={comp.id} 
                                 className={`comp-card comp-${comp.id.split('-')[0]}`} 
-                                onMouseDown={(e) => handlePaletteClick(e, 'component', { component: comp.id })}
+                                onMouseDown={(e) => handlePaletteClick(e, (comp.type || 'component') as ElementType, { component: comp.id })}
                                 draggable={true}
                                 onDragStart={(e) => {
-                                    e.dataTransfer.setData("application/gridos-item", JSON.stringify({ type: 'component', meta: { component: comp.id } }));
+                                    e.dataTransfer.setData("application/gridos-item", JSON.stringify({ type: comp.type || 'component', meta: { component: comp.id } }));
                                     e.dataTransfer.effectAllowed = "copy";
                                     const ghost = createGhostImage(comp.label, 140, 60);
                                     e.dataTransfer.setDragImage(ghost, 70, 30);
