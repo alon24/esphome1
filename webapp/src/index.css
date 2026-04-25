@@ -347,11 +347,11 @@ body {
 .ip-input { background: var(--bg-input); border: 2px solid var(--border-main); color: var(--text-dim); border-radius: 7px; padding: 6px 12px; font-size: 13px; width: 140px; transition: all 0.2s; }
 
 /* ── LEFT SIDEBAR — High Contrast Light ── */
-.sidebar { width: 380px; background: var(--bg-sidebar); border-right: 2px solid var(--border-main); display: flex; flex-direction: row; flex-shrink: 0; position: relative; transition: width 0.3s ease; }
+.sidebar { width: 480px; background: var(--bg-sidebar); border-right: 2px solid var(--border-main); display: flex; flex-direction: row; flex-shrink: 0; position: relative; transition: width 0.3s ease; }
 .sidebar.palette-hidden { width: 300px; }
 
 .layers-side { flex: 1; display: flex; flex-direction: column; overflow: hidden; border-right: 1px solid var(--border-dim); }
-.palette-side { width: 74px; flex-shrink: 0; display: flex; flex-direction: column; background: var(--bg-panel); overflow-y: auto; overflow-x: hidden; border-left: 1px solid var(--border-main); }
+.palette-side { width: 220px; flex-shrink: 0; display: flex; flex-direction: column; background: var(--bg-panel); overflow-y: auto; overflow-x: hidden; border-left: 1px solid var(--border-main); }
 
 .sidebar-tabs { display: none; } /* Removed tabs */
 

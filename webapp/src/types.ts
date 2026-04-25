@@ -1,4 +1,4 @@
-export type ElementType = "btn" | "switch" | "slider" | "label" | "clock" | "panel-ref" | "arc" | "checkbox" | "dropdown" | "roller" | "bar" | "border" | "nav-menu" | "side-menu" | "menu-item" | "nav-item" | "native-wifi" | "native-system" | "native-sd" | "native-tests" | "component" | "shape_circle" | "battery_icon" | "rounded_rect";
+export type ElementType = "btn" | "switch" | "slider" | "label" | "clock" | "panel-ref" | "arc" | "checkbox" | "dropdown" | "roller" | "bar" | "border" | "nav-menu" | "side-menu" | "menu-item" | "nav-item" | "native-wifi" | "native-system" | "native-sd" | "native-tests" | "component" | "shape_circle" | "battery_icon" | "rounded_rect" | "pane-grid";
 
 export type GridItem = {
 	id: string;
@@ -34,6 +34,10 @@ export type GridItem = {
 	mqttStateTopic?: string;
 	padding?: number;
 	gap?: number;
+	icon?: string;
+	onClick?: string;
+	onDoubleClick?: string;
+	onLongPress?: string;
 };
 
 export type Page = {
@@ -65,9 +69,37 @@ export type Panel = {
 	elements: GridItem[];
 };
 
+export type Pane = {
+    id: string;
+    title: string;
+    icon?: string;
+    bg?: number;
+    textColor?: number;
+    childWidget?: GridItem;
+    mqttStateTopic?: string;
+    mqttTopic?: string;
+    haEntity?: string;
+    onClick?: string;
+    onDoubleClick?: string;
+    onLongPress?: string;
+    valueUnit?: string;
+    valueFormat?: string;
+};
+
+export type PaneGrid = {
+    id: string;
+    name: string;
+    columns: number;
+    gap: number;
+    paneW?: number;
+    paneH?: number;
+    panes: Pane[];
+};
+
 export type Project = {
 	screens: Screen[];
 	panels: Panel[];
+    paneGrids?: PaneGrid[];
 };
 
 export const SMART_COMPONENTS = [

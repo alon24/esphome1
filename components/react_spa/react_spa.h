@@ -36,6 +36,7 @@ void slideshow_start();
 void slideshow_stop();
 void grid_config_get_json(char* out, size_t max_len);
 void grid_panels_save(const char* json_str);
+void grid_pane_grids_save(const char* json_str);
 void system_settings_save();
 extern bool g_ap_always_on;
 extern bool g_ss_enabled;
@@ -237,6 +238,57 @@ class ReactSPAComponent : public Component {
         free(body);
         httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
         return httpd_resp_sendstr(req, "{\"status\":\"ok\"}");
+    });
+
+    reg("/api/grid/pane-grids", HTTP_GET, [](httpd_req_t *req) {
+        FILE* f = fopen("/littlefs/grids.json", "r");
+        if (!f) {
+            httpd_resp_set_type(req, "application/json");
+            return httpd_resp_sendstr(req, "[]");
+        }
+        fseek(f, 0, SEEK_END);
+        size_t sz = ftell(f);
+        fseek(f, 0, SEEK_SET);
+        char* buf = (char*)malloc(sz + 1);
+        fread(buf, 1, sz, f);
+        buf[sz] = '\0';
+        fclose(f);
+        httpd_resp_set_type(req, "application/json");
+        esp_err_t res = httpd_resp_sendstr(req, buf);
+        free(buf);
+        return res;
+    });
+
+    reg("/api/grid/pane-grids", HTTP_POST, [](httpd_req_t *req) {
+        int total = (int)req->content_len;
+        char *body = (char*)malloc(total + 1);
+        int received = 0;
+        while (received < total) {
+            int r = httpd_req_recv(req, body + received, total - received);
+            if (r <= 0) {
+                if (r == HTTPD_SOCK_ERR_TIMEOUT) continue;
+                free(body);
+                return ESP_FAIL;
+            }
+            received += r;
+        }
+        body[total] = '\0';
+        grid_pane_grids_save(body);
+        free(body);
+        httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
+        return httpd_resp_sendstr(req, "{\"status\":\"ok\"}");
+    });
+
+    reg("/api/sensors", HTTP_GET, [](httpd_req_t *req) {
+        const char* json = "{\"sensors\":["
+          "{\"id\":\"battery\", \"label\":\"Battery Level\", \"topic\":\"system/battery\", \"unit\":\"%\", \"icon\":\"🔋\"},"
+          "{\"id\":\"wifi_rssi\", \"label\":\"WiFi Signal\", \"topic\":\"system/wifi/rssi\", \"unit\":\"dBm\", \"icon\":\"📶\"},"
+          "{\"id\":\"uptime\", \"label\":\"Uptime\", \"topic\":\"system/uptime\", \"unit\":\"s\", \"icon\":\"⏱️\"},"
+          "{\"id\":\"ip\", \"label\":\"IP Address\", \"topic\":\"system/ip\", \"unit\":\"\", \"icon\":\"🌐\"}"
+        "]}";
+        httpd_resp_set_type(req, "application/json");
+        httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
+        return httpd_resp_sendstr(req, json);
     });
 
     // --- SD ENDPOINTS ---

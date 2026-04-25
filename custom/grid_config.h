@@ -30,8 +30,36 @@ struct GridItem {
     std::string mqttTopic;      // NEW: MQTT Binding (Command/Publish)
     std::string mqttStateTopic; // NEW: MQTT State (Subscription)
     std::string targetScreenId; // NEW: Screen navigation
+    std::string icon;
+    std::string onClick;
+    std::string onDoubleClick;
+    std::string onLongPress;
+    std::string paneGridId;
     std::vector<GridItem> children;
 };
+
+struct Pane {
+    std::string id;
+    std::string title;
+    std::string icon;
+    uint32_t bg;
+    uint32_t textColor;
+    std::string mqttStateTopic;
+    std::string mqttTopic;
+    std::string onClick;
+    std::string onDoubleClick;
+    std::string onLongPress;
+};
+
+struct PaneGrid {
+    std::string id;
+    std::string name;
+    int columns;
+    int gap;
+    std::vector<Pane> panes;
+};
+
+static std::vector<PaneGrid> g_pane_grids;
 
 struct Panel {
     std::string id;
@@ -95,6 +123,11 @@ static void parse_grid_item(JsonObject eObj, GridItem& it) {
     it.mqttTopic   = eObj["mqttTopic"]   | "";
     it.mqttStateTopic = eObj["mqttStateTopic"] | "";
     it.targetScreenId = eObj["targetScreenId"] | ""; // NEW
+    it.icon = eObj["icon"] | "";
+    it.onClick = eObj["onClick"] | "";
+    it.onDoubleClick = eObj["onDoubleClick"] | "";
+    it.onLongPress = eObj["onLongPress"] | "";
+    it.paneGridId = eObj["paneGridId"] | "";
     
     it.children.clear();
     if (eObj["children"].is<JsonArray>()) {
@@ -152,6 +185,50 @@ void grid_panels_load() {
     free(buf);
 }
 
+void grid_pane_grids_load() {
+    FILE* f = fopen("/littlefs/grids.json", "r");
+    if (!f) return;
+    fseek(f, 0, SEEK_END);
+    size_t sz = ftell(f);
+    fseek(f, 0, SEEK_SET);
+    char* buf = (char*)malloc(sz + 1);
+    if (!buf) { fclose(f); return; }
+    fread(buf, 1, sz, f);
+    buf[sz] = '\0';
+    fclose(f);
+
+    JsonDocument doc;
+    DeserializationError err = deserializeJson(doc, buf);
+    if (err) { free(buf); return; }
+
+    g_pane_grids.clear();
+    JsonArray arr = doc.as<JsonArray>();
+    for (JsonObject gObj : arr) {
+        PaneGrid pg;
+        pg.id = gObj["id"] | "";
+        pg.name = gObj["name"] | "";
+        pg.columns = gObj["columns"] | 3;
+        pg.gap = gObj["gap"] | 10;
+        JsonArray pArr = gObj["panes"].as<JsonArray>();
+        for (JsonObject pObj : pArr) {
+            Pane p;
+            p.id = pObj["id"] | "";
+            p.title = pObj["title"] | "";
+            p.icon = pObj["icon"] | "";
+            p.bg = pObj["bg"] | 0x1e293b;
+            p.textColor = pObj["textColor"] | 0xffffff;
+            p.mqttStateTopic = pObj["mqttStateTopic"] | "";
+            p.mqttTopic = pObj["mqttTopic"] | "";
+            p.onClick = pObj["onClick"] | "";
+            p.onDoubleClick = pObj["onDoubleClick"] | "";
+            p.onLongPress = pObj["onLongPress"] | "";
+            pg.panes.push_back(p);
+        }
+        g_pane_grids.push_back(pg);
+    }
+    free(buf);
+}
+
 void grid_config_load(const char* name, bool force = false) {
     if (!force && name && strlen(name) > 0 && name == g_current_screen && g_grid_items.size() > 0) {
         ESP_LOGI("GRID", "Using memory-cached screen: %s", name);
@@ -169,6 +246,7 @@ void grid_config_load(const char* name, bool force = false) {
 
     // Load panels first!
     grid_panels_load();
+    grid_pane_grids_load();
 
     std::string path = get_screen_path(g_current_screen);
     FILE* f = fopen(path.c_str(), "r");
@@ -256,6 +334,19 @@ void grid_panels_save(const char* json_str) {
     grid_panels_load(); // Immediately reload
     g_grid_needs_refresh = true;
     g_grid_clear_needed = true;
+}
+
+
+
+void grid_pane_grids_save(const char* json_str) {
+    FILE* f = fopen("/littlefs/grids.json", "w");
+    if (f) {
+        fputs(json_str, f);
+        fclose(f);
+        ESP_LOGI("GRID", "Saved global grids.json");
+    }
+    grid_pane_grids_load();
+    g_grid_needs_refresh = true;
 }
 
 void grid_list_screens(char* out, size_t max_len) {

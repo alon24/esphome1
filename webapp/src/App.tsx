@@ -6,6 +6,7 @@ import { WidgetRenderer } from "./components/editor/WidgetRenderer";
 import { WifiManager } from "./components/wifi/WifiManager";
 import { GridContext } from "./context/GridContext";
 import { SettingsManager } from "./components/layout/SettingsManager";
+import { DashboardTab } from "./components/dashboard/DashboardTab";
 import { 
     type ElementType, 
     type GridItem, 
@@ -107,7 +108,7 @@ export default function SafeApp() {
 
 function App({ isMobile, width }: { isMobile: boolean, width: number }) {
     const [remoteIp, setRemoteIp] = useState(() => localStorage.getItem("ds_remote_ip") || "");
-	const [activeTab, setActiveTab] = useState<"grid" | "mirror" | "wifi" | "logs" | "settings">("grid");
+	const [activeTab, setActiveTab] = useState<"grid" | "dashboard" | "mirror" | "wifi" | "logs" | "settings">("grid");
 	const [status, setStatus] = useState<WifiStatus>({ connected: true, ip: "127.0.0.1", ssid: "STATION", ap_active: false, ap_always_on: false, mqtt_enabled: true });
     const [propsLocation, setPropsLocation] = useState<'left' | 'right'>(() => (localStorage.getItem("ds_props_location") as any) || 'left');
 	const [theme, setTheme] = useState<'light' | 'dark'>(() => (localStorage.getItem("ds_theme") as any) || 'light');
@@ -148,6 +149,19 @@ function App({ isMobile, width }: { isMobile: boolean, width: number }) {
                         activeTab={activeTab}
                         setActiveTab={setActiveTab}
                     />
+                ) : activeTab === "dashboard" ? (
+                    <DashboardTab 
+                        isMobile={isMobile}
+                        theme={theme}
+                        setTheme={setTheme}
+                        activeTab={activeTab}
+                        setActiveTab={setActiveTab}
+                        wifiStatus={status}
+                        remoteIp={remoteIp}
+                        setRemoteIp={setRemoteIp}
+                        propsLocation={propsLocation}
+                        setPropsLocation={setPropsLocation}
+                    />
                 ) : (
                     <>
                         <Header 
@@ -181,13 +195,17 @@ function GridTab({ isMobile, width, wifiStatus, remoteIp, setRemoteIp, propsLoca
 			localStorage.setItem("ds_project_version", VERSION);
 			return {
 				screens: [{ id: "main", name: "Main Screen", bg: 0x0e0e12, pages: [{ id: "p1", name: "Page (0,0)", x: 0, y: 0, items: [] }] }],
-				panels: [{ id: "sidebar", name: "Sidebar", width: 160, height: 416, bg: 0x000000, itemBg: 0x000000, elements: [] }]
+				panels: [{ id: "sidebar", name: "Sidebar", width: 160, height: 416, bg: 0x000000, itemBg: 0x000000, elements: [] }],
+                paneGrids: []
 			};
 		}
-		return saved ? JSON.parse(saved) : {
+		const data = saved ? JSON.parse(saved) : {
 			screens: [{ id: "main", name: "Main Screen", bg: 0x0e0e12, pages: [{ id: "p1", name: "Page (0,0)", x: 0, y: 0, items: [] }] }],
-			panels: [{ id: "sidebar", name: "Sidebar", width: 160, height: 416, bg: 0x000000, itemBg: 0x000000, elements: [] }]
+			panels: [{ id: "sidebar", name: "Sidebar", width: 160, height: 416, bg: 0x000000, itemBg: 0x000000, elements: [] }],
+            paneGrids: []
 		};
+        if (!data.paneGrids) data.paneGrids = [];
+        return data;
 	});
 
 	const [activeScreenId, setActiveScreenId] = useState<string>("main");
@@ -604,6 +622,16 @@ function GridTab({ isMobile, width, wifiStatus, remoteIp, setRemoteIp, propsLoca
                 headers: { 'Content-Type': 'application/json' }
             });
             if (!panelsRes.ok) throw new Error("Failed to sync Master Panels.");
+
+            // 3. Sync Dashboard Grids
+            console.log("Syncing Dashboard Grids...");
+            const gridsUrl = `http://${remoteIp}/api/grid/pane-grids`;
+            const gridsRes = await fetch(gridsUrl, {
+                method: 'POST',
+                body: JSON.stringify(project.paneGrids || []),
+                headers: { 'Content-Type': 'application/json' }
+            });
+            if (!gridsRes.ok) throw new Error("Failed to sync Dashboard Grids.");
 
             console.log("Project synced successfully!");
         } catch (err: any) {

@@ -117,6 +117,19 @@ export const PropertiesPanel: React.FC = () => {
         type = item.type.toUpperCase();
         content = (
             <>
+                <div className="prop-group" style={{ background: '#f8fafc', padding: '10px', borderRadius: '8px', marginBottom: '15px', border: '1px solid #e2e8f0' }}>
+                    <div className="prop-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span>WIDGET ID</span>
+                        <button 
+                            onClick={() => { navigator.clipboard.writeText(item.id); alert('ID Copied!'); }}
+                            style={{ fontSize: '9px', padding: '2px 6px', background: '#6366f1', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                        >
+                            COPY
+                        </button>
+                    </div>
+                    <div style={{ fontFamily: 'monospace', fontSize: '12px', color: '#6366f1', marginTop: '4px', fontWeight: 'bold' }}>{item.id}</div>
+                </div>
+
                 <div className="prop-group">
                     <div className="prop-label">Name / ID</div>
                     <input className="prop-input" value={item.name} onChange={e => updateItem(selectedEntity.pageId, item.id, { name: e.target.value })} />
@@ -216,6 +229,23 @@ export const PropertiesPanel: React.FC = () => {
                     </div>
                 )}
 
+                {item.type === 'pane-grid' && (
+                    <div className="prop-group" style={{marginTop:'10px'}}>
+                        <div className="prop-label">Select Dashboard Grid</div>
+                        <select 
+                            className="prop-input" 
+                            value={item.paneGridId || ''} 
+                            onChange={e => updateItem(selectedEntity.pageId, item.id, { paneGridId: e.target.value })}
+                        >
+                            <option value="">(None)</option>
+                            {(project.paneGrids || []).map((g: any) => (
+                                <option key={g.id} value={g.id}>{g.name}</option>
+                            ))}
+                        </select>
+                        <div style={{fontSize:'10px', color:'#94a3b8', marginTop:'4px'}}>Manage grids in the DASHBOARD tab.</div>
+                    </div>
+                )}
+
                 <div className="prop-group" style={{marginTop:'10px'}}>
                     <div className="prop-label">Custom Action (Action String)</div>
                     <input 
@@ -224,7 +254,81 @@ export const PropertiesPanel: React.FC = () => {
                         value={item.action || ''} 
                         onChange={e => updateItem(selectedEntity.pageId, item.id, { action: e.target.value })} 
                     />
-                    <div style={{fontSize:'10px', color:'#94a3b8', marginTop:'4px'}}>Supported: scr:ID, toast:MSG, reboot:, mqtt:TOPIC:VAL</div>
+                    <div style={{fontSize:'10px', color:'#94a3b8', marginTop:'4px'}}>Supported: scr:ID, toast:MSG, reboot:, wifi-scan:, set:ID:VAL, toggle:ID</div>
+                </div>
+
+                <div className="props-subtitle" style={{marginTop:'20px', fontSize:'11px', fontWeight:900, color:'#94a3b8', textTransform:'uppercase', letterSpacing:'1px', marginBottom:'10px', borderBottom:'1px solid #f1f5f9', paddingBottom:'5px'}}>Visuals & Icons</div>
+
+                <div className="prop-group">
+                    <div className="prop-label">Icon / Emoji</div>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                        <input 
+                            className="prop-input" 
+                            placeholder="Emoji or /path/to/image.png" 
+                            value={item.icon || ''} 
+                            onChange={e => updateItem(selectedEntity.pageId, item.id, { icon: e.target.value })} 
+                        />
+                        <button 
+                            className="prop-input"
+                            style={{ width: '40px', padding: 0 }}
+                            onClick={() => updateItem(selectedEntity.pageId, item.id, { icon: '' })}
+                        >
+                            ✕
+                        </button>
+                    </div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '6px' }}>
+                        {['🌡️', '💧', '💡', '🔋', '📶', '⏱️', '🔥', '🏠', '🚗', '⚡'].map(emo => (
+                            <button 
+                                key={emo}
+                                onClick={() => updateItem(selectedEntity.pageId, item.id, { icon: emo })}
+                                style={{ background: '#f1f5f9', border: 'none', borderRadius: '4px', padding: '4px 8px', cursor: 'pointer', fontSize: '14px' }}
+                            >
+                                {emo}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
+                <div className="props-subtitle" style={{marginTop:'20px', fontSize:'11px', fontWeight:900, color:'#94a3b8', textTransform:'uppercase', letterSpacing:'1px', marginBottom:'10px', borderBottom:'1px solid #f1f5f9', paddingBottom:'5px'}}>MQTT Bindings</div>
+
+                <div className="prop-group">
+                    <div className="prop-label">Command Topic (Publish)</div>
+                    <input className="prop-input" placeholder="e.g. cmnd/light/POWER" value={item.mqttTopic || ''} onChange={e => updateItem(selectedEntity.pageId, item.id, { mqttTopic: e.target.value })} />
+                </div>
+                <div className="prop-group">
+                    <div className="prop-label">State Topic (Subscribe)</div>
+                    <input className="prop-input" placeholder="e.g. stat/light/POWER" value={item.mqttStateTopic || ''} onChange={e => updateItem(selectedEntity.pageId, item.id, { mqttStateTopic: e.target.value })} />
+                </div>
+
+                <div className="props-subtitle" style={{marginTop:'20px', fontSize:'11px', fontWeight:900, color:'#94a3b8', textTransform:'uppercase', letterSpacing:'1px', marginBottom:'10px', borderBottom:'1px solid #f1f5f9', paddingBottom:'5px'}}>Advanced Actions</div>
+                
+                <div className="prop-group">
+                    <div className="prop-label">On Click</div>
+                    <input className="prop-input" placeholder="Action string..." value={item.onClick || ''} onChange={e => updateItem(selectedEntity.pageId, item.id, { onClick: e.target.value })} />
+                </div>
+                <div className="prop-group">
+                    <div className="prop-label">On Double Click</div>
+                    <input className="prop-input" placeholder="Action string..." value={item.onDoubleClick || ''} onChange={e => updateItem(selectedEntity.pageId, item.id, { onDoubleClick: e.target.value })} />
+                </div>
+                <div className="prop-group">
+                    <div className="prop-label">On Long Press</div>
+                    <input className="prop-input" placeholder="Action string..." value={item.onLongPress || ''} onChange={e => updateItem(selectedEntity.pageId, item.id, { onLongPress: e.target.value })} />
+                </div>
+
+                <div className="props-subtitle" style={{marginTop:'20px', fontSize:'11px', fontWeight:900, color:'#10b981', textTransform:'uppercase', letterSpacing:'1px', marginBottom:'10px', borderBottom:'1px solid #ecfdf5', paddingBottom:'5px'}}>YAML Binding Snippet</div>
+                <div style={{ background: '#1e293b', padding: '12px', borderRadius: '8px', color: '#38bdf8', fontSize: '11px', fontFamily: 'monospace', position: 'relative', overflowX: 'auto' }}>
+                    <div style={{ color: '#94a3b8', marginBottom: '8px' }}># Paste into device.yaml lambda:</div>
+                    <div>grid_widget_set_{['label'].includes(item.type) ? 'text' : 'value'}("{item.id}", {['label'].includes(item.type) ? '"Hello"' : '75.0'});</div>
+                    <button 
+                        onClick={() => { 
+                            const code = `grid_widget_set_${['label'].includes(item.type) ? 'text' : 'value'}("${item.id}", ${['label'].includes(item.type) ? '"Hello"' : '75.0'});`;
+                            navigator.clipboard.writeText(code);
+                            alert('Snippet Copied!');
+                        }}
+                        style={{ position: 'absolute', top: '8px', right: '8px', background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: '4px', padding: '2px 6px', color: 'white', cursor: 'pointer', fontSize: '9px' }}
+                    >
+                        COPY
+                    </button>
                 </div>
 
                 {/* Element Specific Config */}

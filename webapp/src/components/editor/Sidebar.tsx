@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from "react";
+import React, { useState, useEffect, useContext, useMemo } from "react";
 import { GridContext } from "../../context/GridContext";
 import { 
     type GridItem, 
@@ -39,16 +39,30 @@ export const Sidebar: React.FC = () => {
         setSelectedEntity, 
         addItem,
         addScreen,
-        updatePanel,
+        updateScreen,
+        updatePage,
         addPanel,
         removePanel,
-        selectedEntity
+        updatePanel,
+        selectedEntity,
+        theme,
+        remoteIp
     } = useContext(GridContext) as any;
 
-    const [editingScreenId, setEditingScreenId] = useState<string | null>(null);
-    const [editName, setEditName] = useState("");
+    const [dynamicSensors, setDynamicSensors] = useState<any[]>([]);
+
+    useEffect(() => {
+        if (!remoteIp) return;
+        fetch(`http://${remoteIp}/api/sensors`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.sensors) setDynamicSensors(data.sensors);
+            })
+            .catch(err => console.warn("Failed to fetch sensors from device:", err));
+    }, [remoteIp]);
 
     const [showPalette, setShowPalette] = useState(true);
+    const [searchQuery, setSearchQuery] = useState("");
 
     const handlePaletteClick = (e: React.MouseEvent, type: ElementType, meta?: any, panelId?: string) => {
         const screen = project?.screens?.find((s: any) => s.id === activeScreenId) || project?.screens?.[0];
@@ -63,7 +77,6 @@ export const Sidebar: React.FC = () => {
         } else if (activeTarget?.type === 'panel') {
             targetPageId = activeTarget.id;
         } else if (activeTarget?.type === 'item') {
-            // Check if selected item is a container
             const item = project?.screens?.find((s: any) => s.id === activeScreenId)?.pages.flatMap((p: any) => p.items).find((it: any) => it.id === activeTarget.id);
             if (item && item.type === 'nav-menu') {
                 parentId = item.id;
@@ -86,147 +99,304 @@ export const Sidebar: React.FC = () => {
         }
     };
 
+    const WIDGET_PALETTE = useMemo(() => [
+      {
+        id: 'basic', label: 'BASIC', icon: '▣',
+        widgets: [
+          { type: 'label',   label: 'Label',      icon: 'Aa',  defaultW: 200, defaultH: 40 },
+          { type: 'btn',     label: 'Button',     icon: '⬡',   defaultW: 160, defaultH: 50 },
+          { type: 'clock',   label: 'Clock',      icon: '⏱',   defaultW: 200, defaultH: 60 },
+          { type: 'border',  label: 'Frame',      icon: '□',   defaultW: 200, defaultH: 120 },
+        ]
+      },
+      {
+        id: 'controls', label: 'CONTROLS', icon: '⚙',
+        widgets: [
+          { type: 'switch',   label: 'Switch',    icon: '⇌',   defaultW: 100, defaultH: 40 },
+          { type: 'slider',   label: 'Slider',    icon: '—◉',  defaultW: 200, defaultH: 40 },
+          { type: 'arc',      label: 'Arc',       icon: '◔',   defaultW: 120, defaultH: 120 },
+          { type: 'bar',      label: 'Bar',       icon: '▮▯',  defaultW: 200, defaultH: 30 },
+          { type: 'checkbox', label: 'Checkbox',  icon: '☑',   defaultW: 140, defaultH: 40 },
+          { type: 'dropdown', label: 'Dropdown',  icon: '▾',   defaultW: 180, defaultH: 40 },
+          { type: 'roller',   label: 'Roller',    icon: '⊛',   defaultW: 140, defaultH: 100 },
+        ]
+      },
+      {
+        id: 'nav', label: 'NAVIGATION', icon: '◫',
+        widgets: [
+          { type: 'nav-menu',  label: 'Nav Menu',  icon: '☰',  defaultW: 180, defaultH: 300 },
+          { type: 'nav-item',  label: 'Nav Item',  icon: '▶ —', defaultW: 180, defaultH: 50 },
+          { type: 'menu-item', label: 'Menu Item', icon: '• —', defaultW: 180, defaultH: 50 },
+        ]
+      },
+      {
+        id: 'smart', label: 'SMART', icon: '🧩',
+        widgets: SMART_COMPONENTS.map(sc => ({
+          type: 'component' as ElementType,
+          label: sc.label.split(' ')[1] || sc.label,
+          icon: sc.icon,
+          defaultW: sc.defaultW || 200,
+          defaultH: sc.defaultH || 100,
+          meta: { component: sc.id }
+        }))
+      },
+      {
+        id: 'sensors', label: 'ON DEVICE SENSORS', icon: '📡',
+        widgets: [
+            { type: 'battery_icon', label: 'Battery', icon: '🔋', defaultW: 100, defaultH: 100, meta: { mqttStateTopic: 'system/battery' } },
+            { type: 'label', label: 'WiFi Signal', icon: '📶', defaultW: 160, defaultH: 50, meta: { mqttStateTopic: 'system/wifi/rssi', name: 'WiFi: %v dBm' } },
+            { type: 'label', label: 'Uptime', icon: '⏱️', defaultW: 160, defaultH: 50, meta: { mqttStateTopic: 'system/uptime', name: 'Uptime: %v s' } },
+            { type: 'label', label: 'IP Address', icon: '🌐', defaultW: 200, defaultH: 40, meta: { mqttStateTopic: 'system/ip' } },
+            ...dynamicSensors.map((s: any) => ({
+                type: 'label' as ElementType,
+                label: s.label,
+                icon: s.icon || '📡',
+                defaultW: 160,
+                defaultH: 50,
+                meta: { mqttStateTopic: s.topic, name: `${s.label}: %v ${s.unit}` }
+            }))
+        ]
+      },
+      {
+        id: 'advanced', label: 'ADVANCED', icon: '◈',
+        widgets: [
+          { type: 'panel-ref', label: 'Panel Ref',  icon: '❏',  defaultW: 240, defaultH: 300 },
+          { type: 'pane-grid', label: 'Pane Grid',  icon: '⊞',  defaultW: 800, defaultH: 400 },
+        ]
+      }
+    ], [dynamicSensors]);
+
     return (
-        <div className={`sidebar ${!showPalette ? 'palette-hidden' : ''}`} onClick={(e) => e.stopPropagation()}>
+        <div className={`sidebar ${!showPalette ? 'palette-hidden' : ''}`} onClick={(e) => e.stopPropagation()} style={{
+            width: showPalette ? '480px' : '300px',
+            background: theme === 'dark' ? '#0f172a' : '#ffffff',
+            borderRight: `1px solid ${theme === 'dark' ? '#1e293b' : '#e2e8f0'}`,
+            display: 'flex',
+            transition: 'width 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+            overflow: 'hidden'
+        }}>
             {/* LAYERS SIDE */}
-            <div className="layers-side">
-                <div className="layers-header">
-                    <span className="layers-title">Project</span>
+            <div className="layers-side" style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: '300px' }}>
+                <div className="layers-header" style={{ padding: '20px', borderBottom: `1px solid ${theme === 'dark' ? '#1e293b' : '#e2e8f0'}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span className="layers-title" style={{ fontWeight: 800, fontSize: '12px', color: theme === 'dark' ? '#94a3b8' : '#64748b' }}>Project</span>
                     <div style={{ display: 'flex', gap: '6px' }}>
                         <button 
                             className="add-screen-btn" 
-                            style={{ background: 'none', border: '1px solid var(--border-main)', color: 'var(--text-muted)', padding: '5px 8px', fontSize: '14px' }}
+                            style={{ background: 'none', border: '1px solid var(--border-main)', color: 'var(--text-muted)', padding: '5px 8px', fontSize: '14px', cursor: 'pointer' }}
                             onClick={() => setShowPalette(!showPalette)}
                             title="Toggle Palette"
                         >
                             🧰
                         </button>
-                        <button className="add-screen-btn" onClick={() => addScreen && addScreen()}>＋ Screen</button>
+                        <button className="add-screen-btn" style={{ background: '#6366f1', border: 'none', borderRadius: '4px', color: 'white', padding: '6px 12px', fontSize: '11px', cursor: 'pointer' }} onClick={() => addScreen && addScreen()}>＋ Screen</button>
                     </div>
                 </div>
-                <div className="sidebar-panel visible">
-                    <div className="tree">
+                <div className="sidebar-panel visible" style={{ flex: 1, overflowY: 'auto' }}>
+                    <div className="tree" style={{ padding: '10px' }}>
                         {project.screens.map((scr: Screen) => (
                             <ScreenNode key={scr.id} scr={scr} isActive={activeScreenId === scr.id} />
                         ))}
                         <div style={{ marginTop: '20px' }}>
-                            <div className="layers-header" style={{ paddingLeft: 0, paddingRight: 0, background: 'transparent', borderBottom: '1px solid var(--border-dim)' }}>
-                                <span className="layers-title">Master Panels</span>
+                            <div className="layers-header" style={{ padding: '10px', borderBottom: `1px solid ${theme === 'dark' ? '#1e293b' : '#e2e8f0'}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <span className="layers-title" style={{ fontWeight: 800, fontSize: '10px', color: '#64748b', textTransform: 'uppercase' }}>Master Panels</span>
                                 <div style={{display:'flex', gap:'4px'}}>
-                                    <button className="add-screen-btn" style={{fontSize:'10px', padding:'4px 8px'}} onClick={() => addPanel({ name: "New Sidebar", width: 160, height: 416, bg: 0x1e1e2d })}>＋ Sidebar</button>
-                                    <button className="add-screen-btn" style={{fontSize:'10px', padding:'4px 8px'}} onClick={() => addPanel({ name: "New Header", width: 800, height: 60, bg: 0x2d2d3f })}>＋ Header</button>
+                                    <button className="add-screen-btn" style={{fontSize:'9px', padding:'4px 8px'}} onClick={() => addPanel({ name: "New Sidebar", width: 160, height: 416, bg: 0x1e1e2d })}>＋ Sidebar</button>
+                                    <button className="add-screen-btn" style={{fontSize:'9px', padding:'4px 8px'}} onClick={() => addPanel({ name: "New Header", width: 800, height: 60, bg: 0x2d2d3f })}>＋ Header</button>
                                 </div>
                             </div>
                             {project.panels.map((pan: Panel) => (
-                                <PanelNode key={pan.id} pan={pan} isActive={selections['panel']?.id === pan.id} />
+                                <PanelNode key={pan.id} pan={pan} isActive={selections[activeScreenId]?.id === pan.id} />
                             ))}
                         </div>
                     </div>
-                    <div className="quick-add-hint">
+                    <div className="quick-add-hint" style={{ padding: '20px', fontSize: '11px', color: '#94a3b8', borderTop: `1px solid ${theme === 'dark' ? '#1e293b' : '#e2e8f0'}`, display: 'flex', gap: '8px' }}>
                         <span>💡</span>
                         <span>Click an item to select it on the canvas — and vice versa.</span>
                     </div>
                 </div>
+                {/* Bottom Bar: Layout Info */}
+                <div style={{ 
+                    borderTop: `1px solid ${theme === 'dark' ? '#1e293b' : '#e2e8f0'}`, 
+                    padding: '12px', 
+                    background: theme === 'dark' ? '#0f172a' : '#f8fafc',
+                    fontSize: '11px',
+                    color: theme === 'dark' ? '#64748b' : '#94a3b8'
+                }}>
+                    <div style={{ fontWeight: 800, color: theme === 'dark' ? '#94a3b8' : '#64748b', marginBottom: '4px', textTransform: 'uppercase', fontSize: '10px' }}>LAYOUT</div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span>{project?.screens?.length || 0} Screens / {project?.panels?.length || 0} Panels</span>
+                    </div>
+                </div>
             </div>
 
-            {/* PALETTE STRIP */}
+            {/* PALETTE SIDE */}
             {showPalette && (
-                <div className="palette-side" style={{ overflowY: 'auto' }}>
-                    <PaletteSection title="Components">
-                        {[
-                            { type: 'btn', label: 'Button', icon: '🔘', cls: 'wc-btn' },
-                            { type: 'label', label: 'Label', icon: '🏷️', cls: 'wc-label' },
-                            { type: 'switch', label: 'Switch', icon: '⚡', cls: 'wc-switch' },
-                            { type: 'slider', label: 'Slider', icon: '〰️', cls: 'wc-slider' },
-                            { type: 'arc', label: 'Arc', icon: '🔵', cls: 'wc-arc' },
-                            { type: 'checkbox', label: 'Checkbox', icon: '☑️', cls: 'wc-check' },
-                            { type: 'dropdown', label: 'Dropdown', icon: '⬇️', cls: 'wc-drop' },
-                            { type: 'roller', label: 'Roller', icon: '🎚️', cls: 'wc-roller' },
-                            { type: 'bar', label: 'Bar', icon: '📊', cls: 'wc-bar' },
-                            { type: 'clock', label: 'Clock', icon: '🕐', cls: 'wc-clock' },
-                            { type: 'border', label: 'Border', icon: '▭', cls: 'wc-border' },
-                        ].map((w: any) => (
-                            <WidgetChip key={w.type} w={w} handlePaletteClick={handlePaletteClick} />
-                        ))}
-                    </PaletteSection>
+                <div className="palette-side" style={{ 
+                    width: '220px',
+                    overflowY: 'auto', 
+                    background: theme === 'dark' ? '#0f172a' : '#ffffff', 
+                    borderLeft: `1px solid ${theme === 'dark' ? '#1e293b' : '#e2e8f0'}`,
+                    display: 'flex',
+                    flexDirection: 'column'
+                }}>
+                    {/* Search Header */}
+                    <div style={{ padding: '12px', borderBottom: `1px solid ${theme === 'dark' ? '#1e293b' : '#e2e8f0'}` }}>
+                        <input 
+                            placeholder="Search widgets..."
+                            onChange={e => setSearchQuery(e.target.value.toLowerCase())}
+                            style={{
+                                width: '100%',
+                                background: theme === 'dark' ? '#1e293b' : '#f1f5f9',
+                                border: `1px solid ${theme === 'dark' ? '#334155' : '#cbd5e1'}`,
+                                borderRadius: '6px',
+                                color: theme === 'dark' ? 'white' : '#0f172a',
+                                padding: '8px 12px',
+                                fontSize: '12px',
+                                outline: 'none'
+                            }}
+                        />
+                    </div>
 
-                    <PaletteSection title="Smart">
-                        {SMART_COMPONENTS.map((comp: any) => (
-                            <div 
-                                key={comp.id} 
-                                className={`comp-card comp-${comp.id.split('-')[0]}`} 
-                                onMouseDown={(e) => handlePaletteClick(e, (comp.type || 'component') as ElementType, { component: comp.id })}
-                                draggable={true}
-                                onDragStart={(e) => {
-                                    e.dataTransfer.setData("application/gridos-item", JSON.stringify({ type: comp.type || 'component', meta: { component: comp.id } }));
-                                    e.dataTransfer.effectAllowed = "copy";
-                                    const ghost = createGhostImage(comp.label, 140, 60);
-                                    e.dataTransfer.setDragImage(ghost, 70, 30);
-                                    setTimeout(() => ghost.remove(), 0);
-                                }}
-                                data-label={comp.label.split(' ')[1]}
-                                title={comp.label}
-                            >
-                                <span className="comp-icon">{comp.icon}</span>
-                            </div>
-                        ))}
-                    </PaletteSection>
+                    <div style={{ flex: 1, overflowY: 'auto', paddingBottom: '20px' }}>
+                        {WIDGET_PALETTE.map((cat: any) => {
+                            const filteredWidgets = cat.widgets.filter((w: any) => 
+                                w.label.toLowerCase().includes(searchQuery) || 
+                                cat.label.toLowerCase().includes(searchQuery)
+                            );
+                            
+                            if (searchQuery && filteredWidgets.length === 0) return null;
 
-                    <PaletteSection title="Other">
-                        {[
-                            { type: 'nav-menu', label: 'Nav', icon: '☰', cls: 'wc-nav' },
-                            { type: 'side-menu', label: 'Side', icon: '𝄃', cls: 'wc-nav' },
-                            { type: 'menu-item', label: 'Menu', icon: '🔘', cls: 'wc-menu' },
-                        ].map((w: any) => (
-                            <WidgetChip key={w.type} w={w} handlePaletteClick={handlePaletteClick} />
-                        ))}
-                    </PaletteSection>
+                            return (
+                                <PaletteSection 
+                                    key={cat.id} 
+                                    category={cat} 
+                                    widgets={filteredWidgets}
+                                    handlePaletteClick={handlePaletteClick} 
+                                />
+                            );
+                        })}
+                    </div>
                 </div>
             )}
         </div>
     );
 };
 
-const PaletteSection = ({ title, children }: { title: string, children: React.ReactNode }) => {
-    const [isOpen, setIsOpen] = useState(true);
-    return (
-        <div className="palette-section">
-            <div className="section-label" onClick={() => setIsOpen(!isOpen)} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', background: 'rgba(0,0,0,0.03)', padding: '6px 0' }}>
-                {title}
-                <span style={{ fontSize: '7px', opacity: 0.5 }}>{isOpen ? '▼' : '▶'}</span>
-            </div>
-            {isOpen && (
-                <div className="widget-grid" style={{ padding: '8px 0' }}>
-                    {children}
-                </div>
-            )}
-        </div>
-    );
-};
+// --- SUB-COMPONENTS ---
 
-const WidgetChip = ({ w, handlePaletteClick }: { w: any, handlePaletteClick: any }) => {
+const PaletteCard = ({ widget, handlePaletteClick }: { widget: any, handlePaletteClick: any }) => {
+    const [isHovered, setIsHovered] = useState(false);
+    const { theme } = useContext(GridContext) as any;
+
+    const bgColor = theme === 'dark' 
+        ? (isHovered ? '#1e293b' : '#111827')
+        : (isHovered ? '#f1f5f9' : '#ffffff');
+    
+    const borderColor = theme === 'dark'
+        ? (isHovered ? '#6366f1' : '#1e293b')
+        : (isHovered ? '#6366f1' : '#e2e8f0');
+
     return (
-        <div 
-            className={`widget-chip ${w.cls}`}
-            onMouseDown={(e) => handlePaletteClick(e, w.type as ElementType)}
-            draggable={true}
+        <div
+            draggable
+            onMouseDown={(e) => handlePaletteClick(e, widget.type, widget.meta)}
             onDragStart={(e) => {
-                e.dataTransfer.setData("application/gridos-item", JSON.stringify({ type: w.type }));
+                e.dataTransfer.setData("application/gridos-item", JSON.stringify({ type: widget.type, meta: widget.meta }));
                 e.dataTransfer.effectAllowed = "copy";
-                const ghost = createGhostImage(w.label, 120, 40);
-                e.dataTransfer.setDragImage(ghost, 60, 20);
+                const ghost = createGhostImage(widget.label, widget.defaultW || 120, widget.defaultH || 40);
+                e.dataTransfer.setDragImage(ghost, (widget.defaultW || 120)/2, (widget.defaultH || 40)/2);
                 setTimeout(() => ghost.remove(), 0);
             }}
-            title={w.label}
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => setIsHovered(false)}
+            style={{
+                background: bgColor,
+                border: `1px solid ${borderColor}`,
+                borderRadius: '10px',
+                padding: '14px 8px',
+                cursor: 'grab',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '8px',
+                transition: 'all 0.15s',
+                userSelect: 'none',
+                minHeight: '80px',
+                justifyContent: 'center',
+                boxShadow: theme === 'light' ? '0 1px 2px rgba(0,0,0,0.05)' : 'none'
+            }}
         >
-            <span className="wicon">{w.icon}</span>
-            <span style={{fontSize:'8px', marginTop:'2px'}}>{w.label}</span>
+            <div style={{ fontSize: '24px', opacity: isHovered ? 1 : 0.7, transform: isHovered ? 'scale(1.1)' : 'scale(1)', transition: '0.2s' }}>{widget.icon}</div>
+            <div style={{ fontSize: '10px', color: isHovered ? (theme === 'dark' ? '#e2e8f0' : '#475569') : '#94a3b8', textAlign: 'center', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.02em' }}>
+                {widget.label}
+            </div>
+        </div>
+    );
+};
+
+const PaletteSection = ({ category, widgets, handlePaletteClick }: { category: any, widgets: any[], handlePaletteClick: any }) => {
+    const { theme } = useContext(GridContext) as any;
+    const [isOpen, setIsOpen] = useState(category.id !== 'advanced' && category.id !== 'sensors');
+    
+    if (widgets.length === 0) return null;
+
+    const labelBg = theme === 'dark' 
+        ? (isOpen ? 'rgba(30, 41, 59, 0.3)' : 'transparent')
+        : (isOpen ? '#f8fafc' : 'transparent');
+
+    return (
+        <div style={{ marginBottom: '4px' }}>
+            <div 
+                onClick={() => setIsOpen(!isOpen)} 
+                style={{
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: '8px',
+                    padding: '12px 16px', 
+                    cursor: 'pointer', 
+                    color: theme === 'dark' ? '#64748b' : '#475569',
+                    fontSize: '10px', 
+                    fontWeight: 800, 
+                    letterSpacing: '0.08em',
+                    textTransform: 'uppercase',
+                    background: labelBg,
+                    borderBottom: isOpen ? `1px solid ${theme === 'dark' ? '#1e293b' : '#e2e8f0'}` : 'none'
+                }}
+            >
+                <span style={{ fontSize: '8px', color: theme === 'dark' ? '#475569' : '#94a3b8', width: '10px' }}>{isOpen ? '▼' : '▶'}</span>
+                <span style={{ fontSize: '14px' }}>{category.icon}</span>
+                <span>{category.label}</span>
+                <span style={{ 
+                    marginLeft: 'auto', 
+                    background: theme === 'dark' ? '#1e293b' : '#e2e8f0', 
+                    color: theme === 'dark' ? '#94a3b8' : '#64748b',
+                    padding: '2px 8px', 
+                    borderRadius: '10px',
+                    fontSize: '9px',
+                    fontWeight: 'bold'
+                }}>
+                    {widgets.length}
+                </span>
+            </div>
+            {isOpen && (
+                <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: '1fr 1fr',
+                    gap: '10px',
+                    padding: '12px',
+                    background: theme === 'dark' ? 'transparent' : '#f8fafc'
+                }}>
+                    {widgets.map((w: any) => (
+                        <PaletteCard key={w.label + w.type} widget={w} handlePaletteClick={handlePaletteClick} />
+                    ))}
+                </div>
+            )}
         </div>
     );
 };
 
 const HierarchyItem = ({ it, pageId, screenId }: { it: GridItem, pageId: string, screenId: string }) => {
-	const { project, selections, setSelectedEntity, setActiveScreenId, addItem, removeItem, updateItem, moveItemHierarchy } = useContext(GridContext) as any;
+	const { project, selections, setSelectedEntity, setActiveScreenId, removeItem, updateItem, moveItemHierarchy } = useContext(GridContext) as any;
 	const [isOpen, setIsOpen] = useState(true);
     const [isEditing, setIsEditing] = useState(false);
     const [editName, setEditName] = useState(it.name);
@@ -249,66 +419,30 @@ const HierarchyItem = ({ it, pageId, screenId }: { it: GridItem, pageId: string,
     };
 
 	return (
-        <div 
-            className="item-node"
-            draggable
-            onDragStart={(e) => {
-                e.stopPropagation();
-                e.dataTransfer.setData("draggedId", it.id);
-                e.dataTransfer.effectAllowed = "move";
-            }}
-            onDragOver={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                e.dataTransfer.dropEffect = "move";
-            }}
-            onDrop={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                const draggedId = e.dataTransfer.getData("draggedId");
-                if (draggedId && draggedId !== it.id) {
-                    moveItemHierarchy(draggedId, it.id);
-                }
-            }}
-        >
+        <div className="item-node" draggable onDragStart={(e) => { e.stopPropagation(); e.dataTransfer.setData("draggedId", it.id); e.dataTransfer.effectAllowed = "move"; }}>
             <div 
                 className={`item-row ${isSelected ? 'selected' : ''}`}
                 onClick={(e) => { e.stopPropagation(); setActiveScreenId(screenId); setSelectedEntity({ type: 'item', id: it.id, pageId }, screenId); }}
                 onDoubleClick={(e) => { e.stopPropagation(); setIsEditing(true); }}
-                tabIndex={0}
-                onKeyDown={e => { if (e.key === 'Delete' || e.key === 'Backspace') { e.stopPropagation(); removeItem(pageId, it.id); } }}
             >
                 <div className="item-dot"></div>
                 {isEditing ? (
-                    <input 
-                        autoFocus
-                        className="node-input"
-                        value={editName}
-                        onChange={e => setEditName(e.target.value)}
-                        onBlur={saveEdit}
-                        onKeyDown={e => { e.stopPropagation(); if (e.key === 'Enter') saveEdit(); }}
-                        onClick={e => e.stopPropagation()}
-                    />
+                    <input autoFocus className="node-input" value={editName} onChange={e => setEditName(e.target.value)} onBlur={saveEdit} onKeyDown={e => { if (e.key === 'Enter') saveEdit(); }} onClick={e => e.stopPropagation()} />
                 ) : (
                     <span className="item-name">{it.name}</span>
                 )}
                 <span className="item-type">{it.type}</span>
                 <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '4px' }}>
                     {isContainer && children.length > 0 && (
-                        <button onClick={(e) => { e.stopPropagation(); setIsOpen(!isOpen); }} style={{ background: 'none', border: 'none', fontSize: '10px', color: '#94a3b8', cursor: 'pointer', padding: '2px 4px' }}>
+                        <button onClick={(e) => { e.stopPropagation(); setIsOpen(!isOpen); }} style={{ background: 'none', border: 'none', fontSize: '10px', color: '#94a3b8', cursor: 'pointer' }}>
                             {isOpen ? '▼' : '▶'}
                         </button>
                     )}
-                    <button 
-                        className="delete-item-btn"
-                        style={{ background: 'none', border: 'none', color: '#ef4444', fontSize: '10px', cursor: 'pointer', opacity: isSelected ? 1 : 0.4, padding: '2px 4px' }}
-                        onClick={(e) => { e.stopPropagation(); removeItem(pageId, it.id); }}
-                        title="Delete Item"
-                    >✕</button>
+                    <button className="delete-item-btn" style={{ background: 'none', border: 'none', color: '#ef4444', fontSize: '10px', cursor: 'pointer' }} onClick={(e) => { e.stopPropagation(); removeItem(pageId, it.id); }}>✕</button>
                 </div>
             </div>
             {isOpen && children.length > 0 && (
-                <div className="item-list">
+                <div className="item-list" style={{ paddingLeft: '12px' }}>
                     {children.map((child: any) => (
                         <HierarchyItem key={child.id} it={child} pageId={it.type === 'panel-ref' ? it.panelId! : pageId} screenId={screenId} />
                     ))}
@@ -319,17 +453,11 @@ const HierarchyItem = ({ it, pageId, screenId }: { it: GridItem, pageId: string,
 };
 
 const PageNode = ({ pg, screenId }: { pg: Page, screenId: string }) => {
-	const context = useContext(GridContext) as any;
-    const { selections, setSelectedEntity, setActiveScreenId, updatePage } = context;
+	const { selections, setSelectedEntity, setActiveScreenId, updatePage, removePage } = useContext(GridContext) as any;
 	const [isOpen, setIsOpen] = useState(true);
     const [isEditing, setIsEditing] = useState(false);
     const [editName, setEditName] = useState(pg.name);
 	const isSelected = selections[screenId]?.type === 'page' && selections[screenId]?.id === pg.id;
-    const isChildSelected = pg.items.some((it: any) => selections[screenId]?.id === it.id);
-
-    useEffect(() => {
-        if (isSelected || isChildSelected) setIsOpen(true);
-    }, [isSelected, isChildSelected]);
 
     useEffect(() => { setEditName(pg.name); }, [pg.name]);
 
@@ -344,41 +472,25 @@ const PageNode = ({ pg, screenId }: { pg: Page, screenId: string }) => {
                 className={`page-row ${isSelected ? 'selected' : ''}`}
                 onClick={(e) => { e.stopPropagation(); setActiveScreenId(screenId); setSelectedEntity({ type: 'page', id: pg.id }, screenId); }}
                 onDoubleClick={(e) => { e.stopPropagation(); setIsEditing(true); }}
-                tabIndex={0}
-                onKeyDown={e => { if ((e.key === 'Delete' || e.key === 'Backspace') && (pg.x !== 0 || pg.y !== 0)) { e.stopPropagation(); context.removePage(screenId, pg.id); } }}
             >
 				<span className={`screen-chevron ${isOpen ? 'active' : ''}`} onClick={(e) => { e.stopPropagation(); setIsOpen(!isOpen); }}>{isOpen ? '▼' : '▶'}</span>
 				<span className="page-icon">📄</span>
 				{isEditing ? (
-                    <input 
-                        autoFocus
-                        className="node-input"
-                        value={editName}
-                        onChange={e => setEditName(e.target.value)}
-                        onBlur={saveEdit}
-                        onKeyDown={e => { e.stopPropagation(); if (e.key === 'Enter') saveEdit(); }}
-                        onClick={e => e.stopPropagation()}
-                    />
+                    <input autoFocus className="node-input" value={editName} onChange={e => setEditName(e.target.value)} onBlur={saveEdit} onKeyDown={e => { if (e.key === 'Enter') saveEdit(); }} onClick={e => e.stopPropagation()} />
                 ) : (
                     <span className="page-name">{pg.name}</span>
                 )}
                 <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '4px' }}>
                     {(pg.x !== 0 || pg.y !== 0) && (
-                        <button 
-                            className="delete-item-btn"
-                            style={{ background: 'none', border: 'none', color: '#ef4444', fontSize: '10px', cursor: 'pointer', opacity: isSelected ? 1 : 0.4, padding: '2px 4px' }}
-                            onClick={(e) => { e.stopPropagation(); context.removePage(screenId, pg.id); }}
-                            title="Delete Page"
-                        >✕</button>
+                        <button className="delete-item-btn" style={{ background: 'none', border: 'none', color: '#ef4444', fontSize: '10px', cursor: 'pointer' }} onClick={(e) => { e.stopPropagation(); removePage(screenId, pg.id); }}>✕</button>
                     )}
                 </div>
 			</div>
 			{isOpen && (
-                <div className="item-list">
+                <div className="item-list" style={{ paddingLeft: '12px' }}>
                     {pg.items.map((it: any) => (
                         <HierarchyItem key={it.id} it={it} pageId={pg.id} screenId={screenId} />
                     ))}
-                    {pg.items.length === 0 && <div style={{ padding: '4px 20px', fontSize: '11px', color: '#cbd5e1' }}>Empty Page</div>}
                 </div>
             )}
 		</div>
@@ -386,21 +498,12 @@ const PageNode = ({ pg, screenId }: { pg: Page, screenId: string }) => {
 };
 
 const ScreenNode = ({ scr, isActive }: { scr: Screen, isActive: boolean }) => {
-	const { setActiveScreenId, setSelectedEntity, selections, updateScreen } = useContext(GridContext) as any;
+	const { setActiveScreenId, setSelectedEntity, updateScreen } = useContext(GridContext) as any;
 	const [isOpen, setIsOpen] = useState(isActive);
     const [isEditing, setIsEditing] = useState(false);
     const [editName, setEditName] = useState(scr.name);
 
-    useEffect(() => {
-        const hasSelection = selections?.[scr.id] != null;
-        if (hasSelection) setIsOpen(true);
-    }, [selections, scr.id]);
-
     useEffect(() => { setEditName(scr.name); }, [scr.name]);
-
-    useEffect(() => {
-        if (isActive) setIsOpen(true);
-    }, [isActive]);
 
     const saveEdit = () => {
         updateScreen(scr.id, { name: editName });
@@ -417,22 +520,14 @@ const ScreenNode = ({ scr, isActive }: { scr: Screen, isActive: boolean }) => {
 				<span className="screen-chevron" onClick={(e) => { e.stopPropagation(); setIsOpen(!isOpen); }}>{isOpen ? '▼' : '▶'}</span>
 				<span className="screen-icon">🖥</span>
 				{isEditing ? (
-                    <input 
-                        autoFocus
-                        className="node-input"
-                        value={editName}
-                        onChange={e => setEditName(e.target.value)}
-                        onBlur={saveEdit}
-                        onKeyDown={e => { if (e.key === 'Enter') saveEdit(); }}
-                        onClick={e => e.stopPropagation()}
-                    />
+                    <input autoFocus className="node-input" value={editName} onChange={e => setEditName(e.target.value)} onBlur={saveEdit} onKeyDown={e => { if (e.key === 'Enter') saveEdit(); }} onClick={e => e.stopPropagation()} />
                 ) : (
                     <span className="screen-name">{scr.name}</span>
                 )}
 				<span className="screen-badge">{scr.pages.length} pages</span>
 			</div>
 			{isOpen && (
-				<div className="page-list">
+				<div className="page-list" style={{ paddingLeft: '12px' }}>
 					{scr.pages.map((pg: any) => <PageNode key={pg.id} pg={pg} screenId={scr.id} />)}
 				</div>
 			)}
@@ -441,10 +536,10 @@ const ScreenNode = ({ scr, isActive }: { scr: Screen, isActive: boolean }) => {
 };
 
 const PanelNode = ({ pan, isActive }: { pan: Panel, isActive: boolean }) => {
+	const { setSelectedEntity, setActiveScreenId, activeScreenId, addItem, updatePanel, removePanel } = useContext(GridContext) as any;
 	const [isOpen, setIsOpen] = useState(true);
     const [isEditing, setIsEditing] = useState(false);
     const [editName, setEditName] = useState(pan.name);
-	const { setSelectedEntity, setActiveScreenId, selections, activeScreenId, addItem, updatePanel, removePanel } = useContext(GridContext) as any;
     const isPanelMode = activeScreenId === 'panel';
 
     useEffect(() => { setEditName(pan.name); }, [pan.name]);
@@ -455,17 +550,7 @@ const PanelNode = ({ pan, isActive }: { pan: Panel, isActive: boolean }) => {
     };
 	
 	return (
-		<div 
-            className="screen-node"
-            draggable={true}
-            onDragStart={(e) => {
-                e.dataTransfer.setData("application/gridos-item", JSON.stringify({ type: 'panel-ref', panelId: pan.id }));
-                e.dataTransfer.effectAllowed = "copy";
-                const ghost = createGhostImage(pan.name, 160, 160);
-                e.dataTransfer.setDragImage(ghost, 80, 80);
-                setTimeout(() => ghost.remove(), 0);
-            }}
-        >
+		<div className="screen-node" draggable onDragStart={(e) => { e.dataTransfer.setData("application/gridos-item", JSON.stringify({ type: 'panel-ref', panelId: pan.id })); e.dataTransfer.effectAllowed = "copy"; const ghost = createGhostImage(pan.name, 160, 160); e.dataTransfer.setDragImage(ghost, 80, 80); setTimeout(() => ghost.remove(), 0); }}>
 			<div 
                 className={`screen-row ${isPanelMode && isActive ? 'active' : ''}`}
                 onClick={() => { setActiveScreenId('panel'); setSelectedEntity({ type: 'panel', id: pan.id }, 'panel'); }}
@@ -474,38 +559,20 @@ const PanelNode = ({ pan, isActive }: { pan: Panel, isActive: boolean }) => {
 				<span className="screen-chevron" onClick={(e) => { e.stopPropagation(); setIsOpen(!isOpen); }}>{isOpen ? '▼' : '▶'}</span>
 				<span className="screen-icon">🔲</span>
 				{isEditing ? (
-                    <input 
-                        autoFocus
-                        className="node-input"
-                        value={editName}
-                        onChange={e => setEditName(e.target.value)}
-                        onBlur={saveEdit}
-                        onKeyDown={e => { if (e.key === 'Enter') saveEdit(); }}
-                        onClick={e => e.stopPropagation()}
-                    />
+                    <input autoFocus className="node-input" value={editName} onChange={e => setEditName(e.target.value)} onBlur={saveEdit} onKeyDown={e => { if (e.key === 'Enter') saveEdit(); }} onClick={e => e.stopPropagation()} />
                 ) : (
                     <span className="screen-name">{pan.name}</span>
                 )}
                 <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    <button 
-                        className="add-item-mini"
-                        onClick={(e) => { e.stopPropagation(); addItem('nav-item', pan.id); }}
-                        title="Add Nav Item"
-                    >＋</button>
-                    <button 
-                        className="add-item-mini"
-                        style={{ background: '#fee2e2', color: '#ef4444', fontSize: '10px' }}
-                        onClick={(e) => { e.stopPropagation(); if(window.confirm('Delete this Master Panel?')) removePanel(pan.id); }}
-                        title="Delete Panel"
-                    >✕</button>
+                    <button className="add-item-mini" onClick={(e) => { e.stopPropagation(); addItem('nav-item', pan.id); }}>＋</button>
+                    <button className="add-item-mini" style={{ background: '#fee2e2', color: '#ef4444' }} onClick={(e) => { e.stopPropagation(); if(window.confirm('Delete this Master Panel?')) removePanel(pan.id); }}>✕</button>
                 </div>
 			</div>
 			{isOpen && (
-				<div className="item-list">
+				<div className="item-list" style={{ paddingLeft: '12px' }}>
 					{pan.elements.map((it: any) => (
                         <HierarchyItem key={it.id} it={it} pageId={pan.id} screenId="panel" />
                     ))}
-                    {pan.elements.length === 0 && <div style={{ padding: '4px 20px', fontSize: '11px', color: '#cbd5e1' }}>Empty Panel</div>}
 				</div>
 			)}
 		</div>

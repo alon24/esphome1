@@ -4,6 +4,7 @@
 
 #include "ui_helpers.h"
 #include "grid_config.h"
+#include "widget_bindings.h"
 #include "tab_wifi_embedded.h"
 #include "tab_sd_embedded.h"
 
@@ -24,6 +25,7 @@ void tab_sd_on_show();
 static lv_obj_t *g_home_grid_cont = nullptr;
 
 static void _home_render_item(lv_obj_t *parent, const GridItem &it, int offsetX = 0, int offsetY = 0);
+static void _home_render_pane_grid(lv_obj_t *parent, const GridItem &it, int offsetX, int offsetY);
 
 static std::map<std::string, lv_obj_t*> g_lv_screen_cache;
 static std::vector<std::string> g_lv_cache_order; // LRU order tracker
@@ -167,7 +169,7 @@ void ui_refresh_grid() {
 
 static void _item_event_cb(lv_event_t *e) {
     lv_event_code_t code = lv_event_get_code(e);
-    if (code == LV_EVENT_CLICKED || code == LV_EVENT_VALUE_CHANGED) {
+    if (code == LV_EVENT_CLICKED || code == LV_EVENT_VALUE_CHANGED || code == LV_EVENT_LONG_PRESSED || code == LV_EVENT_DOUBLE_CLICKED) {
         const char *action = (const char *)lv_event_get_user_data(e);
         if (action) {
             ESP_LOGI("GRID", "UI Action: %s", action);
@@ -197,6 +199,22 @@ static void _item_event_cb(lv_event_t *e) {
                     }
                 }
 #endif
+            } else if (strncmp(action, "wifi-scan:", 10) == 0) {
+                extern void _cwifi_start_scan_bg();
+                _cwifi_start_scan_bg();
+            } else if (strncmp(action, "set:", 4) == 0) {
+                // "set:widgetId:value"
+                std::string rest = action + 4;
+                size_t colon = rest.find(':');
+                if (colon != std::string::npos) {
+                    std::string wid = rest.substr(0, colon);
+                    float val = atof(rest.substr(colon + 1).c_str());
+                    grid_widget_set_value(wid.c_str(), val);
+                }
+            } else if (strncmp(action, "toggle:", 7) == 0) {
+                std::string wid = action + 7;
+                float cur = grid_widget_get_value(wid.c_str());
+                grid_widget_set_value(wid.c_str(), cur > 0 ? 0.0f : 1.0f);
             }
         }
     } else if (code == LV_EVENT_DELETE) {
@@ -443,6 +461,9 @@ static void _home_render_item(lv_obj_t *parent, const GridItem &it, int offsetX,
         lv_obj_add_flag(obj, LV_OBJ_FLAG_SCROLLABLE);
         lv_obj_set_scrollbar_mode(obj, LV_SCROLLBAR_MODE_AUTO);
         for (const auto& child : it.children) _home_render_item(obj, child, 0, 0);
+    } else if (it.type == "pane-grid") {
+        _home_render_pane_grid(parent, it, offsetX, offsetY);
+        return; // Already handled positioning inside grid helper
     }
 
     // 2. Apply common properties
@@ -534,10 +555,101 @@ static void _home_render_item(lv_obj_t *parent, const GridItem &it, int offsetX,
             }
         }
 #endif
+        
+        // 3. Register in Live Registry
+        if (!it.id.empty()) {
+            g_live_widgets[it.id] = { obj, it.type };
+        }
+
+        // 4. Render Icon Overlay
+        if (!it.icon.empty()) {
+            if (it.icon[0] == '/') {
+                // File path
+                lv_obj_t *img = lv_image_create(obj);
+                lv_image_set_src(img, it.icon.c_str());
+                lv_obj_center(img);
+                lv_obj_add_flag(img, LV_OBJ_FLAG_EVENT_BUBBLE);
+            } else {
+                // Emoji/Text
+                lv_obj_t *icon_lbl = lv_label_create(obj);
+                lv_label_set_text(icon_lbl, it.icon.c_str());
+                lv_obj_center(icon_lbl);
+                lv_obj_set_style_text_font(icon_lbl, &lv_font_montserrat_24, 0); // Default icon size
+                lv_obj_add_flag(icon_lbl, LV_OBJ_FLAG_EVENT_BUBBLE);
+            }
+        }
+    }
+}
+
+static void _home_render_pane_grid(lv_obj_t *parent, const GridItem &it, int offsetX, int offsetY) {
+    const PaneGrid *pgDef = nullptr;
+    for (const auto &g : g_pane_grids) {
+        if (g.id == it.paneGridId) { pgDef = &g; break; }
+    }
+    if (!pgDef) {
+        ESP_LOGW("GRID", "Pane Grid ID not found: %s", it.paneGridId.c_str());
+        return;
+    }
+
+    lv_obj_t *cont = lv_obj_create(parent);
+    _panel_reset(cont);
+    lv_obj_set_pos(cont, it.x + offsetX, it.y + offsetY);
+    lv_obj_set_size(cont, it.width, it.height);
+    lv_obj_set_style_bg_opa(cont, 0, 0);
+    lv_obj_set_style_pad_all(cont, 0, 0);
+    lv_obj_set_style_pad_gap(cont, pgDef->gap, 0);
+    
+    lv_obj_set_flex_flow(cont, LV_FLEX_FLOW_ROW_WRAP);
+    lv_obj_set_flex_align(cont, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START);
+
+    int cols = pgDef->columns > 0 ? pgDef->columns : 3;
+    int total_gap = pgDef->gap * (cols - 1);
+    int item_w = (it.width - total_gap) / cols;
+
+    for (const auto &pane : pgDef->panes) {
+        lv_obj_t *tile = lv_button_create(cont);
+        lv_obj_set_size(tile, item_w, item_w); // Square tiles
+        lv_obj_set_style_bg_color(tile, lv_color_hex(pane.bg), 0);
+        lv_obj_set_style_radius(tile, 12, 0);
+        lv_obj_set_style_pad_all(tile, 8, 0);
+        
+        // Icon
+        if (!pane.icon.empty()) {
+            lv_obj_t *icon = lv_label_create(tile);
+            lv_label_set_text(icon, pane.icon.c_str());
+            lv_obj_set_style_text_font(icon, &lv_font_montserrat_24, 0);
+            lv_obj_align(icon, LV_ALIGN_TOP_LEFT, 0, 0);
+            lv_obj_add_flag(icon, LV_OBJ_FLAG_EVENT_BUBBLE);
+        }
+
+        // Title
+        lv_obj_t *lbl = lv_label_create(tile);
+        lv_label_set_text(lbl, pane.title.c_str());
+        lv_obj_set_style_text_font(lbl, &lv_font_montserrat_12, 0);
+        lv_obj_set_style_text_color(lbl, lv_color_hex(pane.textColor), 0);
+        lv_obj_align(lbl, LV_ALIGN_BOTTOM_LEFT, 0, 0);
+        lv_obj_add_flag(lbl, LV_OBJ_FLAG_EVENT_BUBBLE);
+
+        // Click Actions
+        if (!pane.onClick.empty()) {
+            lv_obj_add_event_cb(tile, _item_event_cb, LV_EVENT_CLICKED, strdup(pane.onClick.c_str()));
+        } else if (!pane.mqttTopic.empty()) {
+            std::string act = "mqtt:" + pane.mqttTopic + ":toggle";
+            lv_obj_add_event_cb(tile, _item_event_cb, LV_EVENT_CLICKED, strdup(act.c_str()));
+        }
+        
+        if (!pane.onDoubleClick.empty()) {
+            lv_obj_add_event_cb(tile, _item_event_cb, LV_EVENT_DOUBLE_CLICKED, strdup(pane.onDoubleClick.c_str()));
+        }
+        
+        if (!pane.onLongPress.empty()) {
+            lv_obj_add_event_cb(tile, _item_event_cb, LV_EVENT_LONG_PRESSED, strdup(pane.onLongPress.c_str()));
+        }
     }
 }
 
 void tab_home_create(lv_obj_t *parent) {
+    g_live_widgets.clear();
     lv_obj_clean(parent);
     g_home_grid_cont = lv_obj_create(parent);
     lv_obj_set_size(g_home_grid_cont, 800, 416);

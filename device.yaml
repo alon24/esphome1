@@ -33,6 +33,7 @@ esphome:
     - custom/system_settings.h
     - custom/version_info.h
     - custom/stb_image.h
+    - custom/widget_bindings.h
     - custom/tab_home.h
     - custom/tab_settings.h
     - custom/tab_wifi.h

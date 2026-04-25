@@ -16,7 +16,7 @@ export type WifiStatus = {
 
 interface HeaderProps {
     activeTab: string;
-    setActiveTab: (tab: "grid" | "mirror" | "wifi" | "logs" | "settings") => void;
+    setActiveTab: (tab: "grid" | "dashboard" | "mirror" | "wifi" | "logs" | "settings") => void;
     status: WifiStatus;
     remoteIp: string;
     setRemoteIp: (ip: string) => void;
@@ -47,9 +47,10 @@ export const Header: React.FC<HeaderProps> = ({
             <div className="logo" style={{ fontSize: '20px', fontWeight: 900, color: '#6366f1', letterSpacing: '1px' }}>GRIDOS</div>
             {!isMobile && (
                 <div className="tab-bar" style={{ display: 'flex', marginLeft: '40px', gap: '20px' }}>
-                    {(["grid", "mirror", "wifi", "logs", "settings"] as const).map((id) => {
+                    {(["grid", "dashboard", "mirror", "wifi", "logs", "settings"] as const).map((id) => {
                         const labels: Record<string, string> = {
                             grid: "BUILDER",
+                            dashboard: "DASHBOARD",
                             mirror: "MIRROR",
                             wifi: "WIFI",
                             logs: "CONSOLE",
