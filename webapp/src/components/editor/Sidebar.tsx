@@ -131,9 +131,8 @@ export const Sidebar: React.FC = () => {
 
             {/* PALETTE STRIP */}
             {showPalette && (
-                <div className="palette-side">
-                    <div className="section-label" style={{marginTop:'10px'}}>Widgets</div>
-                    <div className="widget-grid">
+                <div className="palette-side" style={{ overflowY: 'auto' }}>
+                    <PaletteSection title="Components">
                         {[
                             { type: 'btn', label: 'Button', icon: '🔘', cls: 'wc-btn' },
                             { type: 'label', label: 'Label', icon: '🏷️', cls: 'wc-label' },
@@ -146,32 +145,12 @@ export const Sidebar: React.FC = () => {
                             { type: 'bar', label: 'Bar', icon: '📊', cls: 'wc-bar' },
                             { type: 'clock', label: 'Clock', icon: '🕐', cls: 'wc-clock' },
                             { type: 'border', label: 'Border', icon: '▭', cls: 'wc-border' },
-                            { type: 'nav-menu', label: 'Nav', icon: '☰', cls: 'wc-nav' },
-                            { type: 'side-menu', label: 'Side', icon: '𝄃', cls: 'wc-nav' },
-                            { type: 'menu-item', label: 'Menu', icon: '🔘', cls: 'wc-menu' },
                         ].map((w: any) => (
-                            <div 
-                                key={w.type} 
-                                className={`widget-chip ${w.cls}`}
-                                onMouseDown={(e) => handlePaletteClick(e, w.type as ElementType)}
-                                draggable={true}
-                                onDragStart={(e) => {
-                                    e.dataTransfer.setData("application/gridos-item", JSON.stringify({ type: w.type }));
-                                    e.dataTransfer.effectAllowed = "copy";
-                                    const ghost = createGhostImage(w.label, 120, 40);
-                                    e.dataTransfer.setDragImage(ghost, 60, 20);
-                                    setTimeout(() => ghost.remove(), 0);
-                                }}
-                                title={w.label}
-                            >
-                                <span className="wicon">{w.icon}</span>
-                                <span style={{fontSize:'8px', marginTop:'2px'}}>{w.label}</span>
-                            </div>
+                            <WidgetChip key={w.type} w={w} handlePaletteClick={handlePaletteClick} />
                         ))}
-                    </div>
+                    </PaletteSection>
 
-                    <div className="section-label" style={{marginTop:'20px'}}>Smart</div>
-                    <div className="widget-grid" style={{marginBottom:'20px'}}>
+                    <PaletteSection title="Smart">
                         {SMART_COMPONENTS.map((comp: any) => (
                             <div 
                                 key={comp.id} 
@@ -191,9 +170,57 @@ export const Sidebar: React.FC = () => {
                                 <span className="comp-icon">{comp.icon}</span>
                             </div>
                         ))}
-                    </div>
+                    </PaletteSection>
+
+                    <PaletteSection title="Other">
+                        {[
+                            { type: 'nav-menu', label: 'Nav', icon: '☰', cls: 'wc-nav' },
+                            { type: 'side-menu', label: 'Side', icon: '𝄃', cls: 'wc-nav' },
+                            { type: 'menu-item', label: 'Menu', icon: '🔘', cls: 'wc-menu' },
+                        ].map((w: any) => (
+                            <WidgetChip key={w.type} w={w} handlePaletteClick={handlePaletteClick} />
+                        ))}
+                    </PaletteSection>
                 </div>
             )}
+        </div>
+    );
+};
+
+const PaletteSection = ({ title, children }: { title: string, children: React.ReactNode }) => {
+    const [isOpen, setIsOpen] = useState(true);
+    return (
+        <div className="palette-section">
+            <div className="section-label" onClick={() => setIsOpen(!isOpen)} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', background: 'rgba(0,0,0,0.03)', padding: '6px 0' }}>
+                {title}
+                <span style={{ fontSize: '7px', opacity: 0.5 }}>{isOpen ? '▼' : '▶'}</span>
+            </div>
+            {isOpen && (
+                <div className="widget-grid" style={{ padding: '8px 0' }}>
+                    {children}
+                </div>
+            )}
+        </div>
+    );
+};
+
+const WidgetChip = ({ w, handlePaletteClick }: { w: any, handlePaletteClick: any }) => {
+    return (
+        <div 
+            className={`widget-chip ${w.cls}`}
+            onMouseDown={(e) => handlePaletteClick(e, w.type as ElementType)}
+            draggable={true}
+            onDragStart={(e) => {
+                e.dataTransfer.setData("application/gridos-item", JSON.stringify({ type: w.type }));
+                e.dataTransfer.effectAllowed = "copy";
+                const ghost = createGhostImage(w.label, 120, 40);
+                e.dataTransfer.setDragImage(ghost, 60, 20);
+                setTimeout(() => ghost.remove(), 0);
+            }}
+            title={w.label}
+        >
+            <span className="wicon">{w.icon}</span>
+            <span style={{fontSize:'8px', marginTop:'2px'}}>{w.label}</span>
         </div>
     );
 };

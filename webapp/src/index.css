@@ -396,8 +396,8 @@ body {
 .wc-clock:hover { background: #e0f2fe; }
 .wc-border   { background: #f8fafc; color: #475569; border-color: #cbd5e1; }
 .wc-border:hover { background: #f1f5f9; }
-.wc-nav      { background: #fefce8; color: #713f12; border-color: #fde047; }
-.wc-nav:hover { background: #fef9c3; }
+.widget-chip.wc-nav      { background: #fefce8 !important; color: #713f12 !important; border-color: #fde047 !important; }
+.widget-chip.wc-nav:hover { background: #fef9c3 !important; }
 
 /* Panel cards */
 .panel-card { background: #f8fafc; border: 2px solid #e2e8f0; border-radius: 10px; padding: 10px 12px; cursor: grab; display: flex; align-items: center; gap: 10px; transition: all 0.15s; }
@@ -419,6 +419,15 @@ body {
     font-weight: 900;
     text-transform: uppercase;
 }
+
+.comp-nav      { background: #ede9fe; color: #5b21b6; border-color: #c4b5fd; }
+.comp-side     { background: #ede9fe; color: #5b21b6; border-color: #c4b5fd; }
+.comp-battery  { background: #dcfce7; color: #15803d; border-color: #86efac; }
+.comp-weather  { background: #dbeafe; color: #1d4ed8; border-color: #93c5fd; }
+.comp-temp     { background: #ffe4e6; color: #be123c; border-color: #fca5a5; }
+.comp-humid    { background: #ecfeff; color: #0e7490; border-color: #67e8f9; }
+.comp-media    { background: #fdf4ff; color: #86198f; border-color: #e879f9; }
+.comp-light    { background: #fef9c3; color: #854d0e; border-color: #fde047; }
 
 /* ── LAYERS ── */
 .layers-panel { flex: 1; overflow-y: auto; display: none; flex-direction: column; background: var(--bg-sidebar); }
@@ -798,7 +807,7 @@ body {
 }/* Nav Menu and Menu Items */
 .wc-nav {
     display: flex;
-    background: #1e1e2d;
+    background-color: #1e1e2d;
     border-radius: 0;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
