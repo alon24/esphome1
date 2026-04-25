@@ -5,6 +5,7 @@ import { CanvasArea } from "./components/editor/CanvasArea";
 import { WidgetRenderer } from "./components/editor/WidgetRenderer";
 import { WifiManager } from "./components/wifi/WifiManager";
 import { GridContext } from "./context/GridContext";
+import { SettingsManager } from "./components/layout/SettingsManager";
 import { 
     type ElementType, 
     type GridItem, 
@@ -59,7 +60,21 @@ const API = {
 		const saved = localStorage.getItem("ds_mock_wifi");
 		return saved ? JSON.parse(saved) : { connected: true, ip: "192.168.1.100", ssid: "MOCK_WIFI", ap_active: false, ap_always_on: false };
 	},
-	async updateSettings(opts: any) { return true; },
+	async updateSettings(opts: any) {
+        const ip = localStorage.getItem("ds_remote_ip");
+        if (!ip) return true;
+        try {
+            await fetch(`http://${ip}/api/wifi/ap`, {
+                method: 'POST',
+                body: JSON.stringify(opts),
+                headers: { 'Content-Type': 'application/json' }
+            });
+            return true;
+        } catch (e) {
+            console.error("Update failed", e);
+            return false;
+        }
+    },
 	async saveGrid(name: string, data: any) { return true; },
 	async savePanels(panels: Panel[]) { return true; }
 };
@@ -93,7 +108,7 @@ export default function SafeApp() {
 function App({ isMobile, width }: { isMobile: boolean, width: number }) {
     const [remoteIp, setRemoteIp] = useState(() => localStorage.getItem("ds_remote_ip") || "");
 	const [activeTab, setActiveTab] = useState<"grid" | "mirror" | "wifi" | "logs" | "settings">("grid");
-	const [status, setStatus] = useState<WifiStatus>({ connected: true, ip: "127.0.0.1", ssid: "STATION", ap_active: false, ap_always_on: false });
+	const [status, setStatus] = useState<WifiStatus>({ connected: true, ip: "127.0.0.1", ssid: "STATION", ap_active: false, ap_always_on: false, mqtt_enabled: true });
     const [propsLocation, setPropsLocation] = useState<'left' | 'right'>(() => (localStorage.getItem("ds_props_location") as any) || 'left');
 	const [theme, setTheme] = useState<'light' | 'dark'>(() => (localStorage.getItem("ds_theme") as any) || 'light');
 
@@ -147,7 +162,10 @@ function App({ isMobile, width }: { isMobile: boolean, width: number }) {
                             theme={theme}
                             setTheme={setTheme}
                         />
-                        <div style={{ padding: 40 }}>Coming soon...</div>
+                        {activeTab === "wifi" && <WifiManager status={status} onRefresh={refreshWifi} API={API} />}
+                        {activeTab === "settings" && <SettingsManager status={status} onRefresh={refreshWifi} API={API} />}
+                        {activeTab === "logs" && <div style={{ padding: 40 }}>Console logs coming soon...</div>}
+                        {activeTab === "mirror" && <div style={{ padding: 40 }}>Mirror mode coming soon...</div>}
                     </>
                 )}
 			</main>

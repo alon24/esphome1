@@ -27,6 +27,13 @@ export type GridItem = {
 	borderColor?: number;
 	bg?: number;
 	targetScreenId?: string;
+	opacity?: number;
+	hidden?: boolean;
+	scrollable?: boolean;
+	mqttTopic?: string;
+	mqttStateTopic?: string;
+	padding?: number;
+	gap?: number;
 };
 
 export type Page = {

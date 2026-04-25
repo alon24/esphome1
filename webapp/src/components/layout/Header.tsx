@@ -8,6 +8,7 @@ export type WifiStatus = {
 	ap_active?: boolean;
 	ap_always_on?: boolean;
 	ss_enabled?: boolean;
+	mqtt_enabled?: boolean;
 	ap_ssid?: string;
 	ap_ip?: string;
 	ap_clients?: { mac: string, ip: string }[];

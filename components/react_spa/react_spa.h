@@ -39,6 +39,7 @@ void grid_panels_save(const char* json_str);
 void system_settings_save();
 extern bool g_ap_always_on;
 extern bool g_ss_enabled;
+extern bool g_mqtt_enabled;
 extern char g_ap_ssid[33];
 extern char g_ap_password[64];
 extern char g_active_screen[64];
@@ -421,8 +422,8 @@ class ReactSPAComponent : public Component {
     bool ap_active = (mode == WIFI_MODE_AP || mode == WIFI_MODE_APSTA);
     
     char json[1024]; 
-    int pos = snprintf(json, sizeof(json), "{\"connected\":%s,\"ip\":\"%s\",\"ap_active\":%s,\"ap_always_on\":%s,\"ss_enabled\":%s,\"ap_ssid\":\"%s\",\"ap_ip\":\"%s\",\"ap_clients\":[", 
-                       connected?"true":"false", sta_ip_str, ap_active?"true":"false", ::g_ap_always_on?"true":"false", ::g_ss_enabled?"true":"false", ::g_ap_ssid, ap_ip_str);
+    int pos = snprintf(json, sizeof(json), "{\"connected\":%s,\"ip\":\"%s\",\"ap_active\":%s,\"ap_always_on\":%s,\"ss_enabled\":%s,\"mqtt_enabled\":%s,\"ap_ssid\":\"%s\",\"ap_ip\":\"%s\",\"ap_clients\":[", 
+                       connected?"true":"false", sta_ip_str, ap_active?"true":"false", ::g_ap_always_on?"true":"false", ::g_ss_enabled?"true":"false", ::g_mqtt_enabled?"true":"false", ::g_ap_ssid, ap_ip_str);
     
     // Get AP Clients
     wifi_sta_list_t clients;
@@ -460,6 +461,7 @@ class ReactSPAComponent : public Component {
     
     if (doc["always_on"].is<bool>()) ::g_ap_always_on = doc["always_on"];
     if (doc["ss_enabled"].is<bool>()) ::g_ss_enabled = doc["ss_enabled"];
+    if (doc["mqtt_enabled"].is<bool>()) ::g_mqtt_enabled = doc["mqtt_enabled"];
     if (doc["ssid"].is<const char*>()) strncpy(::g_ap_ssid, doc["ssid"], 31);
     if (doc["password"].is<const char*>()) strncpy(::g_ap_password, doc["password"], 63);
     

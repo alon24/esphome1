@@ -7,6 +7,11 @@
 #include "tab_wifi_embedded.h"
 #include "tab_sd_embedded.h"
 
+#ifdef USE_MQTT
+#include "esphome/components/mqtt/mqtt_client.h"
+#endif
+
+
 // ── RECURSIVE ABSOLUTE RENDERER (v92) ─────────────────────────────────────────
 
 // Forward declare native tab constructors so we can embed them inside widgets without circular includes
@@ -149,7 +154,7 @@ void ui_refresh_grid() {
 
 static void _item_event_cb(lv_event_t *e) {
     lv_event_code_t code = lv_event_get_code(e);
-    if (code == LV_EVENT_CLICKED) {
+    if (code == LV_EVENT_CLICKED || code == LV_EVENT_VALUE_CHANGED) {
         const char *action = (const char *)lv_event_get_user_data(e);
         if (action) {
             ESP_LOGI("GRID", "UI Action: %s", action);
@@ -157,6 +162,28 @@ static void _item_event_cb(lv_event_t *e) {
                 const char *screen_name = action + 4;
                 void ui_navigate_to(const char* name);
                 ui_navigate_to(screen_name);
+            } else if (strncmp(action, "toast:", 6) == 0) {
+                const char *msg = action + 6;
+                // Simple toast using a message box or label
+                ESP_LOGI("GRID", "TOAST: %s", msg);
+                lv_obj_t * mbox = lv_msgbox_create(NULL);
+                lv_msgbox_add_title(mbox, "Notice");
+                lv_msgbox_add_text(mbox, msg);
+                lv_msgbox_add_close_button(mbox);
+            } else if (strncmp(action, "reboot:", 7) == 0) {
+                esp_restart();
+#ifdef USE_MQTT
+            } else if (strncmp(action, "mqtt:", 5) == 0) {
+                std::string actStr = action + 5;
+                size_t colon = actStr.find(':');
+                if (colon != std::string::npos) {
+                    std::string t = actStr.substr(0, colon);
+                    std::string p = actStr.substr(colon + 1);
+                    if (esphome::mqtt::global_mqtt_client) {
+                        esphome::mqtt::global_mqtt_client->publish(t, p);
+                    }
+                }
+#endif
             }
         }
     } else if (code == LV_EVENT_DELETE) {
@@ -186,6 +213,15 @@ static void _mqtt_lvgl_update_async(void *arg) {
             lv_bar_set_value(u->obj, atoi(u->payload.c_str()), LV_ANIM_ON);
         } else if (u->type == "label") {
             lv_label_set_text(u->obj, u->payload.c_str());
+        } else if (u->type == "dropdown") {
+            lv_dropdown_set_selected(u->obj, atoi(u->payload.c_str()));
+        } else if (u->type == "roller") {
+            int new_val = atoi(u->payload.c_str());
+            int cur_val = lv_roller_get_selected(u->obj);
+            ESP_LOGI("GRID", "MQTT Roller Update: cur=%d new=%d", cur_val, new_val);
+            if (cur_val != new_val) {
+                lv_roller_set_selected(u->obj, new_val, LV_ANIM_OFF); // Instant update from MQTT to prevent bounce
+            }
         }
     }
     delete u;
@@ -194,10 +230,11 @@ static void _mqtt_lvgl_update_async(void *arg) {
 
 #ifdef USE_MQTT
 static void _home_item_mqtt_cb(lv_event_t *e) {
-    GridItem *it = (GridItem *)lv_obj_get_user_data(lv_event_get_target(e));
+    if (!g_mqtt_enabled) return;
+    GridItem *it = (GridItem *)lv_obj_get_user_data((lv_obj_t *)lv_event_get_target(e));
     if (!it || it->mqttTopic.empty()) return;
     
-    lv_obj_t *obj = lv_event_get_target(e);
+    lv_obj_t *obj = (lv_obj_t *)lv_event_get_target(e);
     std::string val = "";
     
     if (it->type == "switch" || it->type == "checkbox") {
@@ -207,13 +244,13 @@ static void _home_item_mqtt_cb(lv_event_t *e) {
     } else if (it->type == "arc") {
         val = std::to_string(lv_arc_get_value(obj));
     } else if (it->type == "roller") {
-        char buf[64];
-        lv_roller_get_selected_str(obj, buf, 64);
-        val = buf;
+        int sel = lv_roller_get_selected(obj);
+        val = std::to_string(sel);
+        ESP_LOGI("GRID", "UI Roller Event: selected_index=%d", sel);
     } else if (it->type == "dropdown") {
-        char buf[64];
-        lv_dropdown_get_selected_str(obj, buf, 64);
-        val = buf;
+        val = std::to_string(lv_dropdown_get_selected(obj));
+    } else {
+        val = "PRESS";
     }
     
     if (!val.empty()) {
@@ -297,10 +334,38 @@ static void _home_render_item(lv_obj_t *parent, const GridItem &it, int offsetX,
         lv_dropdown_set_selected(obj, it.value);
     } else if (it.type == "roller") {
         obj = lv_roller_create(parent);
+        lv_obj_set_width(obj, it.width); 
+        
+        // Font must be set BEFORE visible_row_count for correct height calculation
+        const lv_font_t* font = &lv_font_montserrat_16;
+        if (it.fontSize <= 12) font = &lv_font_montserrat_12;
+        else if (it.fontSize <= 14) font = &lv_font_montserrat_14;
+        else if (it.fontSize <= 16) font = &lv_font_montserrat_16;
+        else if (it.fontSize <= 18) font = &lv_font_montserrat_18;
+        else if (it.fontSize <= 20) font = &lv_font_montserrat_20;
+        else if (it.fontSize <= 22) font = &lv_font_montserrat_22;
+        else font = &lv_font_montserrat_24;
+        lv_obj_set_style_text_font(obj, font, 0);
+
         if (!it.options.empty()) lv_roller_set_options(obj, it.options.c_str(), LV_ROLLER_MODE_NORMAL);
         lv_roller_set_visible_row_count(obj, 3);
         lv_roller_set_selected(obj, it.value, LV_ANIM_OFF);
+        
+        lv_obj_add_flag(obj, LV_OBJ_FLAG_SCROLLABLE);
+        lv_obj_set_scroll_snap_y(obj, LV_SCROLL_SNAP_CENTER);
         lv_obj_clear_flag(obj, LV_OBJ_FLAG_SCROLL_CHAIN);
+        lv_obj_clear_flag(obj, LV_OBJ_FLAG_SCROLL_MOMENTUM); // Prevent 'bouncing' after release
+        
+        lv_obj_set_style_anim_duration(obj, 100, 0); // Fast, stable snap
+        
+        // Selection highlight style - High visibility
+        lv_obj_set_style_bg_color(obj, lv_color_hex(0x6366f1), LV_PART_SELECTED); // Bright Indigo
+        lv_obj_set_style_bg_opa(obj, LV_OPA_COVER, LV_PART_SELECTED);
+        lv_obj_set_style_text_color(obj, lv_color_hex(0xFFFFFF), LV_PART_SELECTED);
+        
+        // Bigger item height
+        lv_obj_set_style_text_line_space(obj, 20, 0); 
+        lv_obj_set_style_pad_ver(obj, 10, LV_PART_MAIN);
     } else if (it.type == "bar") {
         obj = lv_bar_create(parent);
         lv_bar_set_range(obj, it.min, it.max);
@@ -349,6 +414,9 @@ static void _home_render_item(lv_obj_t *parent, const GridItem &it, int offsetX,
     if (obj) {
         if (it.type == "menu-item" || it.type == "nav-item") {
             lv_obj_set_size(obj, lv_pct(100), 50); // Improved touch target
+        } else if (it.type == "roller") {
+            lv_obj_set_pos(obj, it.x + offsetX, it.y + offsetY);
+            // Height is handled by lv_roller_set_visible_row_count
         } else {
             lv_obj_set_pos(obj, it.x + offsetX, it.y + offsetY);
             lv_obj_set_size(obj, it.width, it.height);
@@ -392,34 +460,43 @@ static void _home_render_item(lv_obj_t *parent, const GridItem &it, int offsetX,
         if (!final_action.empty()) {
             lv_obj_add_flag(obj, LV_OBJ_FLAG_CLICKABLE);
             char *persist_act = strdup(final_action.c_str());
-            lv_obj_add_event_cb(obj, _item_event_cb, LV_EVENT_CLICKED, persist_act);
+            lv_obj_add_event_cb(obj, _item_event_cb, (it.type == "roller" || it.type == "slider" || it.type == "arc") ? LV_EVENT_VALUE_CHANGED : LV_EVENT_CLICKED, persist_act);
         }
 
         // MQTT Bindings
 #ifdef USE_MQTT
-        if (!it.mqttTopic.empty()) {
+        if (g_mqtt_enabled && (!it.mqttTopic.empty() || !it.mqttStateTopic.empty())) {
             GridItem *persist_it = new GridItem(it);
             lv_obj_set_user_data(obj, persist_it);
 
+            std::string subTopic = it.mqttStateTopic.empty() ? it.mqttTopic : it.mqttStateTopic;
+
             // CRITICAL-1: Cleanup persist_it and unsubscribe on delete
             lv_obj_add_event_cb(obj, [](lv_event_t *e) {
-                GridItem *data = (GridItem *)lv_obj_get_user_data(lv_event_get_target(e));
+                GridItem *data = (GridItem *)lv_obj_get_user_data((lv_obj_t *)lv_event_get_target(e));
                 if (data) {
                     if (esphome::mqtt::global_mqtt_client) {
-                        esphome::mqtt::global_mqtt_client->unsubscribe(data->mqttTopic);
+                        std::string sTopic = data->mqttStateTopic.empty() ? data->mqttTopic : data->mqttStateTopic;
+                        if (!sTopic.empty()) esphome::mqtt::global_mqtt_client->unsubscribe(sTopic);
                     }
                     delete data;
                 }
             }, LV_EVENT_DELETE, nullptr);
             
             // CRITICAL-2: Thread safe callback via lv_async_call
-            esphome::mqtt::global_mqtt_client->subscribe(it.mqttTopic, [obj, persist_it](const std::string &topic, const std::string &payload) {
-                auto *u = new MqttUpdateData{obj, persist_it->type, payload};
-                lv_async_call(_mqtt_lvgl_update_async, u);
-            });
+            if (!subTopic.empty()) {
+                esphome::mqtt::global_mqtt_client->subscribe(subTopic, [obj, persist_it](const std::string &topic, const std::string &payload) {
+                    auto *u = new MqttUpdateData{obj, persist_it->type, payload};
+                    lv_async_call(_mqtt_lvgl_update_async, u);
+                });
+            }
 
-            lv_obj_add_event_cb(obj, _home_item_mqtt_cb, LV_EVENT_VALUE_CHANGED, nullptr);
-            if (it.type == "btn" || it.type == "menu-item") lv_obj_add_event_cb(obj, _home_item_mqtt_cb, LV_EVENT_CLICKED, nullptr);
+            if (!it.mqttTopic.empty()) {
+                lv_obj_add_event_cb(obj, _home_item_mqtt_cb, LV_EVENT_VALUE_CHANGED, nullptr);
+                if (it.type == "btn" || it.type == "menu-item" || it.type == "nav-item") {
+                    lv_obj_add_event_cb(obj, _home_item_mqtt_cb, LV_EVENT_CLICKED, nullptr);
+                }
+            }
         }
 #endif
     }

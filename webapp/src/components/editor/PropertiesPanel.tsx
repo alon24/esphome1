@@ -215,6 +215,108 @@ export const PropertiesPanel: React.FC = () => {
                         </select>
                     </div>
                 )}
+
+                <div className="prop-group" style={{marginTop:'10px'}}>
+                    <div className="prop-label">Custom Action (Action String)</div>
+                    <input 
+                        className="prop-input" 
+                        placeholder="e.g. toast:Hello or reboot:" 
+                        value={item.action || ''} 
+                        onChange={e => updateItem(selectedEntity.pageId, item.id, { action: e.target.value })} 
+                    />
+                    <div style={{fontSize:'10px', color:'#94a3b8', marginTop:'4px'}}>Supported: scr:ID, toast:MSG, reboot:, mqtt:TOPIC:VAL</div>
+                </div>
+
+                {/* Element Specific Config */}
+                {(['dropdown', 'roller', 'slider', 'bar', 'arc', 'switch', 'checkbox'].includes(item.type)) && (
+                    <>
+                        <div className="props-subtitle" style={{marginTop:'20px', fontSize:'11px', fontWeight:900, color:'#94a3b8', textTransform:'uppercase', letterSpacing:'1px', marginBottom:'10px', borderBottom:'1px solid #f1f5f9', paddingBottom:'5px'}}>Element Config</div>
+                        
+                        {(item.type === 'dropdown' || item.type === 'roller') && (
+                            <div className="prop-group">
+                                <div className="prop-label">Options (one per line)</div>
+                                <textarea 
+                                    className="prop-input" 
+                                    style={{ height: '80px', resize: 'vertical', fontFamily: 'monospace', fontSize: '12px' }}
+                                    value={item.options || ''} 
+                                    onChange={e => updateItem(selectedEntity.pageId, item.id, { options: e.target.value })}
+                                />
+                            </div>
+                        )}
+
+                        {(item.type === 'slider' || item.type === 'bar' || item.type === 'arc') && (
+                            <div className="prop-row">
+                                <div className="prop-group">
+                                    <div className="prop-label">Min</div>
+                                    <input className="prop-input" type="number" value={item.min || 0} onChange={e => updateItem(selectedEntity.pageId, item.id, { min: parseInt(e.target.value) || 0 })} />
+                                </div>
+                                <div className="prop-group">
+                                    <div className="prop-label">Max</div>
+                                    <input className="prop-input" type="number" value={item.max || 100} onChange={e => updateItem(selectedEntity.pageId, item.id, { max: parseInt(e.target.value) || 0 })} />
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="prop-group" style={{marginTop:'10px'}}>
+                            <div className="prop-label">Current Value</div>
+                            { (item.type === 'switch' || item.type === 'checkbox') ? (
+                                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                                    <input type="checkbox" checked={!!item.value} onChange={e => updateItem(selectedEntity.pageId, item.id, { value: e.target.checked ? 1 : 0 })} />
+                                    {item.value ? 'ON / Checked' : 'OFF / Unchecked'}
+                                </label>
+                            ) : (
+                                <input className="prop-input" type="number" value={item.value || 0} onChange={e => updateItem(selectedEntity.pageId, item.id, { value: parseInt(e.target.value) || 0 })} />
+                            )}
+                        </div>
+                    </>
+                )}
+
+
+                <div className="props-subtitle" style={{marginTop:'20px', fontSize:'11px', fontWeight:900, color:'#94a3b8', textTransform:'uppercase', letterSpacing:'1px', marginBottom:'10px', borderBottom:'1px solid #f1f5f9', paddingBottom:'5px'}}>Layout & Behavior</div>
+                
+                <div className="prop-row">
+                    <div className="prop-group">
+                        <div className="prop-label">Opacity (0-255)</div>
+                        <input className="prop-input" type="number" min="0" max="255" value={item.opacity !== undefined ? item.opacity : 255} onChange={e => updateItem(selectedEntity.pageId, item.id, { opacity: parseInt(e.target.value) || 0 })} />
+                    </div>
+                    <div className="prop-group">
+                        <div className="prop-label">Radius</div>
+                        <input className="prop-input" type="number" value={item.radius || 0} onChange={e => updateItem(selectedEntity.pageId, item.id, { radius: parseInt(e.target.value) || 0 })} />
+                    </div>
+                </div>
+
+                <div className="prop-row" style={{marginTop:'5px'}}>
+                    <label style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', cursor: 'pointer', color: '#475569' }}>
+                        <input type="checkbox" checked={!!item.hidden} onChange={e => updateItem(selectedEntity.pageId, item.id, { hidden: e.target.checked })} />
+                        Hidden
+                    </label>
+                    <label style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', cursor: 'pointer', color: '#475569' }}>
+                        <input type="checkbox" checked={!!item.scrollable} onChange={e => updateItem(selectedEntity.pageId, item.id, { scrollable: e.target.checked })} />
+                        Scrollable
+                    </label>
+                </div>
+
+                <div className="prop-row" style={{marginTop:'10px'}}>
+                    <div className="prop-group">
+                        <div className="prop-label">Padding</div>
+                        <input className="prop-input" type="number" value={item.padding || 0} onChange={e => updateItem(selectedEntity.pageId, item.id, { padding: parseInt(e.target.value) || 0 })} />
+                    </div>
+                    <div className="prop-group">
+                        <div className="prop-label">Gap</div>
+                        <input className="prop-input" type="number" value={item.gap || 0} onChange={e => updateItem(selectedEntity.pageId, item.id, { gap: parseInt(e.target.value) || 0 })} />
+                    </div>
+                </div>
+
+                <div className="props-subtitle" style={{marginTop:'20px', fontSize:'11px', fontWeight:900, color:'#94a3b8', textTransform:'uppercase', letterSpacing:'1px', marginBottom:'10px', borderBottom:'1px solid #f1f5f9', paddingBottom:'5px'}}>Communication (MQTT)</div>
+                <div className="prop-group">
+                    <div className="prop-label">Command Topic</div>
+                    <input className="prop-input" placeholder="e.g. kitchen/light/set" value={item.mqttTopic || ''} onChange={e => updateItem(selectedEntity.pageId, item.id, { mqttTopic: e.target.value })} />
+                </div>
+                <div className="prop-group" style={{marginTop:'8px'}}>
+                    <div className="prop-label">State Topic</div>
+                    <input className="prop-input" placeholder="e.g. kitchen/light/state" value={item.mqttStateTopic || ''} onChange={e => updateItem(selectedEntity.pageId, item.id, { mqttStateTopic: e.target.value })} />
+                </div>
+
                 <button 
                     className="prop-input" 
                     style={{ marginTop: '20px', color: "#ef4444", borderColor: "#fecaca", cursor: "pointer", background: "#fff", border: '2px solid #fecaca' }}

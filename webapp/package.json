@@ -2,6 +2,7 @@
 	"name": "esphome-spa",
 	"version": "1.0.0",
 	"private": true,
+	"type": "module",
 	"scripts": {
 		"dev": "vite --port 3009 --host",
 		"build": "vite build",

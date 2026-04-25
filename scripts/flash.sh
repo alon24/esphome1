@@ -80,15 +80,15 @@ if [ "${USB:-0}" = "1" ]; then
   fuser -k /dev/ttyUSB0 2>/dev/null || true
   upload_firmware /dev/ttyUSB0
   UPLOAD_METHOD="USB"
+elif use_ota; then
+  echo "▶  Device reachable at ${DEVICE_IP} — flashing OTA..."
+  upload_firmware "$DEVICE_IP"
+  UPLOAD_METHOD="OTA"
 elif [ -e /dev/ttyUSB0 ]; then
   echo "▶  USB detected — flashing via serial..."
   fuser -k /dev/ttyUSB0 2>/dev/null || true
   upload_firmware /dev/ttyUSB0
   UPLOAD_METHOD="USB"
-elif use_ota; then
-  echo "▶  Device reachable at ${DEVICE_IP} — flashing OTA..."
-  upload_firmware "$DEVICE_IP"
-  UPLOAD_METHOD="OTA"
 else
   echo "✗  Device not reachable at ${DEVICE_IP} and no USB found."
   echo "   Connect USB cable or check device is on WiFi."

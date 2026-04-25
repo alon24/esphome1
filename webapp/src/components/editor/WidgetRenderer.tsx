@@ -11,14 +11,14 @@ export const WidgetRenderer: React.FC<{
     onSelect?: (id: string, pgId: string) => void;
     selectedId?: string;
 }> = ({ it, panels, pageId, onSelect, selectedId }) => {
-    const { setActiveScreenId } = React.useContext(GridContext) as any;
+    const { setActiveScreenId, updateItem } = React.useContext(GridContext) as any;
     const color = `#${safeHex(it.color)}`;
     const txt = `#${safeHex(it.textColor)}`;
     const bColor = it.borderColor !== undefined ? `#${safeHex(it.borderColor)}` : txt;
 
     const baseStyle: React.CSSProperties = { 
         borderRadius: it.radius || 8, 
-        display: "flex", 
+        display: it.hidden ? "none" : "flex", 
         alignItems: "center", 
         justifyContent: it.textAlign === "left" ? "flex-start" : (it.textAlign === "right" ? "flex-end" : "center"), 
         textAlign: it.textAlign || "center",
@@ -28,10 +28,11 @@ export const WidgetRenderer: React.FC<{
         width: "100%", 
         height: "100%", 
         position: "relative", 
-        overflow: "hidden",
+        overflow: it.scrollable ? "auto" : "hidden",
+        opacity: (it.opacity !== undefined ? it.opacity : 255) / 255,
         border: it.borderWidth ? `${it.borderWidth}px solid ${bColor}` : "none",
         background: (it.type === "panel-ref" || it.type === "border") ? "none" : color,
-        padding: "0 10px",
+        padding: it.padding !== undefined ? `${it.padding}px` : "0 10px",
         boxSizing: "border-box"
     };
 
@@ -96,12 +97,61 @@ export const WidgetRenderer: React.FC<{
 
     if (it.type === "roller") {
         const opts = (it.options || "Option 1\nOption 2\nOption 3").split("\n");
+        const curIdx = it.value || 0;
         return (
-            <div style={{ ...baseStyle, border: `1px solid ${color}`, background: "rgba(0,0,0,0.2)", padding: 0 }}>
-                <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: "8px", justifyContent: "center" }}>
-                    <div style={{ textAlign: "center", opacity: 0.4, fontSize: '0.8em' }}>{opts[0] || ""}</div>
-                    <div style={{ textAlign: "center", color: "white", fontWeight: 900, background: color, padding: "4px 0", width: '100%' }}>{opts[1] || opts[0] || ""}</div>
-                    <div style={{ textAlign: "center", opacity: 0.4, fontSize: '0.8em' }}>{opts[2] || ""}</div>
+            <div style={{ 
+                ...baseStyle, 
+                border: `1px solid ${color}`, 
+                background: "rgba(0,0,0,0.4)", 
+                padding: 0,
+                display: "flex",
+                flexDirection: "column",
+                position: "relative"
+            }}>
+                {/* 3D Roller Gradient Overlay */}
+                <div style={{ 
+                    position: "absolute", 
+                    inset: 0, 
+                    pointerEvents: "none",
+                    zIndex: 2,
+                    background: "linear-gradient(rgba(0,0,0,0.7) 0%, transparent 40%, transparent 60%, rgba(0,0,0,0.7) 100%)"
+                }} />
+                
+                {/* Active Selection Indicator */}
+                <div style={{ 
+                    position: "absolute", 
+                    top: "50%", 
+                    left: 0, 
+                    right: 0, 
+                    height: "32px", 
+                    transform: "translateY(-50%)", 
+                    background: color, 
+                    opacity: 0.3,
+                    zIndex: 1 
+                }} />
+
+                <div style={{ 
+                    width: "100%", 
+                    display: "flex", 
+                    flexDirection: "column", 
+                    gap: "4px", 
+                    justifyContent: "center",
+                    height: "100%",
+                    zIndex: 1
+                }}>
+                    <div style={{ textAlign: "center", opacity: 0.3, fontSize: '0.7em', transform: 'scale(0.9)' }}>{opts[curIdx - 1] || ""}</div>
+                    <div style={{ 
+                        textAlign: "center", 
+                        color: "white", 
+                        fontWeight: 900, 
+                        fontSize: '0.9em',
+                        padding: "2px 0",
+                        width: '100%',
+                        textShadow: "0 0 10px rgba(255,255,255,0.3)"
+                    }}>
+                        {opts[curIdx] || "No Option"}
+                    </div>
+                    <div style={{ textAlign: "center", opacity: 0.3, fontSize: '0.7em', transform: 'scale(0.9)' }}>{opts[curIdx + 1] || ""}</div>
                 </div>
             </div>
         );
@@ -118,12 +168,12 @@ export const WidgetRenderer: React.FC<{
                 ...baseStyle, 
                 display: "flex",
                 flexDirection: (it.orientation === "h") ? "row" : "column", 
-                padding: "10px", 
-                gap: "10px", 
+                padding: it.padding !== undefined ? `${it.padding}px` : "10px", 
+                gap: it.gap !== undefined ? `${it.gap}px` : "10px", 
                 justifyContent: "flex-start", 
                 alignItems: "stretch",
-                overflowX: it.orientation === "h" ? "auto" : "hidden",
-                overflowY: (it.orientation === "v" || !it.orientation) ? "auto" : "hidden",
+                overflowX: (it.orientation === "h" || it.scrollable) ? "auto" : "hidden",
+                overflowY: (it.orientation === "v" || !it.orientation || it.scrollable) ? "auto" : "hidden",
                 background: "transparent"
             }}>
                 {childItems.map((c, i) => (
@@ -181,7 +231,10 @@ export const WidgetRenderer: React.FC<{
     );
 
     if (it.type === "checkbox") return (
-        <div style={{ ...baseStyle, background: "none", justifyContent: "flex-start", gap: 10 }}>
+        <div 
+            style={{ ...baseStyle, background: "none", justifyContent: "flex-start", gap: 10, cursor: "pointer" }}
+            onClick={(e) => { e.stopPropagation(); updateItem(pageId, it.id, { value: it.value ? 0 : 1 }); }}
+        >
             <div style={{ width: 22, height: 22, borderRadius: 6, border: `2px solid ${color}`, background: it.value ? color : "none", display: "flex", alignItems: "center", justifyContent: "center" }}>
                 {it.value && <span style={{ color: "white", fontSize: "14px" }}>✓</span>}
             </div>
@@ -189,12 +242,20 @@ export const WidgetRenderer: React.FC<{
         </div>
     );
 
-    if (it.type === "dropdown") return (
-        <div style={{ ...baseStyle, background: "rgba(255,255,255,0.05)", border: `1px solid rgba(255,255,255,0.1)`, padding: "0 15px", justifyContent: "space-between" }}>
-            <span>{(it.options || "Option 1").split("\n")[0]}</span>
-            <span style={{ fontSize: "10px" }}>▼</span>
-        </div>
-    );
+    if (it.type === "dropdown") {
+        const opts = (it.options || "Option 1").split("\n");
+        const curIdx = it.value || 0;
+        const selected = opts[curIdx] || opts[0];
+        return (
+            <div 
+                style={{ ...baseStyle, background: "rgba(255,255,255,0.05)", border: `1px solid rgba(255,255,255,0.1)`, padding: "0 15px", justifyContent: "space-between", cursor: "pointer" }}
+                onClick={(e) => { e.stopPropagation(); updateItem(pageId, it.id, { value: (curIdx + 1) % opts.length }); }}
+            >
+                <span>{selected}</span>
+                <span style={{ fontSize: "10px" }}>▼</span>
+            </div>
+        );
+    }
 
     if (it.type === "border") return (
         <div style={{ ...baseStyle }} />

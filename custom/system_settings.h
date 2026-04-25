@@ -16,6 +16,7 @@ inline RTC_DATA_ATTR bool g_ss_enabled = false;
 inline RTC_DATA_ATTR bool g_ap_always_on = false;
 inline RTC_DATA_ATTR char g_ap_ssid[33] = "GRIDOS_AP";
 inline RTC_DATA_ATTR char g_ap_password[64] = "";
+inline RTC_DATA_ATTR bool g_mqtt_enabled = true;
 inline RTC_DATA_ATTR char g_active_screen[64] = "main";
 inline RTC_DATA_ATTR bool g_rtc_init_done = false;
 
@@ -65,12 +66,13 @@ void system_settings_load() {
         JsonDocument doc;
         if (!deserializeJson(doc, buf)) {
             g_ss_enabled = doc["ss_enabled"] | false;
+            g_mqtt_enabled = doc["mqtt_enabled"] | true;
             g_ap_always_on = doc["ap_always_on"] | false;
             strncpy(g_ap_ssid, doc["ap_ssid"] | "GRIDOS_AP", sizeof(g_ap_ssid)-1);
             strncpy(g_ap_password, doc["ap_password"] | "", sizeof(g_ap_password)-1);
             strncpy(g_active_screen, doc["last_screen"] | "main", sizeof(g_active_screen)-1);
-            ESP_LOGI("SYS", "Settings loaded from Flash to RTC: screen=%s, ss=%s, ap_on=%s", 
-                     g_active_screen, g_ss_enabled?"ON":"OFF", g_ap_always_on?"YES":"NO");
+            ESP_LOGI("SYS", "Settings loaded from Flash to RTC: screen=%s, ss=%s, mqtt=%s, ap_on=%s", 
+                     g_active_screen, g_ss_enabled?"ON":"OFF", g_mqtt_enabled?"ON":"OFF", g_ap_always_on?"YES":"NO");
         }
         free(buf);
     }
@@ -90,6 +92,7 @@ void system_settings_save() {
     }
     JsonDocument doc;
     doc["ss_enabled"] = g_ss_enabled;
+    doc["mqtt_enabled"] = g_mqtt_enabled;
     doc["ap_always_on"] = g_ap_always_on;
     doc["ap_ssid"] = g_ap_ssid;
     doc["ap_password"] = g_ap_password;

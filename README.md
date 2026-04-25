@@ -11,6 +11,16 @@ A professional-grade, high-fidelity media station and UI designer powered by an 
 - [x] **Smart Refreshes**: Background UI commit to physical hardware on designer "Sync".
 - [x] **Stable Lifecycle**: Parent-anchored rendering to prevent race conditions and memory resets.
 
+## MQTT & Callbacks (tdata)
+
+| Widget Type | Publish Topic | Subscribe Topic | Payload Mapping |
+|-------------|---------------|-----------------|-----------------|
+| **Switch** | `mqttTopic` | `mqttStateTopic` | `ON`/`OFF` |
+| **Slider** | `mqttTopic` | `mqttStateTopic` | `0-100` (integer) |
+| **Dropdown**| `mqttTopic` | `mqttStateTopic` | Publish: String, Subscribe: Index |
+| **Label** | N/A | `mqttStateTopic` | Literal string payload |
+| **Button** | `mqttTopic` | N/A | `"PRESS"` |
+
 ## 🛠 PENDING
 - [ ] **Performance optimization** for very deep nests (>8 levels).
 - [ ] **State export/import** for full project backup (local JSON download).
@@ -64,7 +74,7 @@ A professional-grade, high-fidelity media station and UI designer powered by an 
 USB=1 ./scripts/flash.sh
 
 # Force OTA to a specific IP
-DEVICE_IP=192.168.1.42 ./scripts/flash.sh
+DEVICE_IP=10.100.102.46 ./scripts/flash.sh
 ```
 
 The script bumps the version number, compiles, flashes, and verifies the running version in device logs.
@@ -84,7 +94,7 @@ The script bumps the version number, compiles, flashes, and verifies the running
 USB=1 ./scripts/logs.sh
 
 # Explicit IP
-DEVICE_IP=192.168.1.42 ./scripts/logs.sh
+DEVICE_IP=10.100.102.46 ./scripts/logs.sh
 ```
 
 Press `Ctrl+C` to stop. Logs stream in real time at the configured log level.
@@ -98,7 +108,7 @@ Press `Ctrl+C` to stop. Logs stream in real time at the configured log level.
 ./scripts/dev.sh
 
 # Proxy to a specific IP
-DEVICE_IP=192.168.1.42 ./scripts/dev.sh
+DEVICE_IP=10.100.102.46 ./scripts/dev.sh
 ```
 
 Opens at **http://localhost:5173**. Hot-reload is active — edits to `webapp/src/` apply instantly. The device does not need to be connected for frontend-only work.
@@ -114,7 +124,7 @@ Opens at **http://localhost:5173**. Hot-reload is active — edits to `webapp/sr
 ./scripts/upload.sh
 
 # With explicit IP
-DEVICE_IP=192.168.1.42 ./scripts/upload.sh
+DEVICE_IP=10.100.102.46 ./scripts/upload.sh
 ```
 
 No firmware reflash needed — uploads to SPIFFS over WiFi and is served immediately at `http://esp32-display.local/`.
@@ -143,17 +153,7 @@ mqtt_password: "password"
 ...
 ---
 
-## 📡 MQTT & Smart Widgets
-GridOS supports bi-directional sync with Home Assistant.
-
-**To Enable MQTT:**
-1. Open `secrets.yaml` and set your real `mqtt_broker` IP.
-2. Open `device.yaml`, find the `# mqtt:` section, and uncomment it.
-3. Flash the device.
-
-**Note on DNS Errors:**
-If you see `[W][mqtt:274]: Couldn't resolve IP address for '192.168.1.XX'`, it means MQTT is enabled but the broker address in `secrets.yaml` is still the default. Comment out the `mqtt:` block in `device.yaml` to stop this spam.
-
+### 2. Flash the firmware via USB
 Connect the board via USB, then:
 
 ```bash
@@ -162,7 +162,22 @@ Connect the board via USB, then:
 
 This compiles and uploads the ESPHome firmware. After this, all future firmware updates can be done over WiFi (OTA).
 
-### 3. Install webapp dependencies
+### 3. Smart Component Actions (tdata)
+Widgets with "Action" or "MQTT" fields support the following syntax:
+
+| Action Syntax | Effect |
+|---------------|--------|
+| `scr:screenName` | Navigate to a different screen by ID |
+| `toast:Message` | Show a temporary popup notification |
+| `reboot:` | Trigger a hardware reset |
+| `mqtt:topic:payload` | Publish a specific payload to a topic on click |
+
+**MQTT Callback Behavior:**
+- **Publishing (`mqttTopic`)**: Interactive widgets (Buttons, Sliders, Dropdowns) publish their state here automatically.
+- **Subscription (`mqttStateTopic`)**: Widgets listen here for status updates. If received, the widget updates its visual state (e.g., toggling a switch or moving a slider).
+- **Bi-directional**: If `mqttStateTopic` is blank, `mqttTopic` is used for both publishing and subscribing.
+
+### 4. Install webapp dependencies
 
 ```bash
 cd webapp && bun install
@@ -179,7 +194,7 @@ Start the local dev server on **port 3008**. API calls to `/api/*` are proxied t
 ./scripts/dev.sh
 
 # Device on a fixed IP
-DEVICE_IP=192.168.1.42 ./scripts/dev.sh
+DEVICE_IP=10.100.102.46 ./scripts/dev.sh
 ```
 
 Open [http://localhost:3008](http://localhost:3008) in your browser.
@@ -196,7 +211,7 @@ Builds the React app, gzips it into a single file, and uploads it to the device 
 ./scripts/upload.sh
 
 # With explicit IP
-DEVICE_IP=192.168.1.42 ./scripts/upload.sh
+DEVICE_IP=10.100.102.46 ./scripts/upload.sh
 ```
 
 What it does:
@@ -213,7 +228,7 @@ What it does:
 ./scripts/check-device.sh
 
 # With explicit IP
-DEVICE_IP=192.168.1.42 ./scripts/check-device.sh
+DEVICE_IP=10.100.102.46 ./scripts/check-device.sh
 ```
 
 Output on success:

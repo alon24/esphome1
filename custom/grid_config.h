@@ -27,7 +27,8 @@ struct GridItem {
     std::string textAlign;
     std::string orientation;
     std::string component;      // A1: used when type == "component"
-    std::string mqttTopic;      // NEW: MQTT Binding
+    std::string mqttTopic;      // NEW: MQTT Binding (Command/Publish)
+    std::string mqttStateTopic; // NEW: MQTT State (Subscription)
     std::string targetScreenId; // NEW: Screen navigation
     std::vector<GridItem> children;
 };
@@ -91,7 +92,8 @@ static void parse_grid_item(JsonObject eObj, GridItem& it) {
     it.textAlign = eObj["textAlign"] | "center";
     it.orientation = eObj["orientation"] | "v";
     it.component   = eObj["component"]   | "";  // A2: smart component id
-    it.mqttTopic   = eObj["mqttTopic"]   | "";  // NEW
+    it.mqttTopic   = eObj["mqttTopic"]   | "";
+    it.mqttStateTopic = eObj["mqttStateTopic"] | "";
     it.targetScreenId = eObj["targetScreenId"] | ""; // NEW
     
     it.children.clear();

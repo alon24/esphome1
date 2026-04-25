@@ -91,27 +91,31 @@ web_server:
   port: 81 # Move standard web server to 81 so React SPA can have 80
   version: 3
 
+ota:
+  - platform: esphome
+    password: !secret ota_password
+
 captive_portal:
 
-# mqtt:
-#   broker: !secret mqtt_broker
-#   username: !secret mqtt_username
-#   password: !secret mqtt_password
-#   id: mqtt_client
-#   reboot_timeout: 0s
-#   keepalive: 60s
-#   on_connect:
-#     - lambda: |-
-#         ESP_LOGI("MQTT", "Connected to broker!");
-#   on_disconnect:
-#     - lambda: |-
-#         ESP_LOGW("MQTT", "Disconnected from broker");
-#   on_message:
-#     - topic: "system/display/navigation"
-#       then:
-#         - lambda: |-
-#             if (x == "home") ui_navigate_to("main");
-#             else ui_navigate_to(x.c_str());
+mqtt:
+  broker: !secret mqtt_broker
+  username: !secret mqtt_username
+  password: !secret mqtt_password
+  id: mqtt_client
+  reboot_timeout: 0s
+  keepalive: 60s
+  on_connect:
+    - lambda: |-
+        ESP_LOGI("MQTT", "Connected to broker!");
+  on_disconnect:
+    - lambda: |-
+        ESP_LOGW("MQTT", "Disconnected from broker");
+  on_message:
+    - topic: "system/display/navigation"
+      then:
+        - lambda: |-
+            if (x == "home") ui_navigate_to("main");
+            else ui_navigate_to(x.c_str());
 
 text_sensor:
   - platform: wifi_info
