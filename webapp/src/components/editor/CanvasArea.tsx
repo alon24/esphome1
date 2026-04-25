@@ -99,33 +99,15 @@ export const CanvasArea: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
                     newX = Math.round(dragInfo.initialX + dx);
                     newY = Math.round(dragInfo.initialY + dy);
 
-                    // Boundary Clamp (Stay within Page)
-                    newX = Math.max(0, Math.min(newX, baseWidth - newW));
-                    newY = Math.max(0, Math.min(newY, baseHeight - newH));
-
-                    // Reserved Area Clamping (Avoid overlap with Sidebars/Headers)
-                    const entry = worldScreens.find((e:any) => e.scr.id === dragInfo.scrId);
-                    const pg = entry?.scr.pages.find((p:any) => p.id === dragInfo.pageId);
-                    if (pg) {
-                        pg.items.forEach((other: any) => {
-                            if (other.id !== dragInfo.id && other.type === 'panel-ref') {
-                                // If it's a sidebar (left), push content to the right
-                                if (other.x === 0 && other.width > 50 && other.height > 200) {
-                                    newX = Math.max(other.width, newX);
-                                }
-                                // If it's a header (top), push content down
-                                if (other.y === 0 && other.height > 20 && other.width > 200) {
-                                    newY = Math.max(other.height, newY);
-                                }
-                            }
-                        });
-                    }
+                    // Cross-page movement: We allow the widget to leave the current page bounds
+                    // during drag so it can reach other pages. Clamping will happen on 'up'.
 
                     if (isPanel) {
                         newX = 0;
                         newW = panel.width;
                         newY = Math.max(0, Math.min(newY, panel.height - newH));
                     }
+                    setPreview({ id: dragInfo.id, x: newX, y: newY, w: newW, h: newH });
                     setPreview({ id: dragInfo.id, x: newX, y: newY, w: newW, h: newH });
                 } else if (dragInfo.mode === 'resize') {
                     const handle = dragInfo.handle;
@@ -205,10 +187,31 @@ export const CanvasArea: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
                             }
                         }
 
-                        if (targetPage && targetPage.id !== dragInfo.pageId) {
-                            const newRelX = worldX - (targetScr.offsetX + (targetPage.x || 0) * baseWidth);
-                            const newRelY = worldY - (targetScr.offsetY + (targetPage.y || 0) * baseHeight);
-                            context.moveItemToPage(dragInfo.pageId, targetPage.id, dragInfo.id, { x: newRelX, y: newRelY, width: preview.w, height: preview.h });
+                        if (targetPage) {
+                            let newRelX = worldX - (targetScr.offsetX + (targetPage.x || 0) * baseWidth);
+                            let newRelY = worldY - (targetScr.offsetY + (targetPage.y || 0) * baseHeight);
+
+                            // Apply Clamping on Drop
+                            newRelX = Math.max(0, Math.min(newRelX, baseWidth - preview.w));
+                            newRelY = Math.max(0, Math.min(newRelY, baseHeight - preview.h));
+
+                            // Apply Reserved Area Clamping on Drop
+                            targetPage.items.forEach((other: any) => {
+                                if (other.id !== dragInfo.id && other.type === 'panel-ref') {
+                                    if (other.x === 0 && other.width > 50 && other.height > 200) {
+                                        newRelX = Math.max(other.width, newRelX);
+                                    }
+                                    if (other.y === 0 && other.height > 20 && other.width > 200) {
+                                        newRelY = Math.max(other.height, newRelY);
+                                    }
+                                }
+                            });
+
+                            if (targetPage.id !== dragInfo.pageId) {
+                                context.moveItemToPage(dragInfo.pageId, targetPage.id, dragInfo.id, { x: newRelX, y: newRelY, width: preview.w, height: preview.h });
+                            } else {
+                                updateItem(dragInfo.pageId, dragInfo.id, { x: newRelX, y: newRelY, width: preview.w, height: preview.h });
+                            }
                         } else {
                             updateItem(dragInfo.pageId, dragInfo.id, { x: preview.x, y: preview.y, width: preview.w, height: preview.h });
                         }
@@ -231,7 +234,24 @@ export const CanvasArea: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
         };
         window.addEventListener('mousemove', onMove); window.addEventListener('mouseup', onUp);
         return () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
-    }, [dragInfo, preview, scale, updateItem, screenDragInfo, updateScreen, project.panels, context, screenPreview, panelPreview]);
+    }, [dragInfo, preview, scale, updateItem, screenDragInfo, updateScreen, project.panels, context, screenPreview, panelPreview, baseWidth, baseHeight, worldScreens]);
+
+    // Keyboard Deletion
+    useEffect(() => {
+        const onKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Delete' || e.key === 'Backspace') {
+                // Don't delete if typing in an input
+                if (document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'TEXTAREA') return;
+
+                if (selections?.[activeScreenId]?.type === 'item') {
+                    const sel = selections[activeScreenId];
+                    context.removeItem(sel.pageId, sel.id);
+                }
+            }
+        };
+        window.addEventListener('keydown', onKeyDown);
+        return () => window.removeEventListener('keydown', onKeyDown);
+    }, [selections, activeScreenId, context]);
 
     // Dynamic bounding box for the entire world
     const { worldWidth, worldHeight } = useMemo(() => {
@@ -379,7 +399,8 @@ export const CanvasArea: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
                                         width: baseWidth, height: baseHeight,
                                         background: 'transparent',
                                         border: `1px dashed ${isActive ? 'rgba(99, 102, 241, 0.3)' : 'rgba(148, 163, 184, 0.2)'}`,
-                                        zIndex: 10
+                                        zIndex: 10,
+                                        overflow: dragInfo?.id ? 'visible' : 'hidden'
                                     }}
                                     onDragOver={e => e.preventDefault()}
                                     onDrop={e => {
@@ -478,10 +499,6 @@ export const CanvasArea: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
                                                                     }} 
                                                                 />
                                                             ))}
-                                                            <button 
-                                                                onClick={(e) => { e.stopPropagation(); removeItem(pg.id, it.id); }}
-                                                                style={{ position: 'absolute', top: -10, right: -10, width: 20, height: 20, background: '#ef4444', color: 'white', border: 'none', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', zIndex: 101, boxShadow: '0 2px 4px rgba(0,0,0,0.2)' }}
-                                                            >✕</button>
                                                         </>
                                                     )}
                                                 </div>
