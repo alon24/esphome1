@@ -201,7 +201,7 @@ void tab_wifi_create(lv_obj_t *parent, lv_obj_t *root) {
     lv_obj_add_event_cb(parent, _wifi_on_delete, LV_EVENT_DELETE, nullptr);
 
     // ── Left: network list ────────────────────────────────────────────────────
-    lv_obj_t *left = _make_panel(parent, 0, 0, 260, 352, TAB_WIFI_LIST_BG);
+    lv_obj_t *left = _make_panel(parent, 0, 0, 260, 480, TAB_WIFI_LIST_BG);
 
     // List header
     lv_obj_t *list_hdr = lv_label_create(left);
@@ -215,7 +215,7 @@ void tab_wifi_create(lv_obj_t *parent, lv_obj_t *root) {
     // Scrollable list area
     g_wifi_list = lv_obj_create(left);
     lv_obj_set_pos(g_wifi_list, 10, 32);
-    lv_obj_set_size(g_wifi_list, 240, 308);
+    lv_obj_set_size(g_wifi_list, 240, 436);
     lv_obj_set_style_bg_color(g_wifi_list, lv_color_hex(TAB_WIFI_LIST_BG), LV_STATE_DEFAULT);
     lv_obj_set_style_bg_opa(g_wifi_list, LV_OPA_COVER, LV_STATE_DEFAULT);
     lv_obj_set_style_pad_all(g_wifi_list, 4, LV_STATE_DEFAULT);

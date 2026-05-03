@@ -38,7 +38,7 @@ static lv_obj_t *_settings_row(lv_obj_t *parent, const char *label, const char *
 void tab_settings_create(lv_obj_t *parent) {
     lv_obj_add_event_cb(parent, _settings_on_delete, LV_EVENT_DELETE, nullptr);
 
-    lv_obj_t *card = _make_card(parent, 10, 10, 780, 396, TAB_SETTINGS_CARD);
+    lv_obj_t *card = _make_card(parent, 10, 10, 780, 460, TAB_SETTINGS_CARD);
     _section_hdr(card, "SYSTEM INFORMATION", 0, 0, TAB_SETTINGS_CARD);
 
     _settings_row(card, "Firmware", FW_VERSION_STR, 40, TAB_SETTINGS_CARD);
@@ -64,9 +64,9 @@ void tab_settings_create(lv_obj_t *parent) {
     lv_obj_t *hint = lv_label_create(card);
     lv_label_set_text(hint, "Sidebar navigation active. System status verified.");
     lv_obj_set_style_text_color(hint, lv_color_hex(0x666666), 0);
-    lv_obj_set_pos(hint, 20, 340);
+    lv_obj_set_pos(hint, 20, 420);
 
-    lv_obj_set_size(parent, 640, 416); 
+    lv_obj_set_size(parent, 800, 480); 
     lv_obj_add_flag(parent, LV_OBJ_FLAG_SCROLLABLE);
 }
 

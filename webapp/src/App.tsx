@@ -25,27 +25,11 @@ import React, {
 	useState,
 	useLayoutEffect,
 	useMemo,
+    useContext
 } from "react";
+import { findItemRecursive, applyRecursive } from "./utils";
 
-// --- HELPERS ---
-const findItemRecursive = (items: GridItem[], id: string): GridItem | undefined => {
-    for (const it of items) {
-        if (it.id === id) return it;
-        if (it.children) {
-            const found = findItemRecursive(it.children, id);
-            if (found) return found;
-        }
-    }
-    return undefined;
-};
-
-const applyRecursive = (items: GridItem[], targetId: string, transform: (it: GridItem) => GridItem | null): GridItem[] => {
-    return items.map(it => {
-        if (it.id === targetId) return transform(it);
-        if (it.children) return { ...it, children: applyRecursive(it.children, targetId, transform).filter(x => x) as GridItem[] };
-        return it;
-    }).filter(x => x) as GridItem[];
-};
+// --- STYLES ---
 
 
 // --- STYLES ---
@@ -113,12 +97,69 @@ function App({ isMobile, width }: { isMobile: boolean, width: number }) {
     const [propsLocation, setPropsLocation] = useState<'left' | 'right'>(() => (localStorage.getItem("ds_props_location") as any) || 'left');
 	const [theme, setTheme] = useState<'light' | 'dark'>(() => (localStorage.getItem("ds_theme") as any) || 'light');
 
+    const [history, setHistory] = useState<{ past: Project[], present: Project, future: Project[] }>(() => {
+		const VERSION = "2026.4";
+		const saved = localStorage.getItem("ds_project_v3");
+        let data: Project;
+		if (localStorage.getItem("ds_project_version") !== VERSION) {
+			localStorage.setItem("ds_project_version", VERSION);
+			data = {
+				screens: [{ id: "main", name: "Main Screen", bg: 0x0e0e12, pages: [{ id: "p1", name: "Page (0,0)", x: 0, y: 0, items: [] }] }],
+				panels: [{ id: "sidebar", name: "Sidebar", width: 160, height: 416, bg: 0x000000, itemBg: 0x000000, elements: [] }],
+                paneGrids: []
+			};
+		} else {
+		    data = saved ? JSON.parse(saved) : {
+			    screens: [{ id: "main", name: "Main Screen", bg: 0x0e0e12, pages: [{ id: "p1", name: "Page (0,0)", x: 0, y: 0, items: [] }] }],
+			    panels: [{ id: "sidebar", name: "Sidebar", width: 160, height: 416, bg: 0x000000, itemBg: 0x000000, elements: [] }],
+                paneGrids: []
+		    };
+        }
+        if (!data.paneGrids) data.paneGrids = [];
+        return { past: [], present: data, future: [] };
+	});
+
+    const project = history.present;
+
+    const setProject = useCallback((action: Project | ((prev: Project) => Project)) => {
+        setHistory(h => {
+            const next = typeof action === 'function' ? action(h.present) : action;
+            if (next === h.present) return h;
+            return { past: [...h.past, h.present].slice(-50), present: next, future: [] };
+        });
+    }, []);
+
+    const undo = useCallback(() => {
+        setHistory(h => {
+            if (h.past.length === 0) return h;
+            const previous = h.past[h.past.length - 1];
+            return { past: h.past.slice(0, -1), present: previous, future: [h.present, ...h.future] };
+        });
+    }, []);
+
+    const redo = useCallback(() => {
+        setHistory(h => {
+            if (h.future.length === 0) return h;
+            const next = h.future[0];
+            return { past: [...h.past, h.present], present: next, future: h.future.slice(1) };
+        });
+    }, []);
+
+	const [activeScreenId, setActiveScreenId] = useState<string>("main");
+	const [selections, setSelections] = useState<Record<string, any[]>>({});
+    const [clipboard, setClipboard] = useState<any[]>([]);
+    const [lastSelectedEntity, setLastSelectedEntity] = useState<any>(null);
+	const [scale, setScale] = useState(1.0);
+    const [baseWidth, setBaseWidth] = useState(800);
+    const [baseHeight, setBaseHeight] = useState(480); // Updated to 480
+
     useEffect(() => { localStorage.setItem("ds_remote_ip", remoteIp); }, [remoteIp]);
     useEffect(() => { localStorage.setItem("ds_props_location", propsLocation); }, [propsLocation]);
     useEffect(() => { 
         localStorage.setItem("ds_theme", theme);
         document.documentElement.setAttribute('data-theme', theme);
     }, [theme]);
+    useEffect(() => { localStorage.setItem("ds_project_v3", JSON.stringify(project)); }, [project]);
 
 	const refreshWifi = useCallback(async () => {
 		const sw = await API.getWifi();
@@ -131,126 +172,21 @@ function App({ isMobile, width }: { isMobile: boolean, width: number }) {
 		return () => clearInterval(t);
 	}, [refreshWifi]);
 
-	return (
-		<div style={{ ...s.app, background: theme === 'dark' ? '#0f172a' : '#f8fafc', color: theme === 'dark' ? '#f8fafc' : '#1e293b' }}>
-			<main style={{ flex: 1, overflow: "hidden", position: "relative" }}>
-				{activeTab === "grid" ? (
-                    <GridTab 
-                        isMobile={isMobile} 
-                        width={width} 
-                        wifiStatus={status} 
-                        onWifiUpdate={refreshWifi} 
-                        remoteIp={remoteIp} 
-                        setRemoteIp={setRemoteIp} 
-                        propsLocation={propsLocation} 
-                        setPropsLocation={setPropsLocation} 
-                        theme={theme} 
-                        setTheme={setTheme}
-                        activeTab={activeTab}
-                        setActiveTab={setActiveTab}
-                    />
-                ) : activeTab === "dashboard" ? (
-                    <DashboardTab 
-                        isMobile={isMobile}
-                        theme={theme}
-                        setTheme={setTheme}
-                        activeTab={activeTab}
-                        setActiveTab={setActiveTab}
-                        wifiStatus={status}
-                        remoteIp={remoteIp}
-                        setRemoteIp={setRemoteIp}
-                        propsLocation={propsLocation}
-                        setPropsLocation={setPropsLocation}
-                    />
-                ) : (
-                    <>
-                        <Header 
-                            activeTab={activeTab} 
-                            setActiveTab={setActiveTab} 
-                            status={status} 
-                            remoteIp={remoteIp} 
-                            setRemoteIp={setRemoteIp} 
-                            isMobile={isMobile} 
-                            propsLocation={propsLocation}
-                            setPropsLocation={setPropsLocation}
-                            theme={theme}
-                            setTheme={setTheme}
-                        />
-                        {activeTab === "wifi" && <WifiManager status={status} onRefresh={refreshWifi} API={API} />}
-                        {activeTab === "settings" && <SettingsManager status={status} onRefresh={refreshWifi} API={API} />}
-                        {activeTab === "logs" && <div style={{ padding: 40 }}>Console logs coming soon...</div>}
-                        {activeTab === "mirror" && <div style={{ padding: 40 }}>Mirror mode coming soon...</div>}
-                    </>
-                )}
-			</main>
-		</div>
-	);
-}
-
-function GridTab({ isMobile, width, wifiStatus, remoteIp, setRemoteIp, propsLocation, setPropsLocation, theme, setTheme, activeTab, setActiveTab }: any) {
-	const [project, setProject] = useState<Project>(() => {
-		const VERSION = "2026.4";
-		const saved = localStorage.getItem("ds_project_v3");
-		if (localStorage.getItem("ds_project_version") !== VERSION) {
-			localStorage.setItem("ds_project_version", VERSION);
-			return {
-				screens: [{ id: "main", name: "Main Screen", bg: 0x0e0e12, pages: [{ id: "p1", name: "Page (0,0)", x: 0, y: 0, items: [] }] }],
-				panels: [{ id: "sidebar", name: "Sidebar", width: 160, height: 416, bg: 0x000000, itemBg: 0x000000, elements: [] }],
-                paneGrids: []
-			};
-		}
-		const data = saved ? JSON.parse(saved) : {
-			screens: [{ id: "main", name: "Main Screen", bg: 0x0e0e12, pages: [{ id: "p1", name: "Page (0,0)", x: 0, y: 0, items: [] }] }],
-			panels: [{ id: "sidebar", name: "Sidebar", width: 160, height: 416, bg: 0x000000, itemBg: 0x000000, elements: [] }],
-            paneGrids: []
-		};
-        if (!data.paneGrids) data.paneGrids = [];
-        return data;
-	});
-
-	const [activeScreenId, setActiveScreenId] = useState<string>("main");
-	const [sidebarTab, setSidebarTab] = useState<'palette' | 'layers'>('layers');
-	const [selections, setSelections] = useState<Record<string, any>>({});
-    const [lastSelectedEntity, setLastSelectedEntity] = useState<any>(null);
-	const [scale, setScale] = useState(1.0);
-    const [baseWidth, setBaseWidth] = useState(800);
-    const [baseHeight, setBaseHeight] = useState(416);
-
-    // Auto-fix panel heights if they are still at the old 480 resolution
-    useEffect(() => {
-        const needsFix = project.panels.some(p => p.height === 480);
-        if (needsFix) {
-            setProject(prev => ({
-                ...prev,
-                panels: prev.panels.map(p => p.height === 480 ? { ...p, height: 416 } : p)
-            }));
-        }
-    }, [project.panels]);
-
-    const setSelectedEntity = useCallback((ent: any, screenId?: string) => {
+    const setSelectedEntity = useCallback((ent: any, screenId?: string, isMulti?: boolean) => {
 		const targetScreenId = screenId || activeScreenId;
-		setSelections(prev => ({ ...prev, [targetScreenId]: ent }));
+        setSelections(prev => {
+            const current = prev[targetScreenId] || [];
+            if (!ent) return { ...prev, [targetScreenId]: [] };
+            
+            if (isMulti) {
+                const exists = current.find(e => e.id === ent.id);
+                if (exists) return { ...prev, [targetScreenId]: current.filter(e => e.id !== ent.id) };
+                return { ...prev, [targetScreenId]: [...current, ent] };
+            }
+            return { ...prev, [targetScreenId]: [ent] };
+        });
         setLastSelectedEntity(ent);
     }, [activeScreenId]);
-
-    // Ensure all panel-ref items are correctly sized and positioned
-    useEffect(() => {
-        setProject(prev => ({
-            ...prev,
-            screens: prev.screens.map(s => ({
-                ...s,
-                pages: s.pages.map(p => ({
-                    ...p,
-                    items: p.items.map(it => {
-                        if (it.type === 'panel-ref') {
-                            return { ...it, y: 32, height: baseHeight - 32 };
-                        }
-                        return it;
-                    })
-                }))
-            }))
-        }));
-    }, [baseHeight]);
 
     const updateScreen = useCallback((id: string, patch: any) => {
         setProject(prev => ({ ...prev, screens: prev.screens.map(s => s.id === id ? { ...s, ...patch } : s) }));
@@ -260,7 +196,6 @@ function GridTab({ isMobile, width, wifiStatus, remoteIp, setRemoteIp, propsLoca
         const id = `scr_${Math.random().toString(36).substr(2, 5)}`;
         setProject(prev => {
             let maxX = 0;
-            // Find the rightmost edge of all existing screens
             prev.screens.forEach(s => {
                 const sx = s.x ?? 100;
                 const pages = s.pages || [];
@@ -298,7 +233,6 @@ function GridTab({ isMobile, width, wifiStatus, remoteIp, setRemoteIp, propsLoca
             const maxX = Math.max(...pages.map(p => p.x || 0));
             const minY = Math.min(...pages.map(p => p.y || 0));
             const maxY = Math.max(...pages.map(p => p.y || 0));
-            // Note: baseWidth/Height are from state, but for nudging we can use current state values
             return {
                 left: (s.x ?? 0) + minX * baseWidth,
                 right: (s.x ?? 0) + (maxX + 1) * baseWidth,
@@ -306,27 +240,21 @@ function GridTab({ isMobile, width, wifiStatus, remoteIp, setRemoteIp, propsLoca
                 bottom: (s.y ?? 100) + (maxY + 1) * baseHeight
             };
         };
-
         const modScr = screens.find(s => s.id === modId);
         if (!modScr) return screens;
-        
         let currentScreens = [...screens];
         let changed = true;
-        
-        // Iteratively nudge to handle chain reactions
         while (changed) {
             changed = false;
             const modBounds = getBounds(currentScreens.find(s => s.id === modId)!);
-            
             currentScreens = currentScreens.map(s => {
                 if (s.id === modId) return s;
                 const bounds = getBounds(s);
-                // Check overlap
                 const isOverlapping = !(bounds.right <= modBounds.left || bounds.left >= modBounds.right || bounds.bottom <= modBounds.top || bounds.top >= modBounds.bottom);
                 if (isOverlapping) {
                     const overlap = modBounds.right - bounds.left;
                     changed = true;
-                    return { ...s, x: (s.x ?? 0) + overlap + 200 }; // 200px gap
+                    return { ...s, x: (s.x ?? 0) + overlap + 200 };
                 }
                 return s;
             });
@@ -340,10 +268,7 @@ function GridTab({ isMobile, width, wifiStatus, remoteIp, setRemoteIp, propsLoca
                 ...s,
                 pages: [...s.pages, { id: `p${Math.random().toString(36).substr(2, 5)}`, name: `Page (${x},${y})`, items: [], x, y }]
             } : s);
-            return {
-                ...prev,
-                screens: nudgeScreens(newScreens, scrId)
-            };
+            return { ...prev, screens: nudgeScreens(newScreens, scrId) };
         });
     }, [nudgeScreens]);
 
@@ -352,13 +277,10 @@ function GridTab({ isMobile, width, wifiStatus, remoteIp, setRemoteIp, propsLoca
             const screen = prev.screens.find(s => s.id === scrId);
             const page = screen?.pages.find(p => p.id === pgId);
             if (page && (page.x === 0 && page.y === 0)) {
-                alert("You cannot delete the base Page (0,0). You can only delete its children (widgets).");
+                alert("You cannot delete the base Page (0,0).");
                 return prev;
             }
-            return {
-                ...prev,
-                screens: prev.screens.map(s => s.id === scrId ? { ...s, pages: s.pages.filter(p => p.id !== pgId) } : s)
-            };
+            return { ...prev, screens: prev.screens.map(s => s.id === scrId ? { ...s, pages: s.pages.filter(p => p.id !== pgId) } : s) };
         });
     }, []);
 
@@ -369,96 +291,181 @@ function GridTab({ isMobile, width, wifiStatus, remoteIp, setRemoteIp, propsLoca
         }));
     }, []);
 
-    const addItem = useCallback((type: ElementType, pageId: string, parentId?: string, panelId?: string, fx?: number, fy?: number) => {
-        const id = `${type}_${Math.random().toString(36).substr(2, 5)}`;
-        const newItem: GridItem = { id, name: `New ${type}`, type, x: fx??20, y: fy??0, width: 120, height: 40, color: 0x4f46e5, textColor: 0xffffff, radius: 8, panelId };
-        
+    const addItem = useCallback((type: ElementType, pageId: string, parentId?: string, panelId?: string, fx?: number, fy?: number, meta?: any) => {
+        const id = meta?.id || `${type}_${Math.random().toString(36).substr(2, 5)}`;
+        const sc = meta?.component ? SMART_COMPONENTS.find(s => s.id === meta.component) : null;
+        const dw = meta?.w || sc?.defaultW || 120;
+        const dh = meta?.h || sc?.defaultH || 40;
+        const newItem: GridItem = { 
+            id, name: `New ${sc?.label || type}`, type, x: fx ?? 20, y: fy ?? 0, width: dw, height: dh, 
+            color: 0x4f46e5, textColor: 0x000000, radius: 0, panelId, component: meta?.component,
+            mqttTopic: meta?.mqttTopic, mqttStateTopic: meta?.mqttStateTopic,
+            noBg: true
+        };
         setProject(prev => {
             const isPanel = prev.panels.some(p => p.id === pageId);
             if (isPanel) {
-                if (type !== 'nav-item') {
-                    alert("Master Panels (Sidebars) can only contain Nav Items.");
-                    return prev;
-                }
                 const panel = prev.panels.find(p => p.id === pageId);
                 const width = panel?.width || 160;
-                const newNavItem: GridItem = { ...newItem, x: 0, y: (panel?.elements.length || 0) * 50, width: width, height: 50 };
-                return {
-                    ...prev,
-                    panels: prev.panels.map(p => p.id === pageId ? { ...p, elements: [...p.elements, newNavItem] } : p)
-                };
+                const layout = panel?.layout || 'v';
+                let newNavItem = { ...newItem };
+                if (layout === 'v') {
+                    newNavItem = { ...newItem, x: 0, y: (panel?.elements.length || 0) * 50, width: width, height: 50 };
+                }
+                return { ...prev, panels: prev.panels.map(p => p.id === pageId ? { ...p, elements: [...p.elements, newNavItem] } : p) };
             } else {
                 let pageItem = { ...newItem };
-                
-                // Special handling for adding Sidebars (panel-ref) to a page
+                const panRef = panelId ? prev.panels.find(p => p.id === panelId) : null;
+                const isHeader = panRef?.name?.toLowerCase().includes('header');
+                const isSidebar = type === 'nav-menu' || panRef?.name?.toLowerCase().includes('sidebar');
+
+                if (isHeader) {
+                    pageItem = { ...pageItem, x: 0, y: 0, width: baseWidth, pinned: true, noBg: false, color: 0x334155 };
+                } else if (isSidebar) {
+                    const h = prev.panels.find(p => p.name.toLowerCase().includes('header'));
+                    const hh = h ? (h.height || 60) : 0;
+                    pageItem = { ...pageItem, x: 0, y: hh, pinned: true };
+                }
+
                 if (type === 'panel-ref' && panelId) {
                     const panel = prev.panels.find(p => p.id === panelId);
-                    pageItem = {
-                        ...pageItem,
-                        x: 0,
-                        y: 0,
-                        width: panel?.width || 160,
-                        height: baseHeight
+                    pageItem = { ...pageItem, x: isSidebar?0:pageItem.x, y: isSidebar?pageItem.y:pageItem.y, width: panel?.width || 160, height: panel?.height || 60 };
+                }
+                if (type === 'border') {
+                    pageItem = { ...pageItem, borderWidth: 2, borderColor: 0x6366f1, noBg: true };
+                }
+
+                // Grid Drop Logic (supports 'grid' and 'pane-grid')
+                const screen = prev.screens.find(s => s.pages.some(p => p.id === pageId));
+                const page = screen?.pages.find(p => p.id === pageId);
+                
+                // If parentId is explicitly provided, use it. Otherwise, look for a grid at (fx, fy)
+                let targetGrid = parentId ? findItemRecursive(page?.items || [], parentId) : null;
+                if (!targetGrid && fx !== undefined && fy !== undefined) {
+                    targetGrid = page?.items.find(it => (it.type === 'grid' || it.type === 'pane-grid') && fx! >= it.x && fx! <= it.x + it.width && fy! >= it.y && fy! <= it.y + it.height);
+                }
+                
+                const isNestableInGrid = (tGrid: GridItem, droppedType: ElementType) => {
+                    if (tGrid.type === 'grid' && droppedType === 'grid-item') return true;
+                    if (tGrid.type === 'pane-grid' && (droppedType === 'panel-ref' || droppedType === 'grid-item' || droppedType === 'label')) return true;
+                    return false;
+                };
+
+                if (targetGrid && isNestableInGrid(targetGrid, type)) {
+                    const colWidth = targetGrid.width / (targetGrid.cols || (targetGrid.type === 'pane-grid' ? 3 : 2));
+                    const rowHeight = targetGrid.height / (targetGrid.rows || 1);
+                    
+                    let col = 0;
+                    let row = 0;
+                    
+                    if (fx !== undefined && fy !== undefined && !parentId) {
+                        col = Math.floor((fx! - targetGrid.x) / colWidth);
+                        row = Math.floor((fy! - targetGrid.y) / rowHeight);
+                    } else {
+                        // Find first empty cell if parentId was forced
+                        const occupied = (targetGrid.children || []).map((c: any) => `${c.col},${c.row}`);
+                        let found = false;
+                        for (let r = 0; r < (targetGrid.rows || 1); r++) {
+                            for (let c = 0; c < (targetGrid.cols || (targetGrid.type === 'pane-grid' ? 3 : 2)); c++) {
+                                if (!occupied.includes(`${c},${r}`)) {
+                                    col = c; row = r; found = true; break;
+                                }
+                            }
+                            if (found) break;
+                        }
+                    }
+                    
+                    const nestedItem = { 
+                        ...pageItem, 
+                        col, 
+                        row, 
+                        color: type === 'grid-item' ? 0xFFFF00 : pageItem.color, 
+                        radius: type === 'grid-item' ? 10 : pageItem.radius, 
+                        noBg: type === 'grid-item' ? false : pageItem.noBg, 
+                        parentId: targetGrid.id,
+                        width: colWidth - (targetGrid.gap || 10),
+                        height: rowHeight - (targetGrid.gap || 10)
+                    };
+                    
+                    return {
+                        ...prev,
+                        screens: prev.screens.map(s => ({
+                            ...s,
+                            pages: s.pages.map(p => p.id === pageId ? {
+                                ...p,
+                                items: applyRecursive(p.items, targetGrid!.id, (it) => ({ ...it, children: [...(it.children || []), nestedItem] }))
+                            } : p)
+                        }))
                     };
                 }
 
-                return {
-                    ...prev,
-                    screens: prev.screens.map(s => ({
-                        ...s,
-                        pages: s.pages.map(p => p.id === pageId ? { ...p, items: [...p.items, pageItem] } : p)
-                    }))
-                };
+                if (type === 'pane-grid') {
+                    const newPaneGrid = { id, name: `Grid ${id}`, cols: 3, rows: 3, gap: 10, panes: [] };
+                    return {
+                        ...prev,
+                        paneGrids: [...(prev.paneGrids || []), newPaneGrid],
+                        screens: prev.screens.map(s => ({ ...s, pages: s.pages.map(p => p.id === pageId ? { ...p, items: [...p.items, { ...pageItem, paneGridId: id }] } : p) }))
+                    };
+                }
+
+                if (type === 'grid-item' && !targetGrid) return prev; // Disallow grid-item on regular page
+
+                return { ...prev, screens: prev.screens.map(s => ({ ...s, pages: s.pages.map(p => p.id === pageId ? { ...p, items: [...p.items, pageItem] } : p) })) };
             }
         });
         setSelectedEntity({ type: 'item', id, pageId });
-    }, [setSelectedEntity]);
+    }, [setSelectedEntity, baseHeight, baseWidth]);
 
     const updateItem = useCallback((pageId: string, id: string, patch: any) => {
         setProject(prev => {
             const isPanel = prev.panels.some(p => p.id === pageId);
             const finalPatch = { ...patch };
             let newPanels = prev.panels;
-
             if (isPanel) {
                 const panel = prev.panels.find(p => p.id === pageId);
-                if (finalPatch.x !== undefined) finalPatch.x = 0;
-                if (finalPatch.width !== undefined) finalPatch.width = panel?.width || 160;
-
-                newPanels = prev.panels.map(p => {
-                    if (p.id === pageId) {
-                        const newElements = p.elements.map(e => e.id === id ? { ...e, ...finalPatch } : e);
-                        newElements.sort((a, b) => {
-                            const centerA = a.y + ((a.height || 50) / 2);
-                            const centerB = b.y + ((b.height || 50) / 2);
-                            return centerA - centerB;
-                        });
-                        
-                        let currentY = 0;
-                        const packedElements = newElements.map(el => {
-                            const h = el.height || 50;
-                            const packed = { ...el, y: currentY, height: h };
-                            currentY += h;
-                            return packed;
-                        });
-                        return { ...p, elements: packedElements };
-                    }
-                    return p;
-                });
+                const layout = panel?.layout || 'v';
+                if (layout === 'v') {
+                    if (finalPatch.x !== undefined) finalPatch.x = 0;
+                    if (finalPatch.width !== undefined) finalPatch.width = panel?.width || 160;
+                    newPanels = prev.panels.map(p => {
+                        if (p.id === pageId) {
+                            const newElements = p.elements.map(e => e.id === id ? { ...e, ...finalPatch } : e);
+                            newElements.sort((a, b) => (a.y + (a.height || 50)/2) - (b.y + (b.height || 50)/2));
+                            let currentY = 0;
+                            const packedElements = newElements.map(el => {
+                                const h = el.height || 50;
+                                const packed = { ...el, y: currentY, height: h };
+                                currentY += h;
+                                return packed;
+                            });
+                            return { ...p, elements: packedElements };
+                        }
+                        return p;
+                    });
+                } else {
+                    newPanels = prev.panels.map(p => p.id === pageId ? { ...p, elements: p.elements.map(e => e.id === id ? { ...e, ...finalPatch } : e) } : p);
+                }
             }
-
-
-
             return {
-                ...prev,
-                panels: newPanels,
-                screens: !isPanel ? prev.screens.map(s => ({
-                    ...s,
-                    pages: s.pages.map(p => p.id === pageId ? { ...p, items: applyRecursive(p.items, id, it => ({ ...it, ...finalPatch })) } : p)
-                })) : prev.screens
+                ...prev, panels: newPanels,
+                screens: !isPanel ? prev.screens.map(s => ({ ...s, pages: s.pages.map(p => p.id === pageId ? { ...p, items: applyRecursive(p.items, id, it => {
+                    const res = { ...it, ...finalPatch };
+                    const itPan = it.panelId ? prev.panels.find(p => p.id === it.panelId) : null;
+                    const isHeader = it.name.toLowerCase().includes('header') || itPan?.name?.toLowerCase().includes('header');
+                    const isSidebar = it.type === 'nav-menu' || it.name.toLowerCase().includes('sidebar') || itPan?.name?.toLowerCase().includes('sidebar');
+
+                    if (isHeader) {
+                        res.x = 0; res.y = 0; res.width = baseWidth;
+                    } else if (isSidebar) {
+                        const h = prev.panels.find(p => p.name.toLowerCase().includes('header'));
+                        const hh = h ? (h.height || 60) : 0;
+                        res.x = 0; res.y = hh;
+                    }
+                    return res;
+                }) } : p) })) : prev.screens
             };
         });
-    }, []);
+    }, [baseWidth]);
 
     const removeItem = useCallback((pageId: string, id: string) => {
         setProject(prev => {
@@ -466,10 +473,7 @@ function GridTab({ isMobile, width, wifiStatus, remoteIp, setRemoteIp, propsLoca
             return {
                 ...prev,
                 panels: isPanel ? prev.panels.map(p => p.id === pageId ? { ...p, elements: p.elements.filter(e => e.id !== id) } : p) : prev.panels,
-                screens: !isPanel ? prev.screens.map(s => ({
-                    ...s,
-                    pages: s.pages.map(p => p.id === pageId ? { ...p, items: applyRecursive(p.items, id, () => null) } : p)
-                })) : prev.screens
+                screens: !isPanel ? prev.screens.map(s => ({ ...s, pages: s.pages.map(p => p.id === pageId ? { ...p, items: applyRecursive(p.items, id, () => null) } : p) })) : prev.screens
             };
         });
         setSelectedEntity(null);
@@ -477,7 +481,7 @@ function GridTab({ isMobile, width, wifiStatus, remoteIp, setRemoteIp, propsLoca
 
     const addPanel = useCallback((patch?: any) => {
         const id = `pan_${Math.random().toString(36).substr(2, 5)}`;
-        setProject(prev => ({ ...prev, panels: [...prev.panels, { id, name: 'New Panel', width: 160, height: 416, bg: 0x000000, elements: [], ...patch }] }));
+        setProject(prev => ({ ...prev, panels: [...prev.panels, { id, name: 'New Panel', width: 160, height: 480, bg: 0x000000, elements: [], ...patch }] }));
         setSelectedEntity({ type: 'panel', id });
     }, [setSelectedEntity]);
 
@@ -490,11 +494,51 @@ function GridTab({ isMobile, width, wifiStatus, remoteIp, setRemoteIp, propsLoca
         setSelectedEntity(null);
     }, [setSelectedEntity]);
 
+    const reorderItem = useCallback((pageId: string, id: string, dir: 'front' | 'back' | 'forward' | 'backward') => {
+        setProject(prev => {
+            const isPanel = prev.panels.some(p => p.id === pageId);
+            if (isPanel) {
+                return {
+                    ...prev,
+                    panels: prev.panels.map(p => {
+                        if (p.id !== pageId) return p;
+                        const items = [...p.elements];
+                        const idx = items.findIndex(it => it.id === id);
+                        if (idx === -1) return p;
+                        const item = items.splice(idx, 1)[0];
+                        if (dir === 'front') items.push(item);
+                        else if (dir === 'back') items.unshift(item);
+                        else if (dir === 'forward') items.splice(Math.min(items.length, idx + 1), 0, item);
+                        else if (dir === 'backward') items.splice(Math.max(0, idx - 1), 0, item);
+                        return { ...p, elements: items };
+                    })
+                };
+            } else {
+                return {
+                    ...prev,
+                    screens: prev.screens.map(s => ({
+                        ...s,
+                        pages: s.pages.map(p => {
+                            if (p.id !== pageId) return p;
+                            const items = [...p.items];
+                            const idx = items.findIndex(it => it.id === id);
+                            if (idx === -1) return p;
+                            const item = items.splice(idx, 1)[0];
+                            if (dir === 'front') items.push(item);
+                            else if (dir === 'back') items.unshift(item);
+                            else if (dir === 'forward') items.splice(Math.min(items.length, idx + 1), 0, item);
+                            else if (dir === 'backward') items.splice(Math.max(0, idx - 1), 0, item);
+                            return { ...p, items };
+                        })
+                    }))
+                };
+            }
+        });
+    }, []);
+
     const moveItemToPage = useCallback((oldPageId: string, newPageId: string, itemId: string, patch: any) => {
         setProject(prev => {
             let itemToMove: any = null;
-            
-            // 1. Remove from old page and capture item
             const newScreens = prev.screens.map(s => ({
                 ...s,
                 pages: s.pages.map(p => {
@@ -508,25 +552,24 @@ function GridTab({ isMobile, width, wifiStatus, remoteIp, setRemoteIp, propsLoca
                     return p;
                 })
             }));
-
             if (!itemToMove) return prev;
-
-            // 2. Add to new page
-            return {
-                ...prev,
-                screens: newScreens.map(s => ({
-                    ...s,
-                    pages: s.pages.map(p => {
-                        if (p.id === newPageId) {
-                            return { ...p, items: [...p.items, itemToMove] };
-                        }
-                        return p;
-                    })
-                }))
-            };
+            return { ...prev, screens: newScreens.map(s => ({ ...s, pages: s.pages.map(p => p.id === newPageId ? { ...p, items: [...p.items, itemToMove] } : p) })) };
         });
         setSelectedEntity({ type: 'item', id: itemId, pageId: newPageId });
     }, [setSelectedEntity]);
+
+    const resetProject = useCallback(() => {
+        if (window.confirm("Are you sure you want to erase ALL screens and panels? This cannot be undone.")) {
+            const data: Project = {
+                screens: [{ id: "main", name: "Main Screen", bg: 0x0e0e12, pages: [{ id: "p1", name: "Page (0,0)", x: 0, y: 0, items: [] }] }],
+                panels: [{ id: "sidebar", name: "Sidebar", width: 160, height: 416, bg: 0x000000, itemBg: 0x000000, elements: [] }],
+                paneGrids: []
+            };
+            setProject(data);
+            setActiveScreenId("main");
+            setSelections({});
+        }
+    }, [setProject]);
 
     const exportProject = useCallback(() => {
         const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(project, null, 2));
@@ -546,132 +589,250 @@ function GridTab({ isMobile, width, wifiStatus, remoteIp, setRemoteIp, propsLoca
                 if (json && json.screens) {
                     setProject(json);
                     setActiveScreenId(json.screens[0]?.id || "main");
-                    console.log("Project imported successfully!");
-                } else {
-                    console.error("Invalid project file");
                 }
-            } catch (err) {
-                console.error("Error parsing JSON file", err);
-            }
+            } catch (err) { console.error(err); }
         };
         reader.readAsText(file);
     }, []);
 
     const syncToDevice = useCallback(async () => {
-        if (!remoteIp) {
-            console.warn("Sync attempted without device IP address.");
-            return;
-        }
-
+        if (!remoteIp) return;
         try {
-            console.log("Syncing to device:", remoteIp);
-            
-            // Sort screens so active one is synced LAST (so device stays on it)
-            const sortedScreens = [...project.screens].sort((a, b) => {
-                if (a.id === activeScreenId) return 1;
-                if (b.id === activeScreenId) return -1;
-                return 0;
-            });
-
-            // 1. Sync Screens
+            const sortedScreens = [...project.screens].sort((a, b) => a.id === activeScreenId ? 1 : b.id === activeScreenId ? -1 : 0);
             for (const screen of sortedScreens) {
-                console.log(`Processing screen: ${screen.id} (${screen.name})`);
-                
-                const flattenedItems: any[] = [];
-                (screen.pages || []).forEach(pg => {
-                    const pgX = pg.x || 0;
-                    const pgY = pg.y || 0;
-                    const offsetX = pgX * baseWidth;
-                    const offsetY = pgY * baseHeight;
-                    
-                    (pg.items || []).forEach(it => {
-                        flattenedItems.push({
-                            ...it,
-                            x: (it.x || 0) + offsetX,
-                            y: (it.y || 0) + offsetY
-                        });
-                    });
-                });
-
-                const deviceConfig = {
-                    ...screen,
-                    items: flattenedItems,
-                    // Add some metadata for the device
-                    width: baseWidth,
-                    height: baseHeight
+                const deviceConfig = { 
+                    ...screen, 
+                    width: baseWidth, 
+                    height: baseHeight,
+                    pages: screen.pages.map(pg => ({
+                        ...pg,
+                        items: pg.items // Keep items inside pages
+                    }))
                 };
-                delete (deviceConfig as any).pages; 
-
-                console.log(`Sending config for ${screen.id} (${flattenedItems.length} items):`, deviceConfig);
-
-                const url = `http://${remoteIp}/api/grid/config?name=${screen.id}`;
-                const res = await fetch(url, {
-                    method: 'POST',
-                    body: JSON.stringify(deviceConfig),
-                    headers: { 'Content-Type': 'application/json' }
-                });
-                if (!res.ok) throw new Error(`Failed to sync screen ${screen.id}: ${res.statusText}`);
+                await fetch(`http://${remoteIp}/api/grid/config?name=${screen.id}`, { method: 'POST', body: JSON.stringify(deviceConfig), headers: { 'Content-Type': 'application/json' } });
             }
-
-            // 2. Sync Panels
-            console.log("Syncing Master Panels...");
-            const panelsUrl = `http://${remoteIp}/api/grid/panels`;
-            const panelsRes = await fetch(panelsUrl, {
-                method: 'POST',
-                body: JSON.stringify(project.panels),
-                headers: { 'Content-Type': 'application/json' }
-            });
-            if (!panelsRes.ok) throw new Error("Failed to sync Master Panels.");
-
-            // 3. Sync Dashboard Grids
-            console.log("Syncing Dashboard Grids...");
-            const gridsUrl = `http://${remoteIp}/api/grid/pane-grids`;
-            const gridsRes = await fetch(gridsUrl, {
-                method: 'POST',
-                body: JSON.stringify(project.paneGrids || []),
-                headers: { 'Content-Type': 'application/json' }
-            });
-            if (!gridsRes.ok) throw new Error("Failed to sync Dashboard Grids.");
-
-            console.log("Project synced successfully!");
-        } catch (err: any) {
-            console.error("Sync error:", err);
-        }
+            await fetch(`http://${remoteIp}/api/grid/panels`, { method: 'POST', body: JSON.stringify(project.panels), headers: { 'Content-Type': 'application/json' } });
+            await fetch(`http://${remoteIp}/api/grid/pane-grids`, { method: 'POST', body: JSON.stringify(project.paneGrids || []), headers: { 'Content-Type': 'application/json' } });
+            console.log("Synced!");
+        } catch (err) { console.error(err); }
     }, [project, remoteIp, activeScreenId, baseWidth, baseHeight]);
 
+    const reorderGridItem = useCallback((gridId: string, itemId: string, newCol: number, newRow: number) => {
+        setProject(prev => ({
+            ...prev,
+            screens: prev.screens.map(s => ({
+                ...s,
+                pages: s.pages.map(p => ({
+                    ...p,
+                    items: applyRecursive(p.items, gridId, (grid) => {
+                        if (grid.type !== 'grid' && grid.type !== 'pane-grid') return grid;
+                        const children = [...(grid.children || [])];
+                        const sourceIdx = children.findIndex(c => c.id === itemId);
+                        if (sourceIdx === -1) {
+                            console.log('REORDER_GRID: Source item not found!', itemId);
+                            return grid;
+                        }
+                        
+                        const targetIdx = children.findIndex(c => c.col === newCol && c.row === newRow);
+                        console.log('REORDER_GRID: Found', { sourceIdx, targetIdx, newCol, newRow });
+                        
+                        if (targetIdx !== -1 && targetIdx !== sourceIdx) {
+                            // Swap positions
+                            console.log('REORDER_GRID: Swapping', sourceIdx, targetIdx);
+                            const sourceCol = children[sourceIdx].col;
+                            const sourceRow = children[sourceIdx].row;
+                            children[targetIdx] = { ...children[targetIdx], col: sourceCol, row: sourceRow };
+                            children[sourceIdx] = { ...children[sourceIdx], col: newCol, row: newRow };
+                        } else {
+                            // Move to empty cell
+                            console.log('REORDER_GRID: Moving to empty cell', sourceIdx);
+                            children[sourceIdx] = { ...children[sourceIdx], col: newCol, row: newRow };
+                        }
+                        return { ...grid, children };
+                    })
+                }))
+            }))
+        }));
+    }, []);
 
-    useEffect(() => { localStorage.setItem("ds_project_v3", JSON.stringify(project)); }, [project]);
+    const moveItemToGrid = useCallback((sourcePageId: string, targetGridId: string, itemId: string, col: number, row: number) => {
+        setProject(prev => {
+            let itemToMove: GridItem | null = null;
+            
+            // 1. Find and remove from source
+            const newScreens = prev.screens.map(s => ({
+                ...s,
+                pages: s.pages.map(p => {
+                    if (p.id !== sourcePageId) return p;
+                    const found = findItemRecursive(p.items, itemId);
+                    if (found) itemToMove = { ...found, parentId: targetGridId, col, row, x: 0, y: 0 };
+                    
+                    return {
+                        ...p,
+                        items: applyRecursive(p.items, itemId, () => null) // Remove
+                    };
+                })
+            }));
+
+            if (!itemToMove) return prev;
+
+            // 2. Add to target
+            return {
+                ...prev,
+                screens: newScreens.map(s => ({
+                    ...s,
+                    pages: s.pages.map(p => ({
+                        ...p,
+                        items: applyRecursive(p.items, targetGridId, (grid) => ({
+                            ...grid,
+                            children: [...(grid.children || []), itemToMove!]
+                        }))
+                    }))
+                }))
+            };
+        });
+    }, []);
+
+    const alignSelection = useCallback((direction: 'left' | 'right' | 'top' | 'bottom' | 'centerH' | 'centerV') => {
+        setProject(prev => {
+            const currentSel = selections[activeScreenId] || [];
+            if (currentSel.length < 2) return prev;
+
+            const itemsToAlign: { pageId: string, id: string, x: number, y: number, width: number, height: number }[] = [];
+            currentSel.forEach(sel => {
+                if (sel.type !== 'item') return;
+                const scr = prev.screens.find(s => s.id === activeScreenId);
+                const pg = scr?.pages.find(p => p.id === sel.pageId);
+                const it = pg?.items.find(i => i.id === sel.id);
+                if (it) itemsToAlign.push({ pageId: sel.pageId, id: it.id, x: it.x, y: it.y, width: it.width, height: it.height });
+            });
+
+            if (itemsToAlign.length < 2) return prev;
+
+            const minX = Math.min(...itemsToAlign.map(i => i.x));
+            const maxX = Math.max(...itemsToAlign.map(i => i.x + i.width));
+            const minY = Math.min(...itemsToAlign.map(i => i.y));
+            const maxY = Math.max(...itemsToAlign.map(i => i.y + i.height));
+            const centerX = (minX + maxX) / 2;
+            const centerY = (minY + maxY) / 2;
+
+            return {
+                ...prev,
+                screens: prev.screens.map(s => s.id === activeScreenId ? {
+                    ...s,
+                    pages: s.pages.map(p => {
+                        const pageItems = itemsToAlign.filter(i => i.pageId === p.id);
+                        if (pageItems.length === 0) return p;
+                        return {
+                            ...p,
+                            items: p.items.map(it => {
+                                const alignIt = pageItems.find(ai => ai.id === it.id);
+                                if (!alignIt) return it;
+                                let newX = it.x;
+                                let newY = it.y;
+                                if (direction === 'left') newX = minX;
+                                else if (direction === 'right') newX = maxX - it.width;
+                                else if (direction === 'top') newY = minY;
+                                else if (direction === 'bottom') newY = maxY - it.height;
+                                else if (direction === 'centerH') newX = centerX - it.width / 2;
+                                else if (direction === 'centerV') newY = centerY - it.height / 2;
+                                return { ...it, x: Math.round(newX), y: Math.round(newY) };
+                            })
+                        };
+                    })
+                } : s)
+            };
+        });
+    }, [selections, activeScreenId]);
 
     const contextValue = useMemo(() => ({
-        project, activeScreenId, setActiveScreenId, selections, setSelections, setSelectedEntity,
-        selectedEntity: lastSelectedEntity,
-        addScreen, removeScreen, updateScreen, addPage, removePage, updatePage,
-        addItem, updateItem, removeItem, addPanel, updatePanel, removePanel, moveItemToPage, syncToDevice,
-        baseWidth, setBaseWidth, baseHeight, setBaseHeight, scale, setScale, propsLocation, setPropsLocation, theme, setTheme, activeTab, setActiveTab
-    }), [project, activeScreenId, selections, lastSelectedEntity, addScreen, removeScreen, updateScreen, addPage, removePage, updatePage, addItem, updateItem, removeItem, addPanel, updatePanel, removePanel, moveItemToPage, syncToDevice, baseWidth, setBaseWidth, baseHeight, setBaseHeight, scale, setScale, propsLocation, setPropsLocation, theme, setTheme, activeTab, setActiveTab]);
+        project, setProject, undo, redo, activeScreenId, setActiveScreenId, selections, setSelections, setSelectedEntity,
+        selectedEntity: lastSelectedEntity, addScreen, removeScreen, updateScreen, addPage, removePage, updatePage,
+        addItem, updateItem, removeItem, reorderItem, addPanel, updatePanel, removePanel, moveItemToPage, syncToDevice, exportProject, importProject, resetProject,
+        baseWidth, setBaseWidth, baseHeight, setBaseHeight, scale, setScale, propsLocation, setPropsLocation, theme, setTheme, activeTab, setActiveTab,
+        reorderGridItem, moveItemToGrid, alignSelection
+    }), [project, activeScreenId, selections, lastSelectedEntity, addScreen, removeScreen, updateScreen, addPage, removePage, updatePage, addItem, updateItem, removeItem, reorderItem, addPanel, updatePanel, removePanel, moveItemToPage, syncToDevice, exportProject, importProject, resetProject, baseWidth, baseHeight, scale, propsLocation, theme, activeTab, setProject, undo, redo, reorderGridItem, moveItemToGrid, alignSelection]);
 
 	return (
-		<GridContext.Provider value={contextValue}>
-			<div style={{ display: "flex", flex: 1, height: "100%", flexDirection: "column", overflow: "hidden" }}>
-                <Header 
-                    activeTab={activeTab} 
-                    setActiveTab={setActiveTab} 
-                    status={wifiStatus} 
-                    remoteIp={remoteIp} 
-                    setRemoteIp={setRemoteIp} 
-                    isMobile={isMobile} 
-                    propsLocation={propsLocation}
-                    setPropsLocation={setPropsLocation}
-                    theme={theme}
-                    setTheme={setTheme}
-                />
-                <div style={{ flex: 1, display: "flex", overflow: "hidden", position: "relative" }}>
-                    {!isMobile && <Sidebar />}
-                    {propsLocation === 'left' && !isMobile && <PropertiesPanel />}
-                    <CanvasArea isMobile={isMobile} />
-                    {propsLocation === 'right' && !isMobile && <PropertiesPanel />}
-                </div>
+		<div style={{ ...s.app, background: theme === 'dark' ? '#0f172a' : '#f8fafc', color: theme === 'dark' ? '#f8fafc' : '#1e293b' }}>
+            <GridContext.Provider value={contextValue}>
+                <main style={{ flex: 1, overflow: "hidden", position: "relative" }}>
+                    {activeTab === "grid" ? (
+                        <GridTab 
+                            isMobile={isMobile} 
+                            width={width} 
+                            wifiStatus={status} 
+                            onWifiUpdate={refreshWifi} 
+                            remoteIp={remoteIp} 
+                            setRemoteIp={setRemoteIp} 
+                            propsLocation={propsLocation} 
+                            setPropsLocation={setPropsLocation} 
+                            theme={theme} 
+                            setTheme={setTheme}
+                            activeTab={activeTab}
+                            setActiveTab={setActiveTab}
+                        />
+                    ) : activeTab === "dashboard" ? (
+                        <DashboardTab 
+                            isMobile={isMobile}
+                            theme={theme}
+                            setTheme={setTheme}
+                            activeTab={activeTab}
+                            setActiveTab={setActiveTab}
+                            wifiStatus={status}
+                            remoteIp={remoteIp}
+                            setRemoteIp={setRemoteIp}
+                            propsLocation={propsLocation}
+                            setPropsLocation={setPropsLocation}
+                        />
+                    ) : (
+                        <>
+                            <Header 
+                                activeTab={activeTab} 
+                                setActiveTab={setActiveTab} 
+                                status={status} 
+                                remoteIp={remoteIp} 
+                                setRemoteIp={setRemoteIp} 
+                                isMobile={isMobile} 
+                                propsLocation={propsLocation}
+                                setPropsLocation={setPropsLocation}
+                                theme={theme}
+                                setTheme={setTheme}
+                            />
+                            {activeTab === "wifi" && <WifiManager status={status} onRefresh={refreshWifi} API={API} />}
+                            {activeTab === "settings" && <SettingsManager status={status} onRefresh={refreshWifi} API={API} />}
+                            {activeTab === "logs" && <div style={{ padding: 40 }}>Console logs coming soon...</div>}
+                            {activeTab === "mirror" && <div style={{ padding: 40 }}>Mirror mode coming soon...</div>}
+                        </>
+                    )}
+                </main>
+            </GridContext.Provider>
+		</div>
+	);
+}
+
+function GridTab({ isMobile, width, wifiStatus, remoteIp, setRemoteIp, propsLocation, setPropsLocation, theme, setTheme, activeTab, setActiveTab }: any) {
+    const { propsLocation: contextPropsLocation } = useContext(GridContext) as any;
+	return (
+        <div style={{ display: "flex", flex: 1, height: "100%", flexDirection: "column", overflow: "hidden" }}>
+            <Header 
+                activeTab={activeTab} 
+                setActiveTab={setActiveTab} 
+                status={wifiStatus} 
+                remoteIp={remoteIp} 
+                setRemoteIp={setRemoteIp} 
+                isMobile={isMobile} 
+                propsLocation={propsLocation}
+                setPropsLocation={setPropsLocation}
+                theme={theme}
+                setTheme={setTheme}
+            />
+            <div style={{ flex: 1, display: "flex", overflow: "hidden", position: "relative" }}>
+                {!isMobile && <Sidebar />}
+                {contextPropsLocation === 'left' && !isMobile && <PropertiesPanel />}
+                <CanvasArea isMobile={isMobile} />
+                {contextPropsLocation === 'right' && !isMobile && <PropertiesPanel />}
             </div>
-		</GridContext.Provider>
+        </div>
 	);
 }

@@ -2,11 +2,14 @@
 #include <map>
 #include <string>
 #include "lvgl.h"
+#ifdef USE_MQTT
 #include "esphome/components/mqtt/mqtt_client.h"
+#endif
 
 struct LiveWidget {
     lv_obj_t *obj = nullptr;
     std::string type;
+    void *extra = nullptr; // e.g. lv_chart_series_t*
 };
 
 // The live registry: widget ID -> { obj pointer, type }
@@ -36,6 +39,11 @@ inline void grid_widget_set_value(const char *id, float value) {
         if (value > 0) lv_obj_add_state(obj, LV_STATE_CHECKED);
         else lv_obj_clear_state(obj, LV_STATE_CHECKED);
         lv_obj_send_event(obj, LV_EVENT_VALUE_CHANGED, nullptr);
+    }
+    else if (type == "chart") {
+        if (it->second.extra) {
+            lv_chart_set_next_value(obj, (lv_chart_series_t*)it->second.extra, (int32_t)value);
+        }
     }
 }
 

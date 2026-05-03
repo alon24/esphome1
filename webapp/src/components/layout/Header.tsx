@@ -82,6 +82,13 @@ export const Header: React.FC<HeaderProps> = ({
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
 
                     <button 
+                        onClick={context?.resetProject}
+                        style={{ background: '#ef4444', color: 'white', border: 'none', padding: '8px 16px', borderRadius: '8px', fontSize: '11px', fontWeight: 800, cursor: 'pointer', transition: 'all 0.2s' }}
+                    >
+                        🗑️ ERASE ALL
+                    </button>
+
+                    <button 
                         onClick={context?.exportProject}
                         style={{ background: '#3b82f6', color: 'white', border: 'none', padding: '8px 16px', borderRadius: '8px', fontSize: '11px', fontWeight: 800, cursor: 'pointer', transition: 'all 0.2s' }}
                     >

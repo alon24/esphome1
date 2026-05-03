@@ -5,7 +5,11 @@ import { type Project, type PaneGrid, type Pane } from "../../types";
 
 export const DashboardTab: React.FC<any> = ({ theme, setTheme, activeTab, setActiveTab, wifiStatus, remoteIp, setRemoteIp, isMobile, propsLocation, setPropsLocation }) => {
     const { project, setProject } = useContext(GridContext) as any;
-    const [selectedGridId, setSelectedGridId] = useState<string | null>(project.paneGrids?.[0]?.id || null);
+    
+    // Safety check for paneGrids
+    const paneGrids = project?.paneGrids || [];
+    
+    const [selectedGridId, setSelectedGridId] = useState<string | null>(paneGrids[0]?.id || null);
     const [selectedPaneId, setSelectedPaneId] = useState<string | null>(null);
 
     const updateGrid = (id: string, patch: any) => {
@@ -30,7 +34,7 @@ export const DashboardTab: React.FC<any> = ({ theme, setTheme, activeTab, setAct
         const id = `grid_${Math.random().toString(36).substr(2, 5)}`;
         const newGrid: PaneGrid = {
             id,
-            name: `New Dashboard ${project.paneGrids.length + 1}`,
+            name: `New Dashboard ${paneGrids.length + 1}`,
             columns: 3,
             gap: 10,
             panes: []
@@ -54,7 +58,7 @@ export const DashboardTab: React.FC<any> = ({ theme, setTheme, activeTab, setAct
         }));
     };
 
-    const selectedGrid = project.paneGrids?.find((g: any) => g.id === selectedGridId);
+    const selectedGrid = paneGrids.find((g: any) => g.id === selectedGridId);
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: theme === 'dark' ? '#0f172a' : '#f8fafc' }}>
@@ -91,7 +95,7 @@ export const DashboardTab: React.FC<any> = ({ theme, setTheme, activeTab, setAct
                         <button onClick={addGrid} style={{ background: '#6366f1', border: 'none', borderRadius: '4px', color: 'white', padding: '4px 8px', fontSize: '10px', cursor: 'pointer' }}>＋ NEW</button>
                     </div>
                     <div style={{ flex: 1, overflowY: 'auto', padding: '10px' }}>
-                        {project.paneGrids?.map((g: any) => (
+                        {paneGrids.map((g: any) => (
                             <div 
                                 key={g.id}
                                 onClick={() => setSelectedGridId(g.id)}

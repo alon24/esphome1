@@ -1,47 +1,37 @@
-# ESP32-S3 8048S043 — 4.3" 800×480 RGB display board
+substitutions:
+  # Base configuration
+  name: "grid-os-s3"
+  friendly_name: "GridOS Designer"
+  
 esphome:
-  name: esp32-display
-  friendly_name: ESP32 Display
-  on_boot:
-    priority: -100
-    then:
-      - delay: 500ms
-      - lambda: maindashboard_create(id(dashboard_page).obj);
+  name: ${name}
+  friendly_name: ${friendly_name}
   platformio_options:
-    upload_speed: 921600
-    build_flags:
-      - -DLV_USE_PNG=1
-      - -DLV_USE_SJPG=1
-      - -DLV_USE_BMP=1
-      - -DLV_FONT_MONTSERRAT_12=1
-      - -DLV_FONT_MONTSERRAT_14=1
-      - -DLV_FONT_MONTSERRAT_16=1
-      - -DLV_FONT_MONTSERRAT_18=1
-      - -DLV_FONT_MONTSERRAT_20=1
-      - -DLV_FONT_MONTSERRAT_22=1
-      - -DLV_FONT_MONTSERRAT_24=1
-      - -DLV_FONT_MONTSERRAT_26=1
-      - -DLV_FONT_MONTSERRAT_32=1
-      - -DLV_FONT_MONTSERRAT_48=1
+    extra_scripts: 
+      - ../../../scripts/patch_lvgl.py
+      - ../../../scripts/patch_defines.py
+    board_build.flash_mode: qio
+    board_upload.speed: 921600
   libraries:
-    - "LovyanGFX"
-    - "ArduinoJson@7.3.0"
+    - ArduinoJson
   includes:
+    - custom/version_info.h
+    - custom/sd_stubs.h
+    - custom/system_settings.h
     - custom/grid_config.h
+    - custom/actions.h
+    - custom/widget_bindings.h
     - custom/ui_helpers.h
     - custom/wifi_setup.h
-    - custom/system_settings.h
-    - custom/version_info.h
-    - custom/stb_image.h
-    - custom/widget_bindings.h
     - custom/tab_home.h
-    - custom/tab_settings.h
     - custom/tab_wifi.h
     - custom/tab_wifi_embedded.h
     - custom/tab_sd.h
     - custom/tab_sd_embedded.h
+    - custom/tab_settings.h
     - custom/maindashboard.h
     - custom/slideshow.h
+    - custom/stb_image.h
 
 esp32:
   board: esp32-s3-devkitc-1
@@ -49,23 +39,18 @@ esp32:
   flash_size: 16MB
   framework:
     type: esp-idf
-    version: 5.5.4
+    advanced:
+      loop_task_stack_size: 32768
     sdkconfig_options:
+      CONFIG_ESP32S3_DATA_CACHE_64KB: "y"
       CONFIG_SPIRAM_USE_MALLOC: "y"
       CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL: "16384"
       CONFIG_SPIRAM_FETCH_INSTRUCTIONS: "y"
       CONFIG_SPIRAM_RODATA: "y"
       CONFIG_VFS_SUPPORT_IO: "y"
       CONFIG_VFS_SUPPORT_DIR: "y"
-      CONFIG_VFS_SUPPORT_POSIX: "y"
-      CONFIG_VFS_SUPPORT_FATFS: "y"
-      CONFIG_FATFS_USE_FASTSEEK: "y"
-      CONFIG_FATFS_LFN_HEAP: "y"
-      CONFIG_FATFS_MAX_LFN: "255"
       CONFIG_LWIP_MAX_SOCKETS: "16"
-      CONFIG_ESP32S3_DATA_CACHE_64KB: "y"
-    advanced:
-      loop_task_stack_size: 32768
+      CONFIG_ESP_MAIN_TASK_STACK_SIZE: "65536"
   partitions: partitions.csv
 
 psram:
@@ -73,78 +58,71 @@ psram:
   speed: 80MHz
 
 wifi:
-  id: wifi_module
-  networks:
-    - ssid: !secret wifi_ssid
-      password: !secret wifi_password
-  reboot_timeout: 15min
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
   ap:
-    ssid: "GridOS-Setup"
-    password: ""
-    ap_timeout: 1min
+    ssid: "GridOS-AP"
+    password: "esp32display"
+
+ota:
+  - platform: esphome
+    password: !secret ota_password
+
+api:
+  encryption:
+    key: !secret api_encryption_key
+
+safe_mode:
+  disabled: true
 
 logger:
   level: INFO
   baud_rate: 115200
   hardware_uart: UART0
 
-web_server:
-  port: 81 # Move standard web server to 81 so React SPA can have 80
-  version: 3
+# mqtt:
+#   broker: !secret mqtt_broker
+#   username: !secret mqtt_username
+#   password: !secret mqtt_password
+#   id: mqtt_client
+#   on_message:
+#     - topic: "grid/cmd/nav"
+#       then:
+#         - lambda: |-
+#             ui_navigate_to(x.c_str());
 
-ota:
-  - platform: esphome
-    password: !secret ota_password
+# ─── Backlight (GPIO2) ───────────────────────────────────────────────────────
+output:
+  - platform: ledc
+    id: backlight_output
+    pin: GPIO2
+    frequency: 1000Hz
 
-captive_portal:
+light:
+  - platform: monochromatic
+    id: backlight
+    name: "Backlight"
+    output: backlight_output
+    restore_mode: ALWAYS_ON
 
-mqtt:
-  broker: !secret mqtt_broker
-  username: !secret mqtt_username
-  password: !secret mqtt_password
-  id: mqtt_client
-  reboot_timeout: 0s
-  keepalive: 60s
-  on_connect:
-    - lambda: |-
-        ESP_LOGI("MQTT", "Connected to broker!");
-  on_disconnect:
-    - lambda: |-
-        ESP_LOGW("MQTT", "Disconnected from broker");
-  on_message:
-    - topic: "system/display/navigation"
-      then:
-        - lambda: |-
-            if (x == "home") ui_navigate_to("main");
-            else ui_navigate_to(x.c_str());
-
-text_sensor:
-  - platform: wifi_info
-    ip_address:
-      id: wifi_ip
-      on_value:
-        then:
-          - lambda: |-
-              ESP_LOGI("wifi", "IP ADDRESS ASSIGNED: %s", x.c_str());
-              ui_set_connected(x.c_str());
-
-globals:
-  - id: pref_ss_timeout
-    type: int
-    initial_value: '15000'
-  - id: pref_ss_interval
-    type: int
-    initial_value: '5000'
-  - id: pref_ss_enabled
-    type: bool
-    initial_value: 'false'
-
+# ─── Display (Native RGB Driver) ─────────────────────────────────────────────
 display:
-  - platform: lovyan_verified
+  - platform: rpi_dpi_rgb
     id: main_display
-    width: 800
-    height: 480
-    update_interval: 16ms
+    color_order: RGB
+    dimensions:
+      width: 800
+      height: 480
+    de_pin: 40
+    hsync_pin: 39
+    vsync_pin: 41
+    pclk_pin: 42
+    pclk_frequency: 16MHz
+    pclk_inverted: true
+    data_pins:
+      red: [45, 48, 47, 21, 14]
+      green: [5, 6, 7, 15, 16, 4]
+      blue: [8, 3, 46, 9, 1]
 
 i2c:
   sda: 19
@@ -159,7 +137,12 @@ touchscreen:
     address: 0x5D
     reset_pin: GPIO38
 
-
+# ─── LVGL UI Engine ──────────────────────────────────────────────────────────
+image:
+  - file: ./webapp/dist/assets/sd_preview.png
+    id: dummy_img
+    type: RGB
+    transparency: alpha_channel
 
 lvgl:
   displays:
@@ -167,43 +150,41 @@ lvgl:
   touchscreens:
     - main_touch
   color_depth: 16
-  update_interval: 30ms
-  buffer_size: 25%
-  byte_order: little_endian
+  update_interval: 200ms
+  buffer_size: 10%
+  byte_order: big_endian
   bg_color: 0x0e0e0e
   default_font: MONTSERRAT_24
-  msgboxes:
-    - id: discovery_mbox
-      title: {text: "Test"}
-      body: {text: "Test Body"}
+  # Enable all widgets used in custom C++ dashboard
+  widgets:
+    - label: { text: "", text_font: MONTSERRAT_12 }
+    - label: { text: "", text_font: MONTSERRAT_14 }
+    - label: { text: "", text_font: MONTSERRAT_16 }
+    - label: { text: "", text_font: MONTSERRAT_18 }
+    - label: { text: "", text_font: MONTSERRAT_20 }
+    - label: { text: "", text_font: MONTSERRAT_22 }
+    - label: { text: "" }
+    - button: { widgets: [ { label: { text: "" } } ] }
+    - switch: {}
+    - slider: {}
+    - arc: {}
+    - checkbox: {}
+    - dropdown: { options: "Opt" }
+    - roller: { options: "Opt" }
+    - bar: {}
+    - image: { src: dummy_img }
   pages:
     - id: dashboard_page
-    - id: discovery_page
-      widgets:
-        - label: {text: "f12", text_font: MONTSERRAT_12}
-        - label: {text: "f14", text_font: MONTSERRAT_14}
-        - label: {text: "f16", text_font: MONTSERRAT_16}
-        - label: {text: "f20", text_font: MONTSERRAT_20}
-        - label: {text: "f22", text_font: MONTSERRAT_22}
-        - button:
-            text: "f"
-        - checkbox:
-        - dropdown:
-            options: ["a", "b"]
-        - roller:
-            options: ["a", "b"]
-        - bar:
-        - slider: {}
-        - arc: {}
-        - switch:
-        - textarea:
-        - keyboard:
-        - keyboard:
-        - obj: # For flex layout activation
-            layout:
-              type: flex
-              flex_flow: row
-            widgets: []
+      on_boot:
+        - lambda: |-
+            #include <lvgl.h>
+            ESP_LOGI("DASH", "Registering boot timer...");
+            lv_timer_t *t = lv_timer_create([](lv_timer_t *tmr){
+                ESP_LOGI("DASH", "Boot timer fired!");
+                lv_obj_t *pg = (lv_obj_t*)lv_timer_get_user_data(tmr);
+                maindashboard_create(pg);
+                lv_timer_del(tmr);
+            }, 3000, id(dashboard_page).obj);
 
 esp_littlefs:
   id: littlefs_bridge
@@ -222,22 +203,16 @@ interval:
           auto now = id(sntp_time).now();
           dashboard_tick(now.hour, now.minute, now.second, now.day_of_month, now.month, now.year, now.day_of_week);
           if (now.second % 5 == 0) ESP_LOGI("main", "--- LIVE HEARTBEAT ---");
-          // Sync header WiFi status automatically
-          if (!id(wifi_module).is_connected()) {
-            ui_set_disconnected();
-          }
 
 external_components:
   - source:
       type: local
       path: components
-    components: [react_spa, sd_card, esp_littlefs]
-  - source:
-      type: local
-      path: external_components
-    components: [lovyan_verified]
+    components: [react_spa, esp_littlefs]
 
-sd_card:
+# sd_card is disabled to prevent interrupt depletion and boot conflicts
+# sd_card:
+#   id: sd_card_comp
 
 react_spa:
   id: my_react_spa

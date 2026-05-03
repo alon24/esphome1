@@ -69,7 +69,7 @@ void slideshow_stop() {
     if (!g_ss_active) return;
     g_ss_active = false;
     if (g_ss_timer) lv_timer_pause(g_ss_timer);
-    if (g_ss_prev_scr) lv_screen_load(g_ss_prev_scr);
+    if (g_ss_prev_scr) lv_scr_load(g_ss_prev_scr);
     g_ss_prev_scr = nullptr;
 }
 
@@ -117,9 +117,9 @@ void slideshow_start() {
         make_ctrl(LV_SYMBOL_RIGHT, LV_ALIGN_RIGHT_MID, -10, 0, 1);
     }
 
-    g_ss_prev_scr = lv_screen_active();
+    g_ss_prev_scr = lv_scr_act();
     g_ss_active = true;
-    lv_screen_load(g_ss_scr);
+    lv_scr_load(g_ss_scr);
     _ss_load(0);
 
     if (!g_ss_timer) {
@@ -134,7 +134,7 @@ extern bool g_ss_enabled;
 
 void slideshow_tick() {
     if (g_ss_active || !g_ss_enabled) return;
-    if (lv_display_get_inactive_time(lv_display_get_default()) > SS_IDLE_MS) {
+    if (lv_disp_get_inactive_time(lv_disp_get_default()) > SS_IDLE_MS) {
         slideshow_start();
     }
 }

@@ -2,6 +2,8 @@
 #include <vector>
 #include <string>
 #include <map>
+#include <deque>
+#include <memory>
 #include <ArduinoJson.h>
 #include "esp_log.h"
 #include "system_settings.h"
@@ -35,7 +37,22 @@ struct GridItem {
     std::string onDoubleClick;
     std::string onLongPress;
     std::string paneGridId;
-    std::vector<GridItem> children;
+    std::string apTargetScreenId;
+    std::string ipTargetScreenId;
+    std::string chartType;      // Chart specific
+    int chartPoints;
+    uint32_t chartColor;
+    uint32_t chartSecondaryColor;
+    bool pinned;
+    int padding;
+    int opacity;
+    bool hidden;
+    bool noBg;
+    int cols, rows, gap;
+    bool locked;
+    std::string topText, bottomText;
+    int col, row;
+    std::deque<GridItem> children;
 };
 
 struct Pane {
@@ -55,22 +72,32 @@ struct PaneGrid {
     std::string id;
     std::string name;
     int columns;
+    int rows;
     int gap;
-    std::vector<Pane> panes;
+    std::deque<Pane> panes;
 };
 
-static std::vector<PaneGrid> g_pane_grids;
+static std::deque<PaneGrid> g_pane_grids;
+
+struct Page {
+    std::string id;
+    int x, y;
+    std::deque<GridItem> items;
+};
 
 struct Panel {
     std::string id;
     std::string name;
     int width, height;
     uint32_t bg;
-    std::vector<GridItem> elements;
+    std::string layout; // "v" or "h"
+    int gap;
+    std::deque<GridItem> elements;
 };
 
-static std::vector<GridItem> g_grid_items;
-static std::vector<Panel> g_panels;
+static std::deque<Page> g_grid_pages;
+static std::deque<GridItem> g_grid_items; 
+static std::deque<Panel> g_panels;
 static uint32_t g_grid_bg = 0x0e0e0e;
 static uint32_t g_grid_border_color = 0x222222;
 static int g_grid_border_width = 0;
@@ -128,14 +155,35 @@ static void parse_grid_item(JsonObject eObj, GridItem& it) {
     it.onDoubleClick = eObj["onDoubleClick"] | "";
     it.onLongPress = eObj["onLongPress"] | "";
     it.paneGridId = eObj["paneGridId"] | "";
+    it.apTargetScreenId = eObj["apTargetScreenId"] | "";
+    it.ipTargetScreenId = eObj["ipTargetScreenId"] | "";
+    it.chartType = eObj["chartType"] | "line";
+    it.chartPoints = eObj["chartPoints"] | 20;
+    it.chartColor = eObj["chartColor"] | it.color;
+    it.chartSecondaryColor = eObj["chartSecondaryColor"] | 0x6366f1;
+    it.pinned = eObj["pinned"] | false;
+    it.padding = eObj["padding"] | 0;
+    it.opacity = eObj["opacity"] | 255;
+    it.hidden = eObj["hidden"] | false;
+    it.noBg = eObj["noBg"] | false;
+    it.cols = eObj["cols"] | 2;
+    it.rows = eObj["rows"] | 2;
+    it.gap  = eObj["gap"]  | 10;
+    it.locked = eObj["locked"] | false;
+    it.topText = eObj["topText"] | "";
+    it.bottomText = eObj["bottomText"] | "";
+    it.col = eObj["col"] | 0;
+    it.row = eObj["row"] | 0;
     
     it.children.clear();
     if (eObj["children"].is<JsonArray>()) {
         JsonArray childArr = eObj["children"].as<JsonArray>();
+        if (childArr.size() > 0) {
+            ESP_LOGI("GRID", "  Parsing %d children for %s", (int)childArr.size(), it.name.c_str());
+        }
         for (JsonObject cObj : childArr) {
-            GridItem child;
-            parse_grid_item(cObj, child);
-            it.children.push_back(child);
+            it.children.emplace_back();
+            parse_grid_item(cObj, it.children.back());
         }
     }
 }
@@ -156,7 +204,8 @@ void grid_panels_load() {
     buf[sz] = '\0';
     fclose(f);
 
-    JsonDocument doc;
+    auto doc_ptr = std::make_unique<JsonDocument>();
+    JsonDocument &doc = *doc_ptr;
     DeserializationError err = deserializeJson(doc, buf);
     if (err) {
         ESP_LOGE("GRID", "[PANELS] Failed to parse: %s", err.c_str());
@@ -173,6 +222,8 @@ void grid_panels_load() {
         p.width = pObj["width"] | pObj["w"] | 100;
         p.height = pObj["height"] | pObj["h"] | 100;
         p.bg = pObj["bg"] | 0;
+        p.layout = pObj["layout"] | "v";
+        p.gap = pObj["gap"] | 0;
         JsonArray els = pObj["elements"].as<JsonArray>();
         for (JsonObject eObj : els) {
             GridItem it;
@@ -187,7 +238,10 @@ void grid_panels_load() {
 
 void grid_pane_grids_load() {
     FILE* f = fopen("/littlefs/grids.json", "r");
-    if (!f) return;
+    if (!f) {
+        ESP_LOGW("GRID", "[PANE-GRIDS] grids.json not found on disk");
+        return;
+    }
     fseek(f, 0, SEEK_END);
     size_t sz = ftell(f);
     fseek(f, 0, SEEK_SET);
@@ -197,7 +251,8 @@ void grid_pane_grids_load() {
     buf[sz] = '\0';
     fclose(f);
 
-    JsonDocument doc;
+    auto doc_ptr = std::make_unique<JsonDocument>();
+    JsonDocument &doc = *doc_ptr;
     DeserializationError err = deserializeJson(doc, buf);
     if (err) { free(buf); return; }
 
@@ -207,7 +262,8 @@ void grid_pane_grids_load() {
         PaneGrid pg;
         pg.id = gObj["id"] | "";
         pg.name = gObj["name"] | "";
-        pg.columns = gObj["columns"] | 3;
+        pg.columns = gObj["cols"] | gObj["columns"] | 3;
+        pg.rows = gObj["rows"] | 3;
         pg.gap = gObj["gap"] | 10;
         JsonArray pArr = gObj["panes"].as<JsonArray>();
         for (JsonObject pObj : pArr) {
@@ -225,6 +281,7 @@ void grid_pane_grids_load() {
             pg.panes.push_back(p);
         }
         g_pane_grids.push_back(pg);
+        ESP_LOGI("GRID", "[PANE-GRIDS] Loaded grid: %s (%d panes)", pg.id.c_str(), (int)pg.panes.size());
     }
     free(buf);
 }
@@ -267,7 +324,8 @@ void grid_config_load(const char* name, bool force = false) {
     fclose(f);
     ESP_LOGI("GRID", "Loaded %d bytes from %s", (int)sz, path.c_str());
     
-    JsonDocument doc;
+    auto doc_ptr = std::make_unique<JsonDocument>();
+    JsonDocument &doc = *doc_ptr;
     DeserializationError err = deserializeJson(doc, buf);
     if (err) {
         ESP_LOGE("GRID", "Failed to parse screen %s: %s", path.c_str(), err.c_str());
@@ -276,16 +334,35 @@ void grid_config_load(const char* name, bool force = false) {
     }
 
     g_grid_items.clear();
+    g_grid_pages.clear();
     g_grid_bg = doc["bg"] | 0x0e0e0e;
     g_grid_border_color = doc["borderColor"] | 0x222222;
     g_grid_border_width = doc["borderWidth"] | 0;
-    JsonArray array = doc["items"].as<JsonArray>();
-    ESP_LOGI("GRID", "Parsing %d items (bg: %06X, border: %06X, width: %d)", (int)array.size(), (unsigned int)g_grid_bg, (unsigned int)g_grid_border_color, g_grid_border_width);
-    for (JsonObject v : array) {
-        GridItem it;
-        parse_grid_item(v, it);
-        g_grid_items.push_back(it);
-        ESP_LOGI("GRID", "  Loaded [%s] %s", it.type.c_str(), it.name.c_str());
+
+    if (doc["pages"].is<JsonArray>()) {
+        JsonArray pArray = doc["pages"].as<JsonArray>();
+        for (JsonObject pObj : pArray) {
+            Page pg;
+            pg.id = pObj["id"] | "";
+            pg.x = pObj["x"] | 0;
+            pg.y = pObj["y"] | 0;
+            JsonArray iArray = pObj["items"].as<JsonArray>();
+            for (JsonObject iObj : iArray) {
+                pg.items.emplace_back();
+                parse_grid_item(iObj, pg.items.back());
+            }
+            g_grid_pages.push_back(pg);
+        }
+        ESP_LOGI("GRID", "Loaded %d pages", (int)g_grid_pages.size());
+    } else {
+        JsonArray array = doc["items"].as<JsonArray>();
+        ESP_LOGI("GRID", "Parsing %d items (bg: %06X, border: %06X, width: %d)", (int)array.size(), (unsigned int)g_grid_bg, (unsigned int)g_grid_border_color, g_grid_border_width);
+        for (JsonObject v : array) {
+            GridItem it;
+            parse_grid_item(v, it);
+            g_grid_items.push_back(it);
+            ESP_LOGI("GRID", "  Loaded [%s] %s", it.type.c_str(), it.name.c_str());
+        }
     }
     
     // Cache for web UI retrieval

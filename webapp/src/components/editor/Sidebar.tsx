@@ -8,24 +8,33 @@ import {
     type ElementType,
     SMART_COMPONENTS 
 } from "../../types";
+import { findItemRecursive } from "../../utils";
 
-const createGhostImage = (label: string, w: number, h: number) => {
+const createGhostImage = (label: string, icon: string, w: number, h: number) => {
     const ghost = document.createElement('div');
     ghost.style.width = `${w}px`;
     ghost.style.height = `${h}px`;
-    ghost.style.background = '#6366f1';
-    ghost.style.color = 'white';
+    ghost.style.background = 'rgba(99, 102, 241, 0.2)';
+    ghost.style.border = '2px dashed #6366f1';
+    ghost.style.color = '#6366f1';
     ghost.style.borderRadius = '8px';
     ghost.style.display = 'flex';
+    ghost.style.flexDirection = 'column';
     ghost.style.alignItems = 'center';
     ghost.style.justifyContent = 'center';
     ghost.style.fontWeight = '900';
-    ghost.style.fontSize = '12px';
     ghost.style.position = 'absolute';
     ghost.style.top = '-1000px';
     ghost.style.fontFamily = 'system-ui, sans-serif';
-    ghost.style.boxShadow = '0 10px 15px -3px rgba(0,0,0,0.3)';
-    ghost.innerText = label;
+    ghost.style.backdropFilter = 'blur(4px)';
+    ghost.style.pointerEvents = 'none';
+    
+    ghost.innerHTML = `
+        <div style="font-size: 24px; margin-bottom: 4px;">${icon}</div>
+        <div style="font-size: 10px; text-transform: uppercase; opacity: 0.8;">${label}</div>
+        <div style="position: absolute; bottom: -20px; right: 0; background: #6366f1; color: white; padding: 2px 6px; borderRadius: 4px; font-size: 10px;">${w} × ${h}</div>
+    `;
+    
     document.body.appendChild(ghost);
     return ghost;
 };
@@ -77,8 +86,9 @@ export const Sidebar: React.FC = () => {
         } else if (activeTarget?.type === 'panel') {
             targetPageId = activeTarget.id;
         } else if (activeTarget?.type === 'item') {
-            const item = project?.screens?.find((s: any) => s.id === activeScreenId)?.pages.flatMap((p: any) => p.items).find((it: any) => it.id === activeTarget.id);
-            if (item && item.type === 'nav-menu') {
+            const scr = project?.screens?.find((s: any) => s.id === activeScreenId);
+            const item = findItemRecursive(scr?.pages.flatMap((p: any) => p.items) || [], activeTarget.id);
+            if (item && (item.type === 'nav-menu' || item.type === 'grid' || item.type === 'pane-grid')) {
                 parentId = item.id;
                 targetPageId = activeTarget.pageId!;
             } else {
@@ -118,7 +128,14 @@ export const Sidebar: React.FC = () => {
           { type: 'bar',      label: 'Bar',       icon: '▮▯',  defaultW: 200, defaultH: 30 },
           { type: 'checkbox', label: 'Checkbox',  icon: '☑',   defaultW: 140, defaultH: 40 },
           { type: 'dropdown', label: 'Dropdown',  icon: '▾',   defaultW: 180, defaultH: 40 },
+          { type: 'native-wifi-info', label: 'IP Address', icon: '🌐', defaultW: 200, defaultH: 40, meta: { id: 'header_ip_label' } },
           { type: 'roller',   label: 'Roller',    icon: '⊛',   defaultW: 140, defaultH: 100 },
+        ]
+      },
+      {
+        id: 'visuals', label: 'VISUALS', icon: '📈',
+        widgets: [
+          { type: 'chart',    label: 'Chart',     icon: '📉',  defaultW: 400, defaultH: 200 },
         ]
       },
       {
@@ -144,9 +161,10 @@ export const Sidebar: React.FC = () => {
         id: 'sensors', label: 'ON DEVICE SENSORS', icon: '📡',
         widgets: [
             { type: 'battery_icon', label: 'Battery', icon: '🔋', defaultW: 100, defaultH: 100, meta: { mqttStateTopic: 'system/battery' } },
+            { type: 'native-wifi-info', label: 'WiFi IP (STA)', icon: '🌐', defaultW: 160, defaultH: 40, meta: { id: 'sta_ip_label' } },
+            { type: 'native-wifi-info', label: 'WiFi IP (AP)', icon: '🧩', defaultW: 160, defaultH: 40, meta: { id: 'ap_ip_label' } },
             { type: 'label', label: 'WiFi Signal', icon: '📶', defaultW: 160, defaultH: 50, meta: { mqttStateTopic: 'system/wifi/rssi', name: 'WiFi: %v dBm' } },
             { type: 'label', label: 'Uptime', icon: '⏱️', defaultW: 160, defaultH: 50, meta: { mqttStateTopic: 'system/uptime', name: 'Uptime: %v s' } },
-            { type: 'label', label: 'IP Address', icon: '🌐', defaultW: 200, defaultH: 40, meta: { mqttStateTopic: 'system/ip' } },
             ...dynamicSensors.map((s: any) => ({
                 type: 'label' as ElementType,
                 label: s.label,
@@ -162,13 +180,15 @@ export const Sidebar: React.FC = () => {
         widgets: [
           { type: 'panel-ref', label: 'Panel Ref',  icon: '❏',  defaultW: 240, defaultH: 300 },
           { type: 'pane-grid', label: 'Pane Grid',  icon: '⊞',  defaultW: 800, defaultH: 400 },
+          { type: 'grid',      label: 'Grid',       icon: '▦',  defaultW: 400, defaultH: 400, meta: { cols: 2, rows: 2, gap: 10 } },
+          { type: 'grid-item', label: 'Grid Item',  icon: '⏹',  defaultW: 100, defaultH: 100, meta: { color: 0xFFFF00, radius: 10, topText: 'Top', icon: '💡', bottomText: 'Bottom' } },
         ]
       }
     ], [dynamicSensors]);
 
     return (
         <div className={`sidebar ${!showPalette ? 'palette-hidden' : ''}`} onClick={(e) => e.stopPropagation()} style={{
-            width: showPalette ? '480px' : '300px',
+            width: showPalette ? '560px' : '300px',
             background: theme === 'dark' ? '#0f172a' : '#ffffff',
             borderRight: `1px solid ${theme === 'dark' ? '#1e293b' : '#e2e8f0'}`,
             display: 'flex',
@@ -189,6 +209,20 @@ export const Sidebar: React.FC = () => {
                             🧰
                         </button>
                         <button className="add-screen-btn" style={{ background: '#6366f1', border: 'none', borderRadius: '4px', color: 'white', padding: '6px 12px', fontSize: '11px', cursor: 'pointer' }} onClick={() => addScreen && addScreen()}>＋ Screen</button>
+                        <button className="add-screen-btn" style={{ background: '#10b981', border: 'none', borderRadius: '4px', color: 'white', padding: '6px 12px', fontSize: '11px', cursor: 'pointer' }} onClick={() => addPanel({ 
+                            name: "Modern Header", 
+                            width: 800, 
+                            height: 60, 
+                            bg: 0x1e1e2d,
+                            layout: "free",
+                            elements: [
+                                { id: `h_ap_${Math.random().toString(36).substr(2,3)}`, name: 'AP', type: 'label', x: 15, y: 12, width: 50, height: 26, color: 0x6366f1, textColor: 0xffffff, radius: 13, fontSize: 10, textAlign: 'center' },
+                                { id: `header_ip_label`, name: '192.168.4.1', type: 'native-wifi-info', x: 75, y: 12, width: 140, height: 26, color: 0x000000, textColor: 0x94a3b8, fontSize: 11, textAlign: 'left' },
+                                { id: `h_sig_${Math.random().toString(36).substr(2,3)}`, name: 'Signal', type: 'label', x: 670, y: 12, width: 30, height: 26, icon: '📶', color: 0x000000, textColor: 0x94a3b8, fontSize: 12, textAlign: 'center' },
+                                { id: `h_bat_${Math.random().toString(36).substr(2,3)}`, name: '98%', type: 'battery_icon', x: 710, y: 12, width: 22, height: 26 },
+                                { id: `h_clk_${Math.random().toString(36).substr(2,3)}`, name: '12:45', type: 'clock', x: 740, y: 12, width: 45, height: 26, color: 0x000000, textColor: 0xffffff, fontSize: 12, textAlign: 'right' }
+                            ]
+                        })}>＋ Header</button>
                     </div>
                 </div>
                 <div className="sidebar-panel visible" style={{ flex: 1, overflowY: 'auto' }}>
@@ -201,12 +235,27 @@ export const Sidebar: React.FC = () => {
                                 <span className="layers-title" style={{ fontWeight: 800, fontSize: '10px', color: '#64748b', textTransform: 'uppercase' }}>Master Panels</span>
                                 <div style={{display:'flex', gap:'4px'}}>
                                     <button className="add-screen-btn" style={{fontSize:'9px', padding:'4px 8px'}} onClick={() => addPanel({ name: "New Sidebar", width: 160, height: 416, bg: 0x1e1e2d })}>＋ Sidebar</button>
-                                    <button className="add-screen-btn" style={{fontSize:'9px', padding:'4px 8px'}} onClick={() => addPanel({ name: "New Header", width: 800, height: 60, bg: 0x2d2d3f })}>＋ Header</button>
+                                    <button className="add-screen-btn" style={{fontSize:'9px', padding:'4px 8px'}} onClick={() => addPanel({ 
+                                        name: "Modern Header", 
+                                        width: 800, 
+                                        height: 60, 
+                                        bg: 0x1e1e2d,
+                                        layout: "free",
+                                        elements: [
+                                            { id: `h_ap_${Math.random().toString(36).substr(2,3)}`, name: 'AP', type: 'label', x: 15, y: 12, width: 50, height: 26, color: 0x6366f1, textColor: 0xffffff, radius: 13, fontSize: 10, textAlign: 'center', mqttStateTopic: 'system/wifi/status' },
+                                            { id: `header_ip_label`, name: '192.168.4.1', type: 'native-wifi-info', x: 75, y: 12, width: 140, height: 26, color: 0x000000, textColor: 0x94a3b8, fontSize: 11, textAlign: 'left' },
+                                            { id: `h_sig_${Math.random().toString(36).substr(2,3)}`, name: 'Signal', type: 'label', x: 670, y: 12, width: 30, height: 26, icon: '📶', color: 0x000000, textColor: 0x94a3b8, fontSize: 12, textAlign: 'center', mqttStateTopic: 'system/wifi/rssi' },
+                                            { id: `h_bat_${Math.random().toString(36).substr(2,3)}`, name: '98%', type: 'battery_icon', x: 710, y: 12, width: 22, height: 26, mqttStateTopic: 'system/battery' },
+                                            { id: `h_clk_${Math.random().toString(36).substr(2,3)}`, name: '12:45', type: 'clock', x: 740, y: 12, width: 45, height: 26, color: 0x000000, textColor: 0xffffff, fontSize: 12, textAlign: 'right' }
+                                        ]
+                                    })}>＋ Header</button>
                                 </div>
                             </div>
-                            {project.panels.map((pan: Panel) => (
-                                <PanelNode key={pan.id} pan={pan} isActive={selections[activeScreenId]?.id === pan.id} />
-                            ))}
+                            {project.panels.map((pan: Panel) => {
+                                const selArr = selections['panel'] || selections[activeScreenId] || [];
+                                const isActive = selArr.some((s:any) => s.id === pan.id);
+                                return <PanelNode key={pan.id} pan={pan} isActive={isActive} />;
+                            })}
                         </div>
                     </div>
                     <div className="quick-add-hint" style={{ padding: '20px', fontSize: '11px', color: '#94a3b8', borderTop: `1px solid ${theme === 'dark' ? '#1e293b' : '#e2e8f0'}`, display: 'flex', gap: '8px' }}>
@@ -232,7 +281,7 @@ export const Sidebar: React.FC = () => {
             {/* PALETTE SIDE */}
             {showPalette && (
                 <div className="palette-side" style={{ 
-                    width: '220px',
+                    width: '260px',
                     overflowY: 'auto', 
                     background: theme === 'dark' ? '#0f172a' : '#ffffff', 
                     borderLeft: `1px solid ${theme === 'dark' ? '#1e293b' : '#e2e8f0'}`,
@@ -271,6 +320,7 @@ export const Sidebar: React.FC = () => {
                                     key={cat.id} 
                                     category={cat} 
                                     widgets={filteredWidgets}
+                                    searchQuery={searchQuery}
                                     handlePaletteClick={handlePaletteClick} 
                                 />
                             );
@@ -303,7 +353,7 @@ const PaletteCard = ({ widget, handlePaletteClick }: { widget: any, handlePalett
             onDragStart={(e) => {
                 e.dataTransfer.setData("application/gridos-item", JSON.stringify({ type: widget.type, meta: widget.meta }));
                 e.dataTransfer.effectAllowed = "copy";
-                const ghost = createGhostImage(widget.label, widget.defaultW || 120, widget.defaultH || 40);
+                const ghost = createGhostImage(widget.label, widget.icon, widget.defaultW || 120, widget.defaultH || 40);
                 e.dataTransfer.setDragImage(ghost, (widget.defaultW || 120)/2, (widget.defaultH || 40)/2);
                 setTimeout(() => ghost.remove(), 0);
             }}
@@ -334,10 +384,16 @@ const PaletteCard = ({ widget, handlePaletteClick }: { widget: any, handlePalett
     );
 };
 
-const PaletteSection = ({ category, widgets, handlePaletteClick }: { category: any, widgets: any[], handlePaletteClick: any }) => {
+const PaletteSection = ({ category, widgets, searchQuery, handlePaletteClick }: { category: any, widgets: any[], searchQuery: string, handlePaletteClick: any }) => {
     const { theme } = useContext(GridContext) as any;
     const [isOpen, setIsOpen] = useState(category.id !== 'advanced' && category.id !== 'sensors');
     
+    useEffect(() => {
+        if (searchQuery && widgets.length > 0) {
+            setIsOpen(true);
+        }
+    }, [searchQuery, widgets.length]);
+
     if (widgets.length === 0) return null;
 
     const labelBg = theme === 'dark' 
@@ -400,7 +456,8 @@ const HierarchyItem = ({ it, pageId, screenId }: { it: GridItem, pageId: string,
 	const [isOpen, setIsOpen] = useState(true);
     const [isEditing, setIsEditing] = useState(false);
     const [editName, setEditName] = useState(it.name);
-    const isSelected = selections[screenId]?.id === it.id;
+    const selArr = selections[screenId] || [];
+    const isSelected = selArr.some((s:any) => s.id === it.id);
     const isContainer = it.type === "panel-ref" || it.type === "nav-menu";
 
     useEffect(() => { setEditName(it.name); }, [it.name]);
@@ -409,7 +466,7 @@ const HierarchyItem = ({ it, pageId, screenId }: { it: GridItem, pageId: string,
 	if (it.type === "panel-ref") {
 		const panel = project.panels.find((p: any) => p.id === it.panelId);
 		children = panel?.elements || [];
-	} else if (it.type === "nav-menu") {
+	} else if (it.type === "nav-menu" || it.type === "grid" || it.type === "pane-grid") {
 		children = it.children || [];
 	}
 
@@ -419,7 +476,7 @@ const HierarchyItem = ({ it, pageId, screenId }: { it: GridItem, pageId: string,
     };
 
 	return (
-        <div className="item-node" draggable onDragStart={(e) => { e.stopPropagation(); e.dataTransfer.setData("draggedId", it.id); e.dataTransfer.effectAllowed = "move"; }}>
+        <div className="item-node" draggable onDragStart={(e) => { e.stopPropagation(); e.dataTransfer.setData("draggedId", it.id); e.dataTransfer.effectAllowed = "move"; const ghost = createGhostImage(it.name, '🔹', it.width || 120, it.height || 40); e.dataTransfer.setDragImage(ghost, (it.width || 120)/2, (it.height || 40)/2); setTimeout(() => ghost.remove(), 0); }}>
             <div 
                 className={`item-row ${isSelected ? 'selected' : ''}`}
                 onClick={(e) => { e.stopPropagation(); setActiveScreenId(screenId); setSelectedEntity({ type: 'item', id: it.id, pageId }, screenId); }}
@@ -457,7 +514,8 @@ const PageNode = ({ pg, screenId }: { pg: Page, screenId: string }) => {
 	const [isOpen, setIsOpen] = useState(true);
     const [isEditing, setIsEditing] = useState(false);
     const [editName, setEditName] = useState(pg.name);
-	const isSelected = selections[screenId]?.type === 'page' && selections[screenId]?.id === pg.id;
+	const selArr = selections[screenId] || [];
+	const isSelected = selArr.some((s:any) => s.type === 'page' && s.id === pg.id);
 
     useEffect(() => { setEditName(pg.name); }, [pg.name]);
 
@@ -498,7 +556,7 @@ const PageNode = ({ pg, screenId }: { pg: Page, screenId: string }) => {
 };
 
 const ScreenNode = ({ scr, isActive }: { scr: Screen, isActive: boolean }) => {
-	const { setActiveScreenId, setSelectedEntity, updateScreen } = useContext(GridContext) as any;
+	const { setActiveScreenId, setSelectedEntity, updateScreen, addPage, removeScreen } = useContext(GridContext) as any;
 	const [isOpen, setIsOpen] = useState(isActive);
     const [isEditing, setIsEditing] = useState(false);
     const [editName, setEditName] = useState(scr.name);
@@ -525,6 +583,11 @@ const ScreenNode = ({ scr, isActive }: { scr: Screen, isActive: boolean }) => {
                     <span className="screen-name">{scr.name}</span>
                 )}
 				<span className="screen-badge">{scr.pages.length} pages</span>
+                <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    {scr.id !== 'default' && (
+                        <button className="add-item-mini" style={{ background: '#fee2e2', color: '#ef4444' }} onClick={(e) => { e.stopPropagation(); if(window.confirm('Delete this screen?')) removeScreen(scr.id); }} title="Delete Screen">✕</button>
+                    )}
+                </div>
 			</div>
 			{isOpen && (
 				<div className="page-list" style={{ paddingLeft: '12px' }}>
@@ -536,7 +599,7 @@ const ScreenNode = ({ scr, isActive }: { scr: Screen, isActive: boolean }) => {
 };
 
 const PanelNode = ({ pan, isActive }: { pan: Panel, isActive: boolean }) => {
-	const { setSelectedEntity, setActiveScreenId, activeScreenId, addItem, updatePanel, removePanel } = useContext(GridContext) as any;
+	const { project, setSelectedEntity, setActiveScreenId, activeScreenId, addItem, updatePanel, removePanel } = useContext(GridContext) as any;
 	const [isOpen, setIsOpen] = useState(true);
     const [isEditing, setIsEditing] = useState(false);
     const [editName, setEditName] = useState(pan.name);
@@ -550,11 +613,18 @@ const PanelNode = ({ pan, isActive }: { pan: Panel, isActive: boolean }) => {
     };
 	
 	return (
-		<div className="screen-node" draggable onDragStart={(e) => { e.dataTransfer.setData("application/gridos-item", JSON.stringify({ type: 'panel-ref', panelId: pan.id })); e.dataTransfer.effectAllowed = "copy"; const ghost = createGhostImage(pan.name, 160, 160); e.dataTransfer.setDragImage(ghost, 80, 80); setTimeout(() => ghost.remove(), 0); }}>
+		<div className="screen-node" draggable onDragStart={(e) => { e.dataTransfer.setData("application/gridos-item", JSON.stringify({ type: 'panel-ref', panelId: pan.id })); e.dataTransfer.effectAllowed = "copy"; const ghost = createGhostImage(pan.name, '🔲', pan.width || 160, pan.height || 160); e.dataTransfer.setDragImage(ghost, (pan.width || 160)/2, (pan.height || 160)/2); setTimeout(() => ghost.remove(), 0); }}>
 			<div 
                 className={`screen-row ${isPanelMode && isActive ? 'active' : ''}`}
                 onClick={() => { setActiveScreenId('panel'); setSelectedEntity({ type: 'panel', id: pan.id }, 'panel'); }}
-                onDoubleClick={(e) => { e.stopPropagation(); setIsEditing(true); }}
+                onDoubleClick={(e) => { 
+                    e.stopPropagation(); 
+                    const screen = project.screens.find((s: any) => s.id === (activeScreenId === 'panel' ? 'main' : activeScreenId));
+                    if (screen && screen.pages.length > 0) {
+                        addItem('panel-ref', screen.pages[0].id, undefined, pan.id, 50, 50);
+                        setActiveScreenId(screen.id);
+                    }
+                }}
             >
 				<span className="screen-chevron" onClick={(e) => { e.stopPropagation(); setIsOpen(!isOpen); }}>{isOpen ? '▼' : '▶'}</span>
 				<span className="screen-icon">🔲</span>

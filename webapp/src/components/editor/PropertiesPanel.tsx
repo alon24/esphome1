@@ -37,10 +37,97 @@ export const PropertiesPanel: React.FC = () => {
 
     const activeScreen = project?.screens?.find((s: any) => s.id === activeScreenId) || project?.screens?.[0];
 
-    // Debugging (Remove in production)
-    // console.log("PropertiesPanel Render:", { selectedEntity, activeScreenId });
+    const screenSelections = context.selections[activeScreenId] || [];
+    const isMulti = screenSelections.length > 1;
+    const activeSelection = screenSelections.length > 0 ? screenSelections[screenSelections.length - 1] : null;
 
-    if (!selectedEntity) {
+    if (isMulti) {
+        const align = (dir: 'left' | 'right' | 'top' | 'bottom' | 'centerH' | 'centerV') => context.alignSelection(dir);
+        return (
+            <div className={`props-panel open loc-${propsLocation || 'left'}`}>
+                <div className="props-inner">
+                    <div className="props-header">
+                        <div className="props-header-text">
+                            <div className="props-title">Bulk Editing</div>
+                            <div className="props-entity">
+                                {screenSelections.length} Widgets Selected
+                            </div>
+                        </div>
+                    </div>
+                    <div className="props-body">
+                        <div className="props-subtitle" style={{marginTop:'0', fontSize:'11px', fontWeight:900, color:'#6366f1', textTransform:'uppercase', letterSpacing:'1px', marginBottom:'15px', borderBottom:'1px solid #f1f5f9', paddingBottom:'5px'}}>Align Objects</div>
+                        
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '20px' }}>
+                             <button onClick={() => align('left')} className="align-btn">
+                                 <svg style={{width:'16px', height:'16px'}} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 2v20M8 6h10a2 2 0 012 2v2a2 2 0 01-2 2H8M8 14h6a2 2 0 012 2v2a2 2 0 01-2 2H8" /></svg>
+                                 Align Left
+                             </button>
+                             <button onClick={() => align('right')} className="align-btn">
+                                 <svg style={{width:'16px', height:'16px'}} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 2v20M16 6H6a2 2 0 00-2 2v2a2 2 0 002 2h10M16 14h-6a2 2 0 00-2 2v2a2 2 0 002 2h6" /></svg>
+                                 Align Right
+                             </button>
+                             <button onClick={() => align('top')} className="align-btn">
+                                 <svg style={{width:'16px', height:'16px'}} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M2 4h20M6 8v10a2 2 0 002 2h2a2 2 0 002-2V8M14 8v6a2 2 0 002 2h2a2 2 0 002-2V8" /></svg>
+                                 Align Top
+                             </button>
+                             <button onClick={() => align('bottom')} className="align-btn">
+                                 <svg style={{width:'16px', height:'16px'}} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M2 20h20M6 16V6a2 2 0 012-2h2a2 2 0 012 2v10M14 16v-6a2 2 0 012-2h2a2 2 0 012 2v6" /></svg>
+                                 Align Bottom
+                             </button>
+                             <button onClick={() => align('centerH')} className="align-btn">
+                                 <svg style={{width:'16px', height:'16px'}} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2v20M8 6h8a2 2 0 012 2v2a2 2 0 01-2 2H8M10 14h4a2 2 0 012 2v2a2 2 0 01-2 2h-4" /></svg>
+                                 Center H
+                             </button>
+                             <button onClick={() => align('centerV')} className="align-btn">
+                                 <svg style={{width:'16px', height:'16px'}} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M2 12h20M6 8v8a2 2 0 002 2h2a2 2 0 002-2V8M14 10v4a2 2 0 002 2h2a2 2 0 002-2v-4" /></svg>
+                                 Center V
+                             </button>
+                        </div>
+
+                        <div className="props-subtitle" style={{marginTop:'20px', fontSize:'11px', fontWeight:900, color:'#94a3b8', textTransform:'uppercase', letterSpacing:'1px', marginBottom:'10px', borderBottom:'1px solid #f1f5f9', paddingBottom:'5px'}}>Group Actions</div>
+                        <button 
+                            className="prop-input" 
+                            style={{ color: "#ef4444", borderColor: "#fecaca", cursor: "pointer", background: "#fff", border: '2px solid #fecaca' }}
+                            onClick={() => {
+                                if (confirm(`Delete ${screenSelections.length} widgets?`)) {
+                                    screenSelections.forEach((s: any) => removeItem(s.pageId, s.id));
+                                }
+                            }}
+                        >
+                            ✕ DELETE SELECTION
+                        </button>
+                    </div>
+                </div>
+                <style>{`
+                    .align-btn {
+                        display: flex;
+                        align-items: center;
+                        gap: 8px;
+                        background: white;
+                        border: 1px solid #e2e8f0;
+                        padding: 10px;
+                        border-radius: 10px;
+                        font-size: 11px;
+                        font-weight: 700;
+                        color: #475569;
+                        cursor: pointer;
+                        transition: all 0.2s;
+                    }
+                    .align-btn:hover {
+                        background: #f8fafc;
+                        border-color: #6366f1;
+                        color: #6366f1;
+                        transform: translateY(-1px);
+                        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+                    }
+                    .align-btn svg { opacity: 0.6; }
+                    .align-btn:hover svg { opacity: 1; }
+                `}</style>
+            </div>
+        );
+    }
+
+    if (!activeSelection) {
         if (!activeScreen) return <div className="props-panel open">No Active Screen</div>;
         return (
             <div className={`props-panel open loc-${propsLocation || 'left'}`}>
@@ -138,6 +225,12 @@ export const PropertiesPanel: React.FC = () => {
                     <div className="prop-group"><div className="prop-label">X</div><input className="prop-input" type="number" value={item.x} onChange={e => updateItem(selectedEntity.pageId, item.id, { x: parseInt(e.target.value) || 0 })} /></div>
                     <div className="prop-group"><div className="prop-label">Y</div><input className="prop-input" type="number" value={item.y} onChange={e => updateItem(selectedEntity.pageId, item.id, { y: parseInt(e.target.value) || 0 })} /></div>
                 </div>
+                {(item.parentId || item.type === 'grid-item') && (
+                    <div className="prop-row" style={{marginTop:'8px'}}>
+                        <div className="prop-group"><div className="prop-label">Column</div><input className="prop-input" type="number" value={item.col || 0} onChange={e => updateItem(selectedEntity.pageId, item.id, { col: parseInt(e.target.value) || 0 })} /></div>
+                        <div className="prop-group"><div className="prop-label">Row</div><input className="prop-input" type="number" value={item.row || 0} onChange={e => updateItem(selectedEntity.pageId, item.id, { row: parseInt(e.target.value) || 0 })} /></div>
+                    </div>
+                )}
                 <div className="prop-row">
                     <div className="prop-group"><div className="prop-label">Width</div><input className="prop-input" type="number" value={item.width} onChange={e => updateItem(selectedEntity.pageId, item.id, { width: parseInt(e.target.value) || 0 })} /></div>
                     <div className="prop-group"><div className="prop-label">Height</div><input className="prop-input" type="number" value={item.height} onChange={e => updateItem(selectedEntity.pageId, item.id, { height: parseInt(e.target.value) || 0 })} /></div>
@@ -146,12 +239,29 @@ export const PropertiesPanel: React.FC = () => {
                 <div className="prop-row">
                     <div className="prop-group">
                         <div className="prop-label">Background Color</div>
-                        <div className="prop-color">
-                            <input type="color" style={{visibility:'hidden', width:0, height:0, position:'absolute'}} id="cp-item-bg" value={`#${safeHex(item.color)}`} onChange={e => updateItem(selectedEntity.pageId, item.id, { color: parseInt(e.target.value.substring(1), 16) })} />
-                            <label htmlFor="cp-item-bg" style={{display:'flex', alignItems:'center', gap:'8px', cursor:'pointer', width:'100%'}}>
-                                <div className="color-swatch" style={{ background: `#${safeHex(item.color)}` }}></div>
-                                <span className="color-val">#{safeHex(item.color)}</span>
-                            </label>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <div className="prop-color" style={{ flex: 1, opacity: item.noBg ? 0.3 : 1, pointerEvents: item.noBg ? 'none' : 'auto' }}>
+                                <input type="color" style={{visibility:'hidden', width:0, height:0, position:'absolute'}} id="cp-item-bg" value={`#${safeHex(item.color)}`} onChange={e => updateItem(selectedEntity.pageId, item.id, { color: parseInt(e.target.value.substring(1), 16) })} />
+                                <label htmlFor="cp-item-bg" style={{display:'flex', alignItems:'center', gap:'8px', cursor:'pointer', width:'100%'}}>
+                                    <div className="color-swatch" style={{ background: `#${safeHex(item.color)}` }}></div>
+                                    <span className="color-val">#{safeHex(item.color)}</span>
+                                </label>
+                            </div>
+                            <button 
+                                onClick={() => updateItem(selectedEntity.pageId, item.id, { noBg: !item.noBg })}
+                                style={{ 
+                                    padding: '6px 10px', 
+                                    fontSize: '10px', 
+                                    borderRadius: '6px', 
+                                    border: '1px solid #e2e8f0',
+                                    background: item.noBg ? '#6366f1' : 'white',
+                                    color: item.noBg ? 'white' : '#64748b',
+                                    fontWeight: 'bold',
+                                    cursor: 'pointer'
+                                }}
+                            >
+                                {item.noBg ? 'TRANSPARENT' : 'SOLID'}
+                            </button>
                         </div>
                     </div>
                     <div className="prop-group">
@@ -213,49 +323,72 @@ export const PropertiesPanel: React.FC = () => {
                         </div>
                     </div>
                 </div>
-                {(item.type === 'nav-item' || item.type === 'menu-item' || item.type === 'btn') && (
-                    <div className="prop-group" style={{marginTop:'10px'}}>
-                        <div className="prop-label">Target Screen</div>
-                        <select 
-                            className="prop-input" 
-                            value={item.targetScreenId || ''} 
-                            onChange={e => updateItem(selectedEntity.pageId, item.id, { targetScreenId: e.target.value })}
-                        >
-                            <option value="">(None)</option>
-                            {project.screens.map((s: any) => (
-                                <option key={s.id} value={s.id}>{s.name}</option>
-                            ))}
-                        </select>
-                    </div>
-                )}
 
-                {item.type === 'pane-grid' && (
-                    <div className="prop-group" style={{marginTop:'10px'}}>
-                        <div className="prop-label">Select Dashboard Grid</div>
-                        <select 
-                            className="prop-input" 
-                            value={item.paneGridId || ''} 
-                            onChange={e => updateItem(selectedEntity.pageId, item.id, { paneGridId: e.target.value })}
-                        >
-                            <option value="">(None)</option>
-                            {(project.paneGrids || []).map((g: any) => (
-                                <option key={g.id} value={g.id}>{g.name}</option>
-                            ))}
-                        </select>
-                        <div style={{fontSize:'10px', color:'#94a3b8', marginTop:'4px'}}>Manage grids in the DASHBOARD tab.</div>
-                    </div>
-                )}
-
-                <div className="prop-group" style={{marginTop:'10px'}}>
-                    <div className="prop-label">Custom Action (Action String)</div>
+                <div className="props-subtitle" style={{marginTop:'20px', fontSize:'11px', fontWeight:900, color:'#94a3b8', textTransform:'uppercase', letterSpacing:'1px', marginBottom:'10px', borderBottom:'1px solid #f1f5f9', paddingBottom:'5px'}}>Actions</div>
+                <div className="prop-group">
+                    <div className="prop-label">Navigate to Screen</div>
+                    <select 
+                        className="prop-input" 
+                        value={item.targetScreenId || ''} 
+                        onChange={e => updateItem(selectedEntity.pageId, item.id, { targetScreenId: e.target.value, onClick: e.target.value ? `scr:${e.target.value}` : '' })}
+                    >
+                        <option value="">None</option>
+                        {project?.screens?.map((s: any) => (
+                            <option key={s.id} value={s.id}>{s.name}</option>
+                        ))}
+                    </select>
+                </div>
+                <div className="prop-group" style={{marginTop:'8px'}}>
+                    <div className="prop-label">Code Function Call</div>
                     <input 
                         className="prop-input" 
-                        placeholder="e.g. toast:Hello or reboot:" 
-                        value={item.action || ''} 
-                        onChange={e => updateItem(selectedEntity.pageId, item.id, { action: e.target.value })} 
+                        placeholder="e.g. toggle_light" 
+                        value={item.onClick?.startsWith('fn:') ? item.onClick.substring(3) : ''} 
+                        onChange={e => updateItem(selectedEntity.pageId, item.id, { onClick: e.target.value ? `fn:${e.target.value}` : '' })} 
                     />
-                    <div style={{fontSize:'10px', color:'#94a3b8', marginTop:'4px'}}>Supported: scr:ID, toast:MSG, reboot:, wifi-scan:, set:ID:VAL, toggle:ID</div>
+                    <div style={{fontSize:'9px', color:'#94a3b8', marginTop:'2px'}}>Triggers a custom method in C++</div>
                 </div>
+
+
+
+                {item.type === 'chart' && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '10px' }}>
+                        <div className="prop-group">
+                            <div className="prop-label">Chart Type</div>
+                            <select 
+                                className="prop-input" 
+                                value={item.chartType || 'line'} 
+                                onChange={e => updateItem(selectedEntity.pageId, item.id, { chartType: e.target.value })}
+                            >
+                                <option value="line">Line Chart</option>
+                                <option value="area">Area Chart</option>
+                                <option value="bar">Bar Chart</option>
+                                <option value="scatter">Scatter Plot</option>
+                            </select>
+                        </div>
+                        <div className="prop-group">
+                            <div className="prop-label">Data Points to Keep</div>
+                            <input 
+                                className="prop-input" 
+                                type="number" 
+                                value={item.chartPoints || 20} 
+                                onChange={e => updateItem(selectedEntity.pageId, item.id, { chartPoints: parseInt(e.target.value) || 1 })} 
+                            />
+                        </div>
+                        <div className="prop-row">
+                            <div className="prop-group">
+                                <div className="prop-label">Primary Color</div>
+                                <div className="prop-color">
+                                    <input type="color" style={{visibility:'hidden', width:0, height:0, position:'absolute'}} id="cp-chart-p" value={`#${safeHex(item.chartColor || item.color)}`} onChange={e => updateItem(selectedEntity.pageId, item.id, { chartColor: parseInt(e.target.value.substring(1), 16) })} />
+                                    <label htmlFor="cp-chart-p" style={{display:'flex', alignItems:'center', gap:'8px', cursor:'pointer', width:'100%'}}>
+                                        <div className="color-swatch" style={{ background: `#${safeHex(item.chartColor || item.color)}` }}></div>
+                                        <span className="color-val">#{safeHex(item.chartColor || item.color)}</span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
 
                 <div className="props-subtitle" style={{marginTop:'20px', fontSize:'11px', fontWeight:900, color:'#94a3b8', textTransform:'uppercase', letterSpacing:'1px', marginBottom:'10px', borderBottom:'1px solid #f1f5f9', paddingBottom:'5px'}}>Visuals & Icons</div>
 
@@ -276,17 +409,6 @@ export const PropertiesPanel: React.FC = () => {
                             ✕
                         </button>
                     </div>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '6px' }}>
-                        {['🌡️', '💧', '💡', '🔋', '📶', '⏱️', '🔥', '🏠', '🚗', '⚡'].map(emo => (
-                            <button 
-                                key={emo}
-                                onClick={() => updateItem(selectedEntity.pageId, item.id, { icon: emo })}
-                                style={{ background: '#f1f5f9', border: 'none', borderRadius: '4px', padding: '4px 8px', cursor: 'pointer', fontSize: '14px' }}
-                            >
-                                {emo}
-                            </button>
-                        ))}
-                    </div>
                 </div>
 
                 <div className="props-subtitle" style={{marginTop:'20px', fontSize:'11px', fontWeight:900, color:'#94a3b8', textTransform:'uppercase', letterSpacing:'1px', marginBottom:'10px', borderBottom:'1px solid #f1f5f9', paddingBottom:'5px'}}>MQTT Bindings</div>
@@ -300,81 +422,84 @@ export const PropertiesPanel: React.FC = () => {
                     <input className="prop-input" placeholder="e.g. stat/light/POWER" value={item.mqttStateTopic || ''} onChange={e => updateItem(selectedEntity.pageId, item.id, { mqttStateTopic: e.target.value })} />
                 </div>
 
-                <div className="props-subtitle" style={{marginTop:'20px', fontSize:'11px', fontWeight:900, color:'#94a3b8', textTransform:'uppercase', letterSpacing:'1px', marginBottom:'10px', borderBottom:'1px solid #f1f5f9', paddingBottom:'5px'}}>Advanced Actions</div>
-                
-                <div className="prop-group">
-                    <div className="prop-label">On Click</div>
-                    <input className="prop-input" placeholder="Action string..." value={item.onClick || ''} onChange={e => updateItem(selectedEntity.pageId, item.id, { onClick: e.target.value })} />
-                </div>
-                <div className="prop-group">
-                    <div className="prop-label">On Double Click</div>
-                    <input className="prop-input" placeholder="Action string..." value={item.onDoubleClick || ''} onChange={e => updateItem(selectedEntity.pageId, item.id, { onDoubleClick: e.target.value })} />
-                </div>
-                <div className="prop-group">
-                    <div className="prop-label">On Long Press</div>
-                    <input className="prop-input" placeholder="Action string..." value={item.onLongPress || ''} onChange={e => updateItem(selectedEntity.pageId, item.id, { onLongPress: e.target.value })} />
-                </div>
-
-                <div className="props-subtitle" style={{marginTop:'20px', fontSize:'11px', fontWeight:900, color:'#10b981', textTransform:'uppercase', letterSpacing:'1px', marginBottom:'10px', borderBottom:'1px solid #ecfdf5', paddingBottom:'5px'}}>YAML Binding Snippet</div>
-                <div style={{ background: '#1e293b', padding: '12px', borderRadius: '8px', color: '#38bdf8', fontSize: '11px', fontFamily: 'monospace', position: 'relative', overflowX: 'auto' }}>
-                    <div style={{ color: '#94a3b8', marginBottom: '8px' }}># Paste into device.yaml lambda:</div>
-                    <div>grid_widget_set_{['label'].includes(item.type) ? 'text' : 'value'}("{item.id}", {['label'].includes(item.type) ? '"Hello"' : '75.0'});</div>
-                    <button 
-                        onClick={() => { 
-                            const code = `grid_widget_set_${['label'].includes(item.type) ? 'text' : 'value'}("${item.id}", ${['label'].includes(item.type) ? '"Hello"' : '75.0'});`;
-                            navigator.clipboard.writeText(code);
-                            alert('Snippet Copied!');
-                        }}
-                        style={{ position: 'absolute', top: '8px', right: '8px', background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: '4px', padding: '2px 6px', color: 'white', cursor: 'pointer', fontSize: '9px' }}
-                    >
-                        COPY
-                    </button>
-                </div>
-
-                {/* Element Specific Config */}
-                {(['dropdown', 'roller', 'slider', 'bar', 'arc', 'switch', 'checkbox'].includes(item.type)) && (
+                {(item.type === 'grid' || item.type === 'pane-grid' || item.type === 'grid-item' || item.type === 'label') && (
                     <>
-                        <div className="props-subtitle" style={{marginTop:'20px', fontSize:'11px', fontWeight:900, color:'#94a3b8', textTransform:'uppercase', letterSpacing:'1px', marginBottom:'10px', borderBottom:'1px solid #f1f5f9', paddingBottom:'5px'}}>Element Config</div>
-                        
-                        {(item.type === 'dropdown' || item.type === 'roller') && (
-                            <div className="prop-group">
-                                <div className="prop-label">Options (one per line)</div>
-                                <textarea 
-                                    className="prop-input" 
-                                    style={{ height: '80px', resize: 'vertical', fontFamily: 'monospace', fontSize: '12px' }}
-                                    value={item.options || ''} 
-                                    onChange={e => updateItem(selectedEntity.pageId, item.id, { options: e.target.value })}
-                                />
-                            </div>
-                        )}
-
-                        {(item.type === 'slider' || item.type === 'bar' || item.type === 'arc') && (
-                            <div className="prop-row">
-                                <div className="prop-group">
-                                    <div className="prop-label">Min</div>
-                                    <input className="prop-input" type="number" value={item.min || 0} onChange={e => updateItem(selectedEntity.pageId, item.id, { min: parseInt(e.target.value) || 0 })} />
-                                </div>
-                                <div className="prop-group">
-                                    <div className="prop-label">Max</div>
-                                    <input className="prop-input" type="number" value={item.max || 100} onChange={e => updateItem(selectedEntity.pageId, item.id, { max: parseInt(e.target.value) || 0 })} />
-                                </div>
-                            </div>
-                        )}
-
-                        <div className="prop-group" style={{marginTop:'10px'}}>
-                            <div className="prop-label">Current Value</div>
-                            { (item.type === 'switch' || item.type === 'checkbox') ? (
-                                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
-                                    <input type="checkbox" checked={!!item.value} onChange={e => updateItem(selectedEntity.pageId, item.id, { value: e.target.checked ? 1 : 0 })} />
-                                    {item.value ? 'ON / Checked' : 'OFF / Unchecked'}
-                                </label>
-                            ) : (
-                                <input className="prop-input" type="number" value={item.value || 0} onChange={e => updateItem(selectedEntity.pageId, item.id, { value: parseInt(e.target.value) || 0 })} />
-                            )}
+                        <div className="props-subtitle" style={{marginTop:'20px', fontSize:'11px', fontWeight:900, color:'#6366f1', textTransform:'uppercase', letterSpacing:'1px', marginBottom:'10px', borderBottom:'1px solid #f1f5f9', paddingBottom:'5px'}}>
+                            {item.type === 'label' ? 'Label Settings' : 'Grid Settings'}
                         </div>
+                        {item.type === 'label' && (
+                            <>
+                                <div className="prop-group">
+                                    <div className="prop-label">Label Text</div>
+                                    <input className="prop-input" value={item.name || ''} onChange={e => updateItem(selectedEntity.pageId, item.id, { name: e.target.value })} />
+                                </div>
+                                <div className="prop-row" style={{marginTop:'8px'}}>
+                                    <div className="prop-group">
+                                        <div className="prop-label">Font Size</div>
+                                        <input className="prop-input" type="number" value={item.fontSize || 14} onChange={e => updateItem(selectedEntity.pageId, item.id, { fontSize: parseInt(e.target.value) || 1 })} />
+                                    </div>
+                                    <div className="prop-group">
+                                        <div className="prop-label">Text Color</div>
+                                        <div className="prop-color">
+                                            <input type="color" style={{visibility:'hidden', width:0, height:0, position:'absolute'}} id="cp-lbl-text" value={`#${safeHex(item.textColor)}`} onChange={e => updateItem(selectedEntity.pageId, item.id, { textColor: parseInt(e.target.value.substring(1), 16) })} />
+                                            <label htmlFor="cp-lbl-text" style={{display:'flex', alignItems:'center', gap:'8px', cursor:'pointer', width:'100%'}}>
+                                                <div className="color-swatch" style={{ background: `#${safeHex(item.textColor)}` }}></div>
+                                                <span className="color-val">#{safeHex(item.textColor)}</span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </>
+                        )}
+                        {(item.type === 'grid' || item.type === 'pane-grid') && (
+                            <>
+                                <div className="prop-row">
+                                    <div className="prop-group">
+                                        <div className="prop-label">Columns</div>
+                                        <input className="prop-input" type="number" value={item.cols || 2} onChange={e => updateItem(selectedEntity.pageId, item.id, { cols: parseInt(e.target.value) || 1 })} />
+                                    </div>
+                                    <div className="prop-group">
+                                        <div className="prop-label">Rows</div>
+                                        <input className="prop-input" type="number" value={item.rows || (item.type === 'pane-grid' ? 1 : 2)} onChange={e => updateItem(selectedEntity.pageId, item.id, { rows: parseInt(e.target.value) || 1 })} />
+                                    </div>
+                                </div>
+                                <div className="prop-row" style={{marginTop:'10px'}}>
+                                    <label style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', cursor: 'pointer', color: '#6366f1', fontWeight: 'bold' }}>
+                                        <input type="checkbox" checked={!!item.locked} onChange={e => updateItem(selectedEntity.pageId, item.id, { locked: e.target.checked })} />
+                                        Lock Items (D&D Reorder)
+                                    </label>
+                                </div>
+                                {item.type === 'pane-grid' && (
+                                    <div className="prop-group" style={{marginTop:'10px', opacity: 0.6}}>
+                                        <div className="prop-label italic" style={{fontSize:'10px'}}>Advanced: Dashboard Link</div>
+                                        <select 
+                                            className="prop-input" 
+                                            value={item.paneGridId || ''} 
+                                            onChange={e => updateItem(selectedEntity.pageId, item.id, { paneGridId: e.target.value })}
+                                        >
+                                            <option value="">(None)</option>
+                                            {(project.paneGrids || []).map((g: any) => (
+                                                <option key={g.id} value={g.id}>{g.name}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                )}
+                            </>
+                        )}
+                        {item.type === 'grid-item' && (
+                            <>
+                                <div className="prop-group">
+                                    <div className="prop-label">Top Text</div>
+                                    <input className="prop-input" value={item.topText || ''} onChange={e => updateItem(selectedEntity.pageId, item.id, { topText: e.target.value })} />
+                                </div>
+                                <div className="prop-group" style={{marginTop:'8px'}}>
+                                    <div className="prop-label">Bottom Text</div>
+                                    <input className="prop-input" value={item.bottomText || ''} onChange={e => updateItem(selectedEntity.pageId, item.id, { bottomText: e.target.value })} />
+                                </div>
+                            </>
+                        )}
                     </>
                 )}
-
 
                 <div className="props-subtitle" style={{marginTop:'20px', fontSize:'11px', fontWeight:900, color:'#94a3b8', textTransform:'uppercase', letterSpacing:'1px', marginBottom:'10px', borderBottom:'1px solid #f1f5f9', paddingBottom:'5px'}}>Layout & Behavior</div>
                 
@@ -383,21 +508,6 @@ export const PropertiesPanel: React.FC = () => {
                         <div className="prop-label">Opacity (0-255)</div>
                         <input className="prop-input" type="number" min="0" max="255" value={item.opacity !== undefined ? item.opacity : 255} onChange={e => updateItem(selectedEntity.pageId, item.id, { opacity: parseInt(e.target.value) || 0 })} />
                     </div>
-                    <div className="prop-group">
-                        <div className="prop-label">Radius</div>
-                        <input className="prop-input" type="number" value={item.radius || 0} onChange={e => updateItem(selectedEntity.pageId, item.id, { radius: parseInt(e.target.value) || 0 })} />
-                    </div>
-                </div>
-
-                <div className="prop-row" style={{marginTop:'5px'}}>
-                    <label style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', cursor: 'pointer', color: '#475569' }}>
-                        <input type="checkbox" checked={!!item.hidden} onChange={e => updateItem(selectedEntity.pageId, item.id, { hidden: e.target.checked })} />
-                        Hidden
-                    </label>
-                    <label style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', cursor: 'pointer', color: '#475569' }}>
-                        <input type="checkbox" checked={!!item.scrollable} onChange={e => updateItem(selectedEntity.pageId, item.id, { scrollable: e.target.checked })} />
-                        Scrollable
-                    </label>
                 </div>
 
                 <div className="prop-row" style={{marginTop:'10px'}}>
@@ -411,14 +521,19 @@ export const PropertiesPanel: React.FC = () => {
                     </div>
                 </div>
 
-                <div className="props-subtitle" style={{marginTop:'20px', fontSize:'11px', fontWeight:900, color:'#94a3b8', textTransform:'uppercase', letterSpacing:'1px', marginBottom:'10px', borderBottom:'1px solid #f1f5f9', paddingBottom:'5px'}}>Communication (MQTT)</div>
-                <div className="prop-group">
-                    <div className="prop-label">Command Topic</div>
-                    <input className="prop-input" placeholder="e.g. kitchen/light/set" value={item.mqttTopic || ''} onChange={e => updateItem(selectedEntity.pageId, item.id, { mqttTopic: e.target.value })} />
-                </div>
-                <div className="prop-group" style={{marginTop:'8px'}}>
-                    <div className="prop-label">State Topic</div>
-                    <input className="prop-input" placeholder="e.g. kitchen/light/state" value={item.mqttStateTopic || ''} onChange={e => updateItem(selectedEntity.pageId, item.id, { mqttStateTopic: e.target.value })} />
+                <div className="prop-row" style={{marginTop:'5px'}}>
+                    <label style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', cursor: 'pointer', color: '#475569' }}>
+                        <input type="checkbox" checked={!!item.hidden} onChange={e => updateItem(selectedEntity.pageId, item.id, { hidden: e.target.checked })} />
+                        Hidden
+                    </label>
+                    <label style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', cursor: 'pointer', color: '#475569' }}>
+                        <input type="checkbox" checked={!!item.scrollable} onChange={e => updateItem(selectedEntity.pageId, item.id, { scrollable: e.target.checked })} />
+                        Scrollable
+                    </label>
+                    <label style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', cursor: 'pointer', color: '#6366f1', fontWeight: 'bold' }}>
+                        <input type="checkbox" checked={!!item.pinned} onChange={e => updateItem(selectedEntity.pageId, item.id, { pinned: e.target.checked, x: e.target.checked ? 0 : item.x, y: e.target.checked ? 0 : item.y, width: e.target.checked ? baseWidth : item.width })} />
+                        Pinned (Header)
+                    </label>
                 </div>
 
                 <button 
@@ -484,6 +599,31 @@ export const PropertiesPanel: React.FC = () => {
                             <div className="color-swatch" style={{ background: `#${safeHex(pan.bg)}` }}></div>
                             <span className="color-val">#{safeHex(pan.bg)}</span>
                         </label>
+                    </div>
+                </div>
+                <div className="prop-row">
+                    <div className="prop-group">
+                        <div className="prop-label">Layout</div>
+                        <div style={{ display: 'flex', gap: '4px', background: '#f1f5f9', padding: '4px', borderRadius: '8px' }}>
+                            {['v', 'h', 'free'].map(l => (
+                                <button 
+                                    key={l}
+                                    onClick={() => updatePanel(pan.id, { layout: l })}
+                                    style={{ 
+                                        flex: 1, padding: '4px 8px', fontSize: '9px', borderRadius: '6px', border: 'none', cursor: 'pointer',
+                                        background: (pan.layout || 'v') === l ? '#6366f1' : 'transparent',
+                                        color: (pan.layout || 'v') === l ? 'white' : '#64748b',
+                                        fontWeight: 'bold'
+                                    }}
+                                >
+                                    {l === 'v' ? 'VERT' : l === 'h' ? 'HORIZ' : 'FREE'}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                    <div className="prop-group">
+                        <div className="prop-label">Gap</div>
+                        <input className="prop-input" type="number" value={pan.gap || 0} onChange={e => updatePanel(pan.id, { gap: parseInt(e.target.value) || 0 })} />
                     </div>
                 </div>
                  <button 

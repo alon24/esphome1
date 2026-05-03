@@ -1,4 +1,4 @@
-export type ElementType = "btn" | "switch" | "slider" | "label" | "clock" | "panel-ref" | "arc" | "checkbox" | "dropdown" | "roller" | "bar" | "border" | "nav-menu" | "side-menu" | "menu-item" | "nav-item" | "native-wifi" | "native-system" | "native-sd" | "native-tests" | "component" | "shape_circle" | "battery_icon" | "rounded_rect" | "pane-grid";
+export type ElementType = "btn" | "switch" | "slider" | "label" | "clock" | "panel-ref" | "arc" | "checkbox" | "dropdown" | "roller" | "bar" | "border" | "nav-menu" | "side-menu" | "menu-item" | "nav-item" | "native-wifi" | "native-wifi-info" | "native-system" | "native-sd" | "native-tests" | "component" | "shape_circle" | "battery_icon" | "rounded_rect" | "pane-grid" | "chart" | "grid" | "grid-item";
 
 export type GridItem = {
 	id: string;
@@ -38,6 +38,25 @@ export type GridItem = {
 	onClick?: string;
 	onDoubleClick?: string;
 	onLongPress?: string;
+	apTargetScreenId?: string;
+	ipTargetScreenId?: string;
+    // Chart specific
+    chartType?: 'line' | 'bar' | 'scatter' | 'area';
+    chartPoints?: number;
+    chartColor?: number;
+	chartSecondaryColor?: number;
+	pinned?: boolean;
+	noBg?: boolean;
+	// Grid specific
+	cols?: number;
+	rows?: number;
+	locked?: boolean;
+	col?: number;
+	row?: number;
+	topText?: string;
+	bottomText?: string;
+	parentId?: string;
+	paneGridId?: string;
 };
 
 export type Page = {
@@ -67,6 +86,8 @@ export type Panel = {
 	bg: number;
 	itemBg: number;
 	elements: GridItem[];
+	layout?: "v" | "h" | "free";
+	gap?: number;
 };
 
 export type Pane = {
@@ -89,7 +110,8 @@ export type Pane = {
 export type PaneGrid = {
     id: string;
     name: string;
-    columns: number;
+    cols: number;
+    rows: number;
     gap: number;
     paneW?: number;
     paneH?: number;
@@ -109,4 +131,5 @@ export const SMART_COMPONENTS = [
 	{ id: "shape-circle",     label: "⭕ Circle",    desc: "Native ESPHome circle primitive", preview: "", defaultW: 100, defaultH: 100, icon: "⭕", type: "shape_circle" },
 	{ id: "battery-icon",     label: "🔋 Battery",   desc: "Dynamic battery indicator",     preview: "", defaultW: 60,  defaultH: 80,  icon: "🔋", type: "battery_icon" },
 	{ id: "rounded-rect",     label: "▢ RoundRect",  desc: "Custom rounded rectangle",      preview: "", defaultW: 100, defaultH: 100, icon: "▢", type: "rounded_rect" },
+	{ id: "wifi-info",        label: "🌐 IP Address", desc: "Dynamic IP/SSID display",       preview: "", defaultW: 150, defaultH: 30,  icon: "🌐", type: "native-wifi-info" },
 ];

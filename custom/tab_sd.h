@@ -715,7 +715,7 @@ void tab_sd_create(lv_obj_t *parent) {
 
     // Scrollable file/dir list (occupies most of the tab)
     g_sd_list_view = lv_obj_create(parent);
-    lv_obj_set_size(g_sd_list_view, 760, 304);
+    lv_obj_set_size(g_sd_list_view, 760, 420);
     lv_obj_set_pos(g_sd_list_view, 20, 46);
     lv_obj_set_scroll_dir(g_sd_list_view, LV_DIR_VER);
     lv_obj_set_scrollbar_mode(g_sd_list_view, LV_SCROLLBAR_MODE_AUTO);

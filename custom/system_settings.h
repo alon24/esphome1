@@ -2,6 +2,7 @@
 #include <ArduinoJson.h>
 #include <cstdio>
 #include <cstdlib>
+#include <memory>
 #include "esp_log.h"
 #include "esp_littlefs.h"
 #include <esp_task_wdt.h>
@@ -63,7 +64,8 @@ void system_settings_load() {
     if (buf) {
         fread(buf, 1, sz, f);
         buf[sz] = '\0';
-        JsonDocument doc;
+        auto doc_ptr = std::make_unique<JsonDocument>();
+        JsonDocument &doc = *doc_ptr;
         if (!deserializeJson(doc, buf)) {
             g_ss_enabled = doc["ss_enabled"] | false;
             g_mqtt_enabled = doc["mqtt_enabled"] | true;
@@ -90,7 +92,8 @@ void system_settings_save() {
         ESP_LOGE("SYS", "Failed to open settings for writing (Bus Contention likely)");
         return;
     }
-    JsonDocument doc;
+    auto doc_ptr = std::make_unique<JsonDocument>();
+    JsonDocument &doc = *doc_ptr;
     doc["ss_enabled"] = g_ss_enabled;
     doc["mqtt_enabled"] = g_mqtt_enabled;
     doc["ap_always_on"] = g_ap_always_on;
