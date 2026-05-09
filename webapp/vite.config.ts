@@ -7,20 +7,40 @@ import { viteSingleFile } from "vite-plugin-singlefile";
 const DEVICE_IP = process.env.DEVICE_IP ?? "esp32-display.local";
 
 // When running behind code-server proxy, set:
-//   VITE_PORT=3008 (or whatever port code-server exposes)
-// Access via http://<host>:8080/proxy/3008/
+//   VITE_PORT=3009      — port the server listens on
+//   BASE_PATH=/proxy/3009/  — sub-path the proxy exposes (for HMR + asset paths)
+// Access via http://<host>:8080/proxy/3009/
 const PORT = parseInt(process.env.VITE_PORT ?? "5173");
+const BASE_PATH = process.env.BASE_PATH ?? "/";
 
-export default defineConfig({
-	plugins: [react(), viteSingleFile()],
-	base: "./",
+// code-server proxy strips the /proxy/PORT prefix before forwarding to Vite.
+// This plugin re-prepends it so Vite can route correctly without redirects.
+const codeServerPrefixPlugin = (basePath: string) => ({
+	name: "code-server-prefix",
+	configureServer(server: any) {
+		server.middlewares.use((req: any, _res: any, next: any) => {
+			if (basePath !== "/" && !req.url?.startsWith(basePath)) {
+				const url: string = req.url ?? "/";
+				req.url = url === "/" ? basePath : `${basePath.replace(/\/$/, "")}${url}`;
+			}
+			next();
+		});
+	},
+});
+
+export default defineConfig(({ command }) => ({
+	plugins: [
+		react(),
+		...(command === "build" ? [viteSingleFile()] : [codeServerPrefixPlugin(BASE_PATH)]),
+	],
+	base: BASE_PATH,
 	server: {
 		port: PORT,
 		host: true,
 		allowedHosts: "all",
-		hmr: {
-			clientPort: PORT,
-		},
+		hmr: BASE_PATH === "/"
+			? { clientPort: PORT }
+			: { clientPort: 8080, path: BASE_PATH },
 		proxy: {
 			"/api": {
 				target: `http://${DEVICE_IP}`,
@@ -39,4 +59,4 @@ export default defineConfig({
 			},
 		},
 	},
-});
+}));

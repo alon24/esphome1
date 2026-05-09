@@ -32,16 +32,17 @@ static lv_obj_t *g_home_grid_cont = nullptr;
 
 struct UIBuildTask {
     lv_obj_t *parent;
-    const GridItem *item;
+    GridItem item;
     int offsetX;
     int offsetY;
     int depth;
 };
-static std::vector<UIBuildTask> g_ui_build_queue;
+
+static std::deque<UIBuildTask> g_ui_build_queue;
 static lv_timer_t *g_ui_build_timer = nullptr;
 
 static void _home_render_item(lv_obj_t *parent, const GridItem &it, int offsetX = 0, int offsetY = 0, int depth = 0);
-static void _home_render_item_actual(lv_obj_t *parent, const GridItem *it, int offsetX, int offsetY, int depth);
+static void _home_render_item_actual(lv_obj_t *parent, const GridItem &it, int offsetX, int offsetY, int depth);
 static void _home_render_pane_grid(lv_obj_t *parent, const GridItem &it, int offsetX, int offsetY, int depth);
 static void _home_render_panel_ref(lv_obj_t *parent, const GridItem &it, int offsetX, int offsetY, int depth);
 
@@ -50,9 +51,9 @@ static void _ui_build_timer_cb(lv_timer_t *t) {
         lv_timer_pause(t);
         return;
     }
-    // LIFO (DFS) build order
-    UIBuildTask task = g_ui_build_queue.back();
-    g_ui_build_queue.pop_back();
+    // FIFO build order
+    UIBuildTask task = g_ui_build_queue.front();
+    g_ui_build_queue.pop_front();
     if (lv_obj_is_valid(task.parent)) {
         _home_render_item_actual(task.parent, task.item, task.offsetX, task.offsetY, task.depth);
     }
@@ -60,9 +61,9 @@ static void _ui_build_timer_cb(lv_timer_t *t) {
 
 static void _home_render_item(lv_obj_t *parent, const GridItem &it, int offsetX, int offsetY, int depth) {
     if (!g_ui_build_timer) {
-        g_ui_build_timer = lv_timer_create(_ui_build_timer_cb, 100, nullptr);
+        g_ui_build_timer = lv_timer_create(_ui_build_timer_cb, 5, nullptr); // Faster timer
     }
-    g_ui_build_queue.push_back({parent, &it, offsetX, offsetY, depth});
+    g_ui_build_queue.push_back({parent, it, offsetX, offsetY, depth});
     lv_timer_resume(g_ui_build_timer);
 }
 
@@ -196,7 +197,7 @@ void ui_refresh_grid() {
     // Only use native fallbacks if there are NO grid items for this screen
     if (g_grid_items.empty() || is_native) {
         if (g_current_screen == "wifi" || g_current_screen == "native-wifi") {
-            tab_wifi_create(scr_cont, lv_screen_active());
+            tab_wifi_create(scr_cont, lv_scr_act());
             tab_wifi_on_show();
             return;
         }
@@ -249,7 +250,7 @@ void ui_refresh_grid() {
         for (const auto &pg : g_grid_pages) {
             lv_obj_t *tile = tiles[{pg.x, pg.y}];
             auto add_arrow = [&](const char *sym, lv_align_t align, int nx, int ny) {
-                lv_obj_t *btn = lv_button_create(tile);
+                lv_obj_t *btn = lv_btn_create(tile);
                 lv_obj_set_size(btn, 46, 46);
                 lv_obj_align(btn, align, (align==LV_ALIGN_LEFT_MID?10:(align==LV_ALIGN_RIGHT_MID?-10:0)), (align==LV_ALIGN_TOP_MID?10:(align==LV_ALIGN_BOTTOM_MID?-10:0)));
                 lv_obj_set_style_bg_color(btn, lv_color_hex(0x6366f1), 0);
@@ -465,9 +466,9 @@ static void _home_item_mqtt_cb(lv_event_t *e) {
 }
 #endif
 
-static void _home_render_item_actual(lv_obj_t *parent, const GridItem *pIt, int offsetX, int offsetY, int depth) {
-    const GridItem &it = *pIt;
-    ESP_LOGI("GRID", "BUILDING: %s (%s) depth=%d", it.name.empty() ? "unnamed" : it.name.c_str(), it.type.c_str(), depth);
+static void _home_render_item_actual(lv_obj_t *parent, const GridItem &it, int offsetX, int offsetY, int depth) {
+    ESP_LOGI("GRID", "BUILDING: %s (%s) at %d,%d size %dx%d (col: %d, row: %d, depth %d)",
+             it.name.empty() ? "unnamed" : it.name.c_str(), it.type.c_str(), it.x, it.y, it.width, it.height, it.col, it.row, depth);
     if (depth > 10) {
         ESP_LOGW("GRID", "Max recursion depth reached at item: %s", it.name.c_str());
         return;
@@ -482,7 +483,7 @@ static void _home_render_item_actual(lv_obj_t *parent, const GridItem *pIt, int 
 
     // 1. Create native widget or container
     if (it.type == "btn") {
-        obj = lv_button_create(parent);
+        obj = lv_btn_create(parent);
         lv_obj_t *lbl = lv_label_create(obj);
         lv_label_set_text(lbl, it.name.empty() ? "BTN" : it.name.c_str());
         lv_obj_center(lbl);
@@ -517,7 +518,7 @@ static void _home_render_item_actual(lv_obj_t *parent, const GridItem *pIt, int 
         obj = lv_checkbox_create(parent);
         lv_checkbox_set_text(obj, it.name.empty() ? "CHECK" : it.name.c_str());
         if (it.value) lv_obj_add_state(obj, LV_STATE_CHECKED);
-        lv_obj_set_style_bg_color(obj, lv_color_hex(it.color), (lv_style_selector_t)(LV_PART_INDICATOR | LV_STATE_CHECKED));
+        lv_obj_set_style_bg_color(obj, lv_color_hex(it.color), (lv_style_selector_t)((uint32_t)LV_PART_INDICATOR | (uint32_t)LV_STATE_CHECKED));
     } else if (it.type == "dropdown") {
         obj = lv_dropdown_create(parent);
         if (!it.options.empty()) lv_dropdown_set_options(obj, it.options.c_str());
@@ -556,12 +557,24 @@ static void _home_render_item_actual(lv_obj_t *parent, const GridItem *pIt, int 
         // Bigger item height
         lv_obj_set_style_text_line_space(obj, 20, 0); 
         lv_obj_set_style_pad_ver(obj, 10, LV_PART_MAIN);
-    } else if (it.type == "shape_circle") {
+    } else if (it.type == "circle") {
         obj = lv_obj_create(parent);
         _panel_reset(obj);
         lv_obj_set_style_radius(obj, LV_RADIUS_CIRCLE, 0);
         lv_obj_set_style_border_width(obj, 4, 0);
-        lv_obj_set_style_bg_opa(obj, 0, 0);
+        lv_obj_set_style_border_color(obj, lv_color_hex(it.color), 0);
+        if (it.noBg) {
+            lv_obj_set_style_bg_opa(obj, 0, 0);
+        } else {
+            lv_obj_set_style_bg_color(obj, lv_color_hex(it.color), 0);
+            lv_obj_set_style_bg_opa(obj, LV_OPA_COVER, 0);
+        }
+        if (!it.name.empty()) {
+            lv_obj_t *lbl = lv_label_create(obj);
+            lv_label_set_text(lbl, it.name.c_str());
+            lv_obj_center(lbl);
+            lv_obj_set_style_text_color(lbl, lv_color_hex(it.textColor), 0);
+        }
     } else if (it.type == "battery_icon") {
         obj = lv_obj_create(parent);
         _panel_reset(obj);
@@ -575,10 +588,21 @@ static void _home_render_item_actual(lv_obj_t *parent, const GridItem *pIt, int 
     } else if (it.type == "rounded_rect") {
         obj = lv_obj_create(parent);
         _panel_reset(obj);
-        if (it.radius > 0) lv_obj_set_style_radius(obj, it.radius, 0);
-        else lv_obj_set_style_radius(obj, 15, 0);
+        lv_obj_set_style_radius(obj, it.radius > 0 ? it.radius : 15, 0);
         lv_obj_set_style_border_width(obj, 4, 0);
-        lv_obj_set_style_bg_opa(obj, 0, 0);
+        lv_obj_set_style_border_color(obj, lv_color_hex(it.color), 0);
+        if (it.noBg) {
+            lv_obj_set_style_bg_opa(obj, 0, 0);
+        } else {
+            lv_obj_set_style_bg_color(obj, lv_color_hex(it.color), 0);
+            lv_obj_set_style_bg_opa(obj, LV_OPA_COVER, 0);
+        }
+        if (!it.name.empty()) {
+            lv_obj_t *lbl = lv_label_create(obj);
+            lv_label_set_text(lbl, it.name.c_str());
+            lv_obj_center(lbl);
+            lv_obj_set_style_text_color(lbl, lv_color_hex(it.textColor), 0);
+        }
     } else if (it.type == "bar") {
         obj = lv_bar_create(parent);
         lv_bar_set_range(obj, it.min, it.max);
@@ -588,7 +612,7 @@ static void _home_render_item_actual(lv_obj_t *parent, const GridItem *pIt, int 
         obj = lv_obj_create(parent);
         _panel_reset(obj);
     } else if (it.type == "menu-item" || it.type == "nav-item") {
-        obj = lv_button_create(parent);
+        obj = lv_btn_create(parent);
         lv_obj_t *lbl = lv_label_create(obj);
         lv_label_set_text(lbl, it.name.empty() ? "MENU ITEM" : it.name.c_str());
         lv_obj_center(lbl);
@@ -605,7 +629,7 @@ static void _home_render_item_actual(lv_obj_t *parent, const GridItem *pIt, int 
         lv_label_set_text(obj, "0.0.0.0"); // Will be updated by dashboard_tick
     } else if (it.type == "native-wifi") {
         obj = lv_obj_create(parent); _panel_reset(obj); lv_obj_clear_flag(obj, LV_OBJ_FLAG_SCROLLABLE);
-        tab_wifi_create(obj, lv_screen_active()); tab_wifi_on_show();
+        tab_wifi_create(obj, lv_scr_act()); tab_wifi_on_show();
     } else if (it.type == "native-system") {
         obj = lv_obj_create(parent); _panel_reset(obj); lv_obj_clear_flag(obj, LV_OBJ_FLAG_SCROLLABLE);
         tab_settings_create(obj);
@@ -632,9 +656,10 @@ static void _home_render_item_actual(lv_obj_t *parent, const GridItem *pIt, int 
         for(int i=0; i<rows; i++) row_dsc[i] = LV_GRID_FR(1);
         row_dsc[rows] = LV_GRID_TEMPLATE_LAST;
         
-        lv_obj_set_grid_dsc_array(obj, col_dsc, row_dsc);
         lv_obj_set_style_pad_all(obj, it.gap, 0);
         lv_obj_set_style_pad_gap(obj, it.gap, 0);
+        
+        lv_obj_set_grid_dsc_array(obj, col_dsc, row_dsc);
         
         GridCleanup *cl = new GridCleanup{col_dsc, row_dsc};
         lv_obj_add_event_cb(obj, [](lv_event_t *e){
@@ -646,14 +671,15 @@ static void _home_render_item_actual(lv_obj_t *parent, const GridItem *pIt, int 
             _home_render_item(obj, child, 0, 0, depth + 1);
         }
     } else if (it.type == "grid-item") {
-        obj = lv_obj_create(parent); _panel_reset(obj);
+        obj = lv_btn_create(parent);
+        // _panel_reset(obj); // Skip reset for now to keep button style
         lv_obj_set_flex_flow(obj, LV_FLEX_FLOW_COLUMN);
-        lv_obj_set_flex_align(obj, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+        lv_obj_set_flex_align(obj, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
         lv_obj_set_style_pad_all(obj, 8, 0);
         lv_obj_set_style_bg_color(obj, lv_color_hex(it.color), 0);
-        lv_obj_set_style_bg_color(obj, lv_color_hex(0x6366f1), LV_STATE_CHECKED);
-        lv_obj_set_style_radius(obj, it.radius, 0);
-        
+        lv_obj_set_style_bg_opa(obj, 255, 0);
+        lv_obj_set_style_radius(obj, 8, 0);
+
         if (!it.topText.empty()) {
             lv_obj_t *top = lv_label_create(obj);
             lv_label_set_text(top, it.topText.c_str());
@@ -667,6 +693,14 @@ static void _home_render_item_actual(lv_obj_t *parent, const GridItem *pIt, int 
             lv_obj_t *mid = lv_label_create(obj);
             lv_label_set_text(mid, it.icon.c_str());
             lv_obj_set_style_text_font(mid, &lv_font_montserrat_24, 0);
+        }
+        
+        if (!it.name.empty() && it.topText.empty() && it.bottomText.empty()) {
+            lv_obj_t *nm = lv_label_create(obj);
+            lv_label_set_text(nm, it.name.c_str());
+            lv_obj_set_style_text_color(nm, lv_color_hex(it.textColor), 0);
+            lv_obj_set_width(nm, lv_pct(100));
+            lv_obj_set_style_text_align(nm, LV_TEXT_ALIGN_CENTER, 0);
         }
         
         if (!it.bottomText.empty()) {
@@ -706,7 +740,7 @@ static void _home_render_item_actual(lv_obj_t *parent, const GridItem *pIt, int 
         lv_obj_set_style_pad_gap(left_cont, 15, 0);
         
         // AP Badge
-        lv_obj_t *ap_btn = lv_button_create(left_cont);
+        lv_obj_t *ap_btn = lv_btn_create(left_cont);
         lv_obj_set_style_bg_color(ap_btn, lv_color_hex(0x6366f1), 0);
         lv_obj_set_style_radius(ap_btn, 0, 0);
         lv_obj_set_style_pad_hor(ap_btn, 12, 0);
@@ -763,55 +797,42 @@ static void _home_render_item_actual(lv_obj_t *parent, const GridItem *pIt, int 
         return; // Already handled positioning inside grid helper
     } else if (it.type == "chart") {
         return; // Disabled permanently for stability test
-#if 0
-        obj = lv_chart_create(parent);
-        bool is_area = (it.chartType == "area");
-        lv_chart_set_type(obj, it.chartType == "bar" ? LV_CHART_TYPE_BAR : (it.chartType == "scatter" ? LV_CHART_TYPE_SCATTER : LV_CHART_TYPE_LINE));
-        lv_chart_set_point_count(obj, it.chartPoints);
-        lv_chart_set_axis_range(obj, LV_CHART_AXIS_PRIMARY_Y, it.min, it.max);
-        lv_chart_set_update_mode(obj, LV_CHART_UPDATE_MODE_SHIFT);
-        
-        lv_chart_series_t *ser = lv_chart_add_series(obj, lv_color_hex(it.chartColor), LV_CHART_AXIS_PRIMARY_Y);
-        
-        if (is_area) {
-            lv_obj_set_style_bg_opa(obj, LV_OPA_40, LV_PART_ITEMS);
-            lv_obj_set_style_bg_grad_dir(obj, LV_GRAD_DIR_VER, LV_PART_ITEMS);
-            // Gradient from chart color to transparent
-            lv_obj_set_style_bg_color(obj, lv_color_hex(it.chartColor), LV_PART_ITEMS);
-            lv_obj_set_style_bg_grad_color(obj, lv_color_hex(it.itemBg), LV_PART_ITEMS); 
-        }
-
-        // Store series in extra field for updates
-        if (!it.id.empty()) {
-            g_live_widgets[it.id] = { obj, it.type, ser };
-        }
-        
-        lv_obj_set_style_bg_color(obj, lv_color_hex(it.itemBg), 0);
-        lv_obj_set_style_border_width(obj, 1, 0);
-        lv_obj_set_style_border_color(obj, lv_color_hex(0x333333), 0);
-#endif
     }
 
     // 2. Apply common properties
     if (obj) {
+        uint32_t layout = lv_obj_get_style_layout(parent, LV_PART_MAIN);
+        bool is_in_grid = (layout == LV_LAYOUT_GRID);
+        bool is_screen = (parent == g_home_grid_cont);
+
         if (it.type == "menu-item" || it.type == "nav-item") {
-            lv_obj_set_size(obj, lv_pct(100), 50); // Improved touch target
+            lv_obj_set_size(obj, it.width > 0 ? it.width : lv_pct(100), it.height > 0 ? it.height : 50);
         } else if (it.type == "roller") {
-            lv_obj_set_pos(obj, it.x + offsetX, it.y + offsetY);
-            // Height is handled by lv_roller_set_visible_row_count
+            if (!is_in_grid) {
+                lv_obj_set_pos(obj, it.x + offsetX, it.y + offsetY);
+            }
+        } else if (is_in_grid) {
+            lv_obj_set_size(obj, LV_PCT(100), LV_PCT(100));
+            lv_obj_set_grid_cell(obj, LV_GRID_ALIGN_STRETCH, it.col, it.cols > 0 ? it.cols : 1,
+                                     LV_GRID_ALIGN_STRETCH, it.row, it.rows > 0 ? it.rows : 1);
         } else {
             lv_obj_set_pos(obj, it.x + offsetX, it.y + offsetY);
-            lv_obj_set_size(obj, it.width, it.height);
+
+            if (it.width > 0 && it.height > 0) {
+                lv_obj_set_size(obj, it.width, it.height);
+            } else {
+                int w = it.width > 0 ? it.width : lv_pct(100);
+                int h = it.height > 0 ? it.height : 50;
+                if (is_screen && it.type == "panel-ref" && it.x == 0 && it.width < 300) {
+                    h = 480;
+                }
+                lv_obj_set_size(obj, w, h);
+            }
         }
 
-        // Apply grid cell if parent is a grid
-        if (lv_obj_get_style_layout(parent, LV_PART_MAIN) == LV_LAYOUT_GRID) {
-            lv_obj_set_grid_cell(obj, LV_GRID_ALIGN_STRETCH, it.col, 1, LV_GRID_ALIGN_STRETCH, it.row, 1);
-        }
-
-        if (it.type == "btn" || it.type == "label" || it.type == "menu-item" || it.type == "nav-item") {
+        if (it.type == "btn" || it.type == "label" || it.type == "menu-item" || it.type == "nav-item" || it.type == "grid-item") {
             lv_obj_set_style_bg_color(obj, lv_color_hex(it.color), 0);
-            lv_obj_set_style_bg_opa(obj, (it.noBg) ? 0 : LV_OPA_COVER, 0);
+            lv_obj_set_style_bg_opa(obj, it.noBg ? 0 : LV_OPA_COVER, 0);
         } else if (it.type == "border") {
             lv_obj_set_style_bg_opa(obj, 0, 0);
         } else {
@@ -858,50 +879,9 @@ static void _home_render_item_actual(lv_obj_t *parent, const GridItem *pIt, int 
             lv_obj_add_event_cb(obj, _item_event_cb, (it.type == "roller" || it.type == "slider" || it.type == "arc") ? LV_EVENT_VALUE_CHANGED : LV_EVENT_CLICKED, persist_act);
         }
 
-        // MQTT Bindings
-#if 0
-#ifdef USE_MQTT
-        if (g_mqtt_enabled && (!it.mqttTopic.empty() || !it.mqttStateTopic.empty())) {
-            MqttBinding *binding = new MqttBinding{it.id, it.type, it.mqttStateTopic.empty() ? it.mqttTopic : it.mqttStateTopic, it.mqttTopic};
-            lv_obj_set_user_data(obj, binding);
-
-            // CRITICAL-1: Cleanup binding and unsubscribe on delete
-            lv_obj_add_event_cb(obj, [](lv_event_t *e) {
-                MqttBinding *data = (MqttBinding *)lv_obj_get_user_data((lv_obj_t *)lv_event_get_target(e));
-                if (data) {
-                    if (esphome::mqtt::global_mqtt_client && !data->topic.empty()) {
-                        esphome::mqtt::global_mqtt_client->unsubscribe(data->topic);
-                    }
-                    delete data;
-                }
-            }, LV_EVENT_DELETE, nullptr);
-            
-            // CRITICAL-2: Thread safe callback via lv_async_call
-            if (!binding->topic.empty()) {
-                esphome::mqtt::global_mqtt_client->subscribe(binding->topic, [obj, binding](const std::string &topic, const std::string &payload) {
-                    auto *u = new MqttUpdateData{obj, binding->type, payload, binding->id};
-                    lv_async_call(_mqtt_lvgl_update_async, u);
-                });
-            }
-
-            if (!it.mqttTopic.empty()) {
-                lv_obj_add_event_cb(obj, _home_item_mqtt_cb, LV_EVENT_VALUE_CHANGED, nullptr);
-                if (it.type == "btn" || it.type == "menu-item" || it.type == "nav-item") {
-                    lv_obj_add_event_cb(obj, _home_item_mqtt_cb, LV_EVENT_CLICKED, nullptr);
-                }
-            }
-        }
-#endif
-#endif
-        
         // 3. Register in Live Registry
         if (!it.id.empty()) {
-            // Preserve existing extra data (e.g. from chart branch)
-            if (g_live_widgets.count(it.id) && g_live_widgets[it.id].obj == obj) {
-                // already registered with extra data
-            } else {
-                g_live_widgets[it.id] = { obj, it.type, nullptr };
-            }
+            g_live_widgets[it.id] = { obj, it.type, nullptr };
         }
 
         // 4. Render Icon Overlay
@@ -917,7 +897,7 @@ static void _home_render_item_actual(lv_obj_t *parent, const GridItem *pIt, int 
                 lv_obj_t *icon_lbl = lv_label_create(obj);
                 lv_label_set_text(icon_lbl, it.icon.c_str());
                 lv_obj_center(icon_lbl);
-                lv_obj_set_style_text_font(icon_lbl, &lv_font_montserrat_24, 0); // Default icon size
+                lv_obj_set_style_text_font(icon_lbl, &lv_font_montserrat_24, 0);
                 lv_obj_add_flag(icon_lbl, LV_OBJ_FLAG_EVENT_BUBBLE);
             }
         }
@@ -942,14 +922,15 @@ static void _home_render_panel_ref(lv_obj_t *parent, const GridItem &it, int off
     lv_obj_set_style_bg_opa(cont, pDef->bg == 0 ? 0 : LV_OPA_COVER, 0);
     lv_obj_set_style_radius(cont, it.radius, 0);
     lv_obj_set_style_clip_corner(cont, true, 0);
-    lv_obj_clear_flag(cont, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_scrollbar_mode(cont, LV_SCROLLBAR_MODE_AUTO);
+    lv_obj_add_flag(cont, LV_OBJ_FLAG_SCROLLABLE);
 
-    /* if (pDef->layout == "h" || pDef->layout == "v") {
+    if (pDef->layout == "v" || pDef->layout == "h") {
         lv_obj_set_flex_flow(cont, pDef->layout == "h" ? LV_FLEX_FLOW_ROW : LV_FLEX_FLOW_COLUMN);
         lv_obj_set_flex_align(cont, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_START);
-        lv_obj_set_style_pad_all(cont, it.padding, 0);
         lv_obj_set_style_pad_gap(cont, pDef->gap, 0);
-    } */
+        lv_obj_set_style_pad_all(cont, it.padding, 0);
+    }
 
     for (const auto &el : pDef->elements) {
         _home_render_item(cont, el, 0, 0, depth + 1);
@@ -971,84 +952,83 @@ static void _home_render_pane_grid(lv_obj_t *parent, const GridItem &it, int off
     _panel_reset(cont);
     lv_obj_set_pos(cont, it.x + offsetX, it.y + offsetY);
     lv_obj_set_size(cont, it.width, it.height);
-    lv_obj_set_style_bg_opa(cont, 0, 0);
-    lv_obj_set_style_pad_all(cont, 0, 0);
-    
-    int cols = pgDef->columns > 0 ? pgDef->columns : 3;
-    int rows = pgDef->rows > 0 ? pgDef->rows : 3;
-    int total_gap = pgDef->gap * (cols - 1);
-    int item_w = (it.width - total_gap) / cols;
+    lv_obj_set_style_bg_opa(cont, LV_OPA_TRANSP, 0);
+    lv_obj_clear_flag(cont, LV_OBJ_FLAG_SCROLLABLE);
 
-    // Set grid layout on the container so children (grid-items) can be positioned
-    lv_coord_t *col_dsc = new lv_coord_t[cols + 1];
-    for(int i=0; i<cols; i++) col_dsc[i] = LV_GRID_FR(1);
-    col_dsc[cols] = LV_GRID_TEMPLATE_LAST;
+    // Item's cols/rows (set by editor) take priority over the pane-grid definition template
+    int cols = it.cols > 0 ? it.cols : (pgDef->columns > 0 ? pgDef->columns : 3);
+    int rows = it.rows > 0 ? it.rows : (pgDef->rows > 0 ? pgDef->rows : 1);
+    int gap  = pgDef->gap;
+    int cell_w = cols > 0 ? (it.width  - gap * (cols - 1)) / cols : it.width;
+    int cell_h = rows > 0 ? (it.height - gap * (rows - 1)) / rows : it.height;
 
-    lv_coord_t *row_dsc = new lv_coord_t[rows + 1];
-    for(int i=0; i<rows; i++) row_dsc[i] = LV_GRID_FR(1);
-    row_dsc[rows] = LV_GRID_TEMPLATE_LAST;
+    ESP_LOGI("GRID", "Rendering pane-grid: %s at %d,%d size %dx%d (%dx%d grid, cell %dx%d, %d children)",
+             lookupId.c_str(), it.x + offsetX, it.y + offsetY, it.width, it.height,
+             cols, rows, cell_w, cell_h, (int)it.children.size());
 
-    lv_obj_set_grid_dsc_array(cont, col_dsc, row_dsc);
-    lv_obj_set_style_pad_column(cont, pgDef->gap, 0);
-    lv_obj_set_style_pad_row(cont, pgDef->gap, 0);
-
-    // Cleanup for grid descriptors
-    GridCleanup *cl = new GridCleanup{col_dsc, row_dsc};
-    lv_obj_add_event_cb(cont, [](lv_event_t *e){
-        GridCleanup *data = (GridCleanup*)lv_event_get_user_data(e);
-        if (data) { delete[] data->c; delete[] data->r; delete data; }
-    }, LV_EVENT_DELETE, cl);
-
+    // Pane tiles from the pane-grid definition (grids.json)
     int pane_idx = 0;
     for (const auto &pane : pgDef->panes) {
-        lv_obj_t *tile = lv_button_create(cont);
-        lv_obj_set_size(tile, item_w, item_w); // Square tiles
-        lv_obj_set_style_bg_color(tile, lv_color_hex(pane.bg), 0);
-        lv_obj_set_style_radius(tile, 12, 0);
-        lv_obj_set_style_pad_all(tile, 8, 0);
-        
         int p_col = pane_idx % cols;
         int p_row = pane_idx / cols;
-        lv_obj_set_grid_cell(tile, LV_GRID_ALIGN_STRETCH, p_col, 1, LV_GRID_ALIGN_STRETCH, p_row, 1);
-        
-        // Icon
-        if (!pane.icon.empty()) {
-            lv_obj_t *icon = lv_label_create(tile);
-            lv_label_set_text(icon, pane.icon.c_str());
-            lv_obj_set_style_text_font(icon, &lv_font_montserrat_24, 0);
-            lv_obj_align(icon, LV_ALIGN_TOP_LEFT, 0, 0);
-            lv_obj_add_flag(icon, LV_OBJ_FLAG_EVENT_BUBBLE);
-        }
+        int cx = p_col * (cell_w + gap);
+        int cy = p_row * (cell_h + gap);
 
-        // Title
+        lv_obj_t *tile = lv_button_create(cont);
+        _panel_reset(tile);
+        lv_obj_set_pos(tile, cx, cy);
+        lv_obj_set_size(tile, cell_w, cell_h);
+        lv_obj_set_style_bg_color(tile, lv_color_hex(pane.bg), 0);
+        lv_obj_set_style_bg_opa(tile, LV_OPA_COVER, 0);
+        lv_obj_set_style_radius(tile, 12, 0);
+        lv_obj_set_style_pad_all(tile, 8, 0);
+        lv_obj_set_flex_flow(tile, LV_FLEX_FLOW_COLUMN);
+        lv_obj_set_flex_align(tile, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+
         lv_obj_t *lbl = lv_label_create(tile);
         lv_label_set_text(lbl, pane.title.c_str());
         lv_obj_set_style_text_font(lbl, &lv_font_montserrat_12, 0);
         lv_obj_set_style_text_color(lbl, lv_color_hex(pane.textColor), 0);
-        lv_obj_align(lbl, LV_ALIGN_BOTTOM_LEFT, 0, 0);
+        lv_obj_set_style_margin_bottom(lbl, 10, 0);
         lv_obj_add_flag(lbl, LV_OBJ_FLAG_EVENT_BUBBLE);
 
-        // Click Actions
+        if (!pane.icon.empty()) {
+            lv_obj_t *icon = lv_label_create(tile);
+            lv_label_set_text(icon, pane.icon.c_str());
+            lv_obj_set_style_text_font(icon, &lv_font_montserrat_24, 0);
+            lv_obj_add_flag(icon, LV_OBJ_FLAG_EVENT_BUBBLE);
+        }
+
         if (!pane.onClick.empty()) {
             lv_obj_add_event_cb(tile, _item_event_cb, LV_EVENT_CLICKED, strdup(pane.onClick.c_str()));
         } else if (!pane.mqttTopic.empty()) {
             std::string act = "mqtt:" + pane.mqttTopic + ":toggle";
             lv_obj_add_event_cb(tile, _item_event_cb, LV_EVENT_CLICKED, strdup(act.c_str()));
         }
-        
-        if (!pane.onDoubleClick.empty()) {
-            lv_obj_add_event_cb(tile, _item_event_cb, LV_EVENT_DOUBLE_CLICKED, strdup(pane.onDoubleClick.c_str()));
-        }
-        
-        if (!pane.onLongPress.empty()) {
+        if (!pane.onDoubleClick.empty())
+            lv_obj_add_event_cb(tile, _item_event_cb, LV_EVENT_CLICKED, strdup(pane.onDoubleClick.c_str()));
+        if (!pane.onLongPress.empty())
             lv_obj_add_event_cb(tile, _item_event_cb, LV_EVENT_LONG_PRESSED, strdup(pane.onLongPress.c_str()));
-        }
         pane_idx++;
     }
 
-    // Render children directly added to this grid item
+    // Grid-item children from the page JSON — placed at manually computed cell positions
     for (const auto& child : it.children) {
-        _home_render_item(cont, child, 0, 0, depth + 1);
+        int col   = std::max(0, std::min(child.col, cols - 1));
+        int row   = std::max(0, std::min(child.row, rows - 1));
+        int span_c = std::max(1, std::min(child.cols > 0 ? child.cols : 1, cols - col));
+        int span_r = std::max(1, std::min(child.rows > 0 ? child.rows : 1, rows - row));
+        if (col != child.col || row != child.row)
+            ESP_LOGW("GRID", "Grid-item '%s' col/row %d,%d clamped to %d,%d (grid %dx%d)",
+                     child.name.c_str(), child.col, child.row, col, row, cols, rows);
+        GridItem placed = child;
+        placed.col    = col;
+        placed.row    = row;
+        placed.x      = col * (cell_w + gap);
+        placed.y      = row * (cell_h + gap);
+        placed.width  = span_c * (cell_w + gap) - gap;
+        placed.height = span_r * (cell_h + gap) - gap;
+        _home_render_item(cont, placed, 0, 0, depth + 1);
     }
 }
 
@@ -1130,5 +1110,5 @@ void tab_home_tick(int h, int m, int s, int dom, int mon, int year, int dow) {
 #endif
     
     std::string best_ip = wifi_active ? sta_ip : (ap_ip != "0.0.0.0" ? ap_ip : "0.0.0.0");
-    // _update_ui_recursive(g_home_grid_cont, time_buf, best_ip.c_str(), sta_ip.c_str(), ap_ip.c_str(), wifi_active);
+    _update_ui_recursive(g_home_grid_cont, time_buf, best_ip.c_str(), sta_ip.c_str(), ap_ip.c_str(), wifi_active);
 }

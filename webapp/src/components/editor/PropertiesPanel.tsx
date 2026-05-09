@@ -202,6 +202,13 @@ export const PropertiesPanel: React.FC = () => {
         if (!item) return <div className="props-panel open">Item Not Found</div>;
         title = item.name;
         type = item.type.toUpperCase();
+
+        // Find parent grid (for grid-item span controls & overlap validation)
+        const parentGrid = item.parentId ? (() => {
+            const scr = project?.screens?.find((s: any) => s.id === activeScreenId);
+            const pg = scr?.pages.find((p: any) => p.id === selectedEntity.pageId);
+            return pg ? findItemRecursive(pg.items, item.parentId) : null;
+        })() : null;
         content = (
             <>
                 <div className="prop-group" style={{ background: '#f8fafc', padding: '10px', borderRadius: '8px', marginBottom: '15px', border: '1px solid #e2e8f0' }}>
@@ -225,10 +232,24 @@ export const PropertiesPanel: React.FC = () => {
                     <div className="prop-group"><div className="prop-label">X</div><input className="prop-input" type="number" value={item.x} onChange={e => updateItem(selectedEntity.pageId, item.id, { x: parseInt(e.target.value) || 0 })} /></div>
                     <div className="prop-group"><div className="prop-label">Y</div><input className="prop-input" type="number" value={item.y} onChange={e => updateItem(selectedEntity.pageId, item.id, { y: parseInt(e.target.value) || 0 })} /></div>
                 </div>
-                {(item.parentId || item.type === 'grid-item') && (
+                {(item.parentId || item.type === 'grid-item') && parentGrid && (
                     <div className="prop-row" style={{marginTop:'8px'}}>
-                        <div className="prop-group"><div className="prop-label">Column</div><input className="prop-input" type="number" value={item.col || 0} onChange={e => updateItem(selectedEntity.pageId, item.id, { col: parseInt(e.target.value) || 0 })} /></div>
-                        <div className="prop-group"><div className="prop-label">Row</div><input className="prop-input" type="number" value={item.row || 0} onChange={e => updateItem(selectedEntity.pageId, item.id, { row: parseInt(e.target.value) || 0 })} /></div>
+                        <div className="prop-group">
+                            <div className="prop-label">Column (0–{(parentGrid.cols||4)-1})</div>
+                            <input className="prop-input" type="number" min="0" max={(parentGrid.cols||4)-1} value={item.col || 0}
+                                onChange={e => {
+                                    const v = Math.max(0, Math.min(parseInt(e.target.value)||0, (parentGrid.cols||4)-1));
+                                    updateItem(selectedEntity.pageId, item.id, { col: v });
+                                }} />
+                        </div>
+                        <div className="prop-group">
+                            <div className="prop-label">Row (0–{(parentGrid.rows||4)-1})</div>
+                            <input className="prop-input" type="number" min="0" max={(parentGrid.rows||4)-1} value={item.row || 0}
+                                onChange={e => {
+                                    const v = Math.max(0, Math.min(parseInt(e.target.value)||0, (parentGrid.rows||4)-1));
+                                    updateItem(selectedEntity.pageId, item.id, { row: v });
+                                }} />
+                        </div>
                     </div>
                 )}
                 <div className="prop-row">
@@ -486,18 +507,92 @@ export const PropertiesPanel: React.FC = () => {
                                 )}
                             </>
                         )}
-                        {item.type === 'grid-item' && (
-                            <>
-                                <div className="prop-group">
-                                    <div className="prop-label">Top Text</div>
-                                    <input className="prop-input" value={item.topText || ''} onChange={e => updateItem(selectedEntity.pageId, item.id, { topText: e.target.value })} />
-                                </div>
-                                <div className="prop-group" style={{marginTop:'8px'}}>
-                                    <div className="prop-label">Bottom Text</div>
-                                    <input className="prop-input" value={item.bottomText || ''} onChange={e => updateItem(selectedEntity.pageId, item.id, { bottomText: e.target.value })} />
-                                </div>
-                            </>
-                        )}
+                        {item.type === 'grid-item' && (() => {
+                            const gCols = parentGrid?.cols || 4;
+                            const gRows = parentGrid?.rows || 4;
+                            const itemCol = item.col || 0;
+                            const itemRow = item.row || 0;
+                            const maxCS = Math.max(1, gCols - itemCol);
+                            const maxRS = Math.max(1, gRows - itemRow);
+
+                            // Cells occupied by siblings (excluding this item)
+                            const sibOccupied = new Set<string>();
+                            (parentGrid?.children || []).forEach((sib: any) => {
+                                if (sib.id === item.id) return;
+                                for (let r = sib.row||0; r < (sib.row||0)+(sib.rows||1); r++)
+                                    for (let c = sib.col||0; c < (sib.col||0)+(sib.cols||1); c++)
+                                        sibOccupied.add(`${c},${r}`);
+                            });
+                            const wouldOverlap = (col: number, row: number, cs: number, rs: number) => {
+                                for (let r = row; r < row+rs; r++)
+                                    for (let c = col; c < col+cs; c++)
+                                        if (sibOccupied.has(`${c},${r}`)) return true;
+                                return false;
+                            };
+
+                            return (
+                                <>
+                                    {parentGrid && (
+                                        <>
+                                            <div className="props-subtitle" style={{marginTop:'16px', fontSize:'11px', fontWeight:900, color:'#6366f1', textTransform:'uppercase', letterSpacing:'1px', marginBottom:'8px', borderBottom:'1px solid #e2e8f0', paddingBottom:'5px'}}>
+                                                Cell Span — Grid {gCols}×{gRows}
+                                            </div>
+                                            <div className="prop-row">
+                                                <div className="prop-group">
+                                                    <div className="prop-label">Span Cols (max {maxCS})</div>
+                                                    <input className="prop-input" type="number" min="1" max={maxCS}
+                                                        value={item.cols || 1}
+                                                        onChange={e => {
+                                                            const v = Math.max(1, Math.min(parseInt(e.target.value)||1, maxCS));
+                                                            if (!wouldOverlap(itemCol, itemRow, v, item.rows||1))
+                                                                updateItem(selectedEntity.pageId, item.id, { cols: v });
+                                                        }} />
+                                                </div>
+                                                <div className="prop-group">
+                                                    <div className="prop-label">Span Rows (max {maxRS})</div>
+                                                    <input className="prop-input" type="number" min="1" max={maxRS}
+                                                        value={item.rows || 1}
+                                                        onChange={e => {
+                                                            const v = Math.max(1, Math.min(parseInt(e.target.value)||1, maxRS));
+                                                            if (!wouldOverlap(itemCol, itemRow, item.cols||1, v))
+                                                                updateItem(selectedEntity.pageId, item.id, { rows: v });
+                                                        }} />
+                                                </div>
+                                            </div>
+                                            {/* Mini grid preview */}
+                                            <div style={{marginTop:'8px', padding:'6px', background:'rgba(15,23,42,0.88)', borderRadius:'8px', border:'1px solid rgba(99,102,241,0.25)'}}>
+                                                <div style={{fontSize:'9px', color:'rgba(255,255,255,0.4)', marginBottom:'4px', fontWeight:800, textTransform:'uppercase'}}>Layout Preview</div>
+                                                <div style={{display:'grid', gridTemplateColumns:`repeat(${gCols},1fr)`, gap:'2px', height:`${gRows*16}px`}}>
+                                                    {Array.from({length:gRows}).flatMap((_,r) =>
+                                                        Array.from({length:gCols}).map((_,c) => {
+                                                            const mine = c>=itemCol && c<itemCol+(item.cols||1) && r>=itemRow && r<itemRow+(item.rows||1);
+                                                            const taken = sibOccupied.has(`${c},${r}`);
+                                                            return (
+                                                                <div key={`${c},${r}`} style={{
+                                                                    background: mine ? '#6366f1' : taken ? '#334155' : 'rgba(255,255,255,0.05)',
+                                                                    borderRadius:'2px',
+                                                                    border:`1px solid ${mine ? '#818cf8' : 'rgba(255,255,255,0.08)'}`,
+                                                                    display:'flex', alignItems:'center', justifyContent:'center',
+                                                                    fontSize:'6px', color: mine ? 'white' : taken ? '#64748b' : 'transparent',
+                                                                }}>{mine ? `${c},${r}` : taken ? '■' : ''}</div>
+                                                            );
+                                                        })
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </>
+                                    )}
+                                    <div className="prop-group" style={{marginTop:'12px'}}>
+                                        <div className="prop-label">Top Text</div>
+                                        <input className="prop-input" value={item.topText || ''} onChange={e => updateItem(selectedEntity.pageId, item.id, { topText: e.target.value })} />
+                                    </div>
+                                    <div className="prop-group" style={{marginTop:'8px'}}>
+                                        <div className="prop-label">Bottom Text</div>
+                                        <input className="prop-input" value={item.bottomText || ''} onChange={e => updateItem(selectedEntity.pageId, item.id, { bottomText: e.target.value })} />
+                                    </div>
+                                </>
+                            );
+                        })()}
                     </>
                 )}
 

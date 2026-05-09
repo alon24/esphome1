@@ -10,10 +10,14 @@ export const WidgetRenderer: React.FC<{
     pageId: string;
     onSelect?: (id: string, pgId: string, isMulti?: boolean) => void;
     onDragStart?: (id: string, pgId: string, e: React.MouseEvent) => void;
+    onResizeStart?: (id: string, pgId: string, e: React.MouseEvent, handle: string) => void;
     selections?: any[];
-}> = ({ it, panels, pageId, onSelect, onDragStart, selections = [] }) => {
+}> = ({ it, panels, pageId, onSelect, onDragStart, onResizeStart, selections = [] }) => {
+    React.useEffect(() => {
+        document.title = "GRIDOS";
+    }, []);
     const { project, setActiveScreenId, updateItem } = React.useContext(GridContext) as any;
-    const isSelected = selections.some(s => s.id === it.id);
+    const isSelected = selections.some(s => (s.id || s) === it.id);
 
     const renderIcon = () => {
         if (!it.icon) return null;
@@ -113,7 +117,7 @@ export const WidgetRenderer: React.FC<{
                             top: isFree ? (el.y || 0) : "auto",
                             flexShrink: 0 
                         }} onMouseDown={(e) => { if(onSelect) { e.stopPropagation(); onSelect(el.id, pageId, e.shiftKey); } }}>
-                            <WidgetRenderer it={el} panels={panels} pageId={pageId} onSelect={onSelect} selections={selections} />
+                            <WidgetRenderer it={el} panels={panels} pageId={pageId} onSelect={onSelect} onDragStart={onDragStart} onResizeStart={onResizeStart} selections={selections} />
                         </div>
                     ))}
                 </div>
@@ -194,7 +198,7 @@ export const WidgetRenderer: React.FC<{
                     <div key={c.id} 
                         onMouseDown={(e) => { if(onSelect) { e.stopPropagation(); onSelect(c.id, pageId, e.shiftKey); } }}
                         style={{ flex: "0 0 auto", cursor: onSelect ? "pointer" : "default" }}>
-                        <WidgetRenderer it={c} panels={panels} pageId={pageId} onSelect={onSelect} selections={selections} />
+                        <WidgetRenderer it={c} panels={panels} pageId={pageId} onSelect={onSelect} onDragStart={onDragStart} onResizeStart={onResizeStart} selections={selections} />
                     </div>
                 ))}
             </div>
@@ -272,55 +276,7 @@ export const WidgetRenderer: React.FC<{
                 <span style={{ fontSize: "10px" }}>▼</span>
             </div>
         );
-    } else if (it.type === "pane-grid") {
-        const columns = it.cols || 3;
-        const rows = it.rows || 1;
-        const gap = it.gap !== undefined ? it.gap : 10;
-        const children = it.children || [];
 
-        content = (
-            <div style={{ 
-                ...baseStyle, 
-                display: "grid", 
-                gridTemplateColumns: `repeat(${columns}, 1fr)`,
-                gridTemplateRows: `repeat(${rows}, 1fr)`,
-                gap: `${gap}px`,
-                padding: `${gap}px`,
-                background: "rgba(99, 102, 241, 0.05)",
-                border: "1px dashed rgba(99, 102, 241, 0.3)"
-            }}>
-                {children.map((child) => (
-                    <div 
-                        key={child.id}
-                        style={{ 
-                            gridColumn: child.col !== undefined ? child.col + 1 : "auto",
-                            gridRow: child.row !== undefined ? child.row + 1 : "auto",
-                            cursor: (it.locked) ? "grab" : "default",
-                            width: '100%',
-                            height: '100%'
-                        }}
-                        onMouseDown={(e) => {
-                            if (e.button === 1) e.preventDefault();
-                            if ((it.locked || e.ctrlKey || e.metaKey || e.button === 1) && onDragStart) {
-                                e.stopPropagation();
-                                if (onSelect) onSelect(child.id, pageId, e.shiftKey);
-                                onDragStart(child.id, pageId, e);
-                            } else if (onSelect) {
-                                e.stopPropagation();
-                                onSelect(child.id, pageId, e.shiftKey);
-                            }
-                        }}
-                    >
-                        <WidgetRenderer it={{ ...child, parentId: it.id }} panels={panels} pageId={pageId} onSelect={onSelect} onDragStart={onDragStart} selections={selections} />
-                    </div>
-                ))}
-                {children.length === 0 && !isSelected && (
-                    <div style={{ gridColumn: `1 / span ${columns}`, gridRow: `1 / span ${rows}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', opacity: 0.3, pointerEvents: 'none' }}>
-                        EMPTY PANE GRID (DRAG PANELS HERE)
-                    </div>
-                )}
-            </div>
-        );
     } else if (it.type === "grid") {
         const columns = it.cols || 2;
         const rows = it.rows || 2;
@@ -360,7 +316,7 @@ export const WidgetRenderer: React.FC<{
                             }
                         }}
                     >
-                        <WidgetRenderer it={{ ...child, parentId: it.id }} panels={panels} pageId={pageId} onSelect={onSelect} onDragStart={onDragStart} selections={selections} />
+                        <WidgetRenderer it={{ ...child, parentId: it.id }} panels={panels} pageId={pageId} onSelect={onSelect} onDragStart={onDragStart} onResizeStart={onResizeStart} selections={selections} />
                     </div>
                 ))}
             </div>
@@ -369,13 +325,17 @@ export const WidgetRenderer: React.FC<{
         content = (
             <div style={{ 
                 ...baseStyle, 
+                width: '100%',
+                height: '100%',
+                flex: 1,
                 display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
                 background: it.itemBg !== undefined ? `#${safeHex(it.itemBg)}` : (color || '#FFFF00'),
                 borderRadius: `${it.radius !== undefined ? it.radius : 12}px`,
                 padding: '8px',
                 border: isSelected ? '4px solid #6366f1' : `2px solid ${bColor || '#000'}`,
                 boxShadow: isSelected ? '0 0 15px rgba(99, 102, 241, 0.4)' : '0 2px 4px rgba(0,0,0,0.1)',
-                overflow: 'hidden',
+                overflow: isSelected ? 'visible' : 'hidden',
+                zIndex: isSelected ? 1000 : 1, // Ensure selected item is on top of neighbors
                 transition: '0.2s',
                 color: '#1e293b'
             }}>
@@ -386,10 +346,29 @@ export const WidgetRenderer: React.FC<{
                 <div style={{ fontSize: '10px', fontWeight: 'bold', color: 'rgba(0,0,0,0.6)', textAlign: 'center', marginTop: '2px', width: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {it.bottomText}
                 </div>
-                {/* Debug info */}
-                <div style={{ position: 'absolute', top: 2, right: 2, fontSize: '8px', background: 'black', color: 'lime', padding: '2px', borderRadius: '2px', zIndex: 10 }}>
-                    c:{it.col ?? '-'}, r:{it.row ?? '-'}
-                </div>
+                {isSelected && onResizeStart && (
+                    <div onMouseDown={e => { e.stopPropagation(); onResizeStart(it.id, pageId, e, 'se'); }}
+                         style={{ 
+                             position: 'absolute', 
+                             bottom: -15, 
+                             right: -15, 
+                             width: 30, 
+                             height: 30, 
+                             background: '#fde047', 
+                             cursor: 'nwse-resize', 
+                             borderRadius: '50%', 
+                             border: '4px solid #1e293b', 
+                             zIndex: 1000000,
+                             boxShadow: '0 0 20px rgba(253, 224, 71, 0.8)',
+                             pointerEvents: 'all',
+                             display: 'flex',
+                             alignItems: 'center',
+                             justifyContent: 'center',
+                             color: '#1e293b',
+                             fontSize: '12px',
+                             fontWeight: 'bold'
+                         }}>↔</div>
+                )}
             </div>
         );
     } else if (it.type === "chart") {
@@ -519,51 +498,151 @@ export const WidgetRenderer: React.FC<{
                 </div>
             );
         }
+    } else if (it.type === "circle") {
+        content = (
+            <div style={{ ...baseStyle, background: 'none', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div style={{ 
+                    width: '100%', 
+                    height: '100%', 
+                    borderRadius: '50%', 
+                    border: `4px solid ${color}`, 
+                    background: it.noBg ? 'none' : color, 
+                    boxSizing: 'border-box',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: txt,
+                    fontSize: `${it.fontSize || 14}px`,
+                    fontWeight: 800,
+                    textAlign: 'center',
+                    padding: '10px'
+                }}>
+                    {it.name || ""}
+                </div>
+            </div>
+        );
     } else if (it.type === "rounded_rect") {
         content = (
             <div style={{ ...baseStyle, background: 'none', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <div style={{ width: '100%', height: '100%', borderRadius: it.radius !== undefined ? it.radius : 15, border: `4px solid ${color}`, boxSizing: 'border-box' }} />
+                <div style={{ 
+                    width: '100%', 
+                    height: '100%', 
+                    borderRadius: it.radius !== undefined ? it.radius : 15, 
+                    border: `4px solid ${color}`, 
+                    background: it.noBg ? 'none' : color, 
+                    boxSizing: 'border-box',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: txt,
+                    fontSize: `${it.fontSize || 14}px`,
+                    fontWeight: 800,
+                    textAlign: 'center',
+                    padding: '10px'
+                }}>
+                    {it.name || ""}
+                </div>
             </div>
         );
-    } else if ((it.type as string) === "pane-grid") {
+    } else if (it.type === "pane-grid") {
         const paneGrid = project.paneGrids?.find((p: any) => p.id === (it.paneGridId || it.id));
-        const cols = paneGrid?.cols || it.cols || 3;
-        const rows = paneGrid?.rows || it.rows || 1;
-        const gap = paneGrid?.gap || it.gap || 10;
+        const cols = it.cols || paneGrid?.cols || 4;
+        const rows = it.rows || paneGrid?.rows || 4;
+        const gap = it.gap ?? paneGrid?.gap ?? 10;
+        const children = it.children || paneGrid?.children || [];
+
+        // Build a set of occupied (col, row) positions for slot rendering
+        const occupied = new Set<string>();
+        children.forEach((c: any) => {
+            const spanC = c.cols || 1;
+            const spanR = c.rows || 1;
+            for (let r = 0; r < spanR; r++) {
+                for (let cc = 0; cc < spanC; cc++) {
+                    occupied.add(`${(c.col ?? 0) + cc},${(c.row ?? 0) + r}`);
+                }
+            }
+        });
+
+        // Empty slot cells (unoccupied grid positions)
+        const emptySlots: React.ReactNode[] = [];
+        for (let r = 0; r < rows; r++) {
+            for (let c = 0; c < cols; c++) {
+                if (!occupied.has(`${c},${r}`)) {
+                    emptySlots.push(
+                        <div
+                            key={`slot-${c}-${r}`}
+                            style={{
+                                gridColumn: `${c + 1} / span 1`,
+                                gridRow: `${r + 1} / span 1`,
+                                border: '1px dashed rgba(255,255,255,0.25)',
+                                borderRadius: '6px',
+                                background: 'rgba(255,255,255,0.06)',
+                                pointerEvents: 'none',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                            }}
+                        >
+                            <span style={{ fontSize: '9px', color: 'rgba(255,255,255,0.2)', fontFamily: 'monospace' }}>{c},{r}</span>
+                        </div>
+                    );
+                }
+            }
+        }
+
         content = (
-            <div style={{ 
-                ...baseStyle, 
+            <div style={{
+                ...baseStyle,
                 display: 'grid',
                 gridTemplateColumns: `repeat(${cols}, 1fr)`,
                 gridTemplateRows: `repeat(${rows}, 1fr)`,
                 gap: `${gap}px`,
-                padding: `${gap}px`,
-                background: it.bg ? `#${safeHex(it.bg)}` : 'rgba(30, 41, 59, 0.5)',
-                border: isSelected ? '4px solid #6366f1' : '1px dashed rgba(148, 163, 184, 0.3)',
+                background: it.bg ? `#${safeHex(it.bg)}` : 'rgba(15, 23, 42, 0.85)',
+                border: isSelected ? '2px solid rgba(99,102,241,0.8)' : '1px dashed rgba(148, 163, 184, 0.5)',
                 borderRadius: '12px',
-                overflow: 'hidden'
+                overflow: 'visible',
+                alignItems: 'stretch',
+                justifyItems: 'stretch',
+                padding: 0,
             }}>
-                {(it.children || paneGrid?.children || [])?.map((child: any) => (
-                    <div 
-                        key={child.id}
-                        style={{ 
-                            position: 'relative',
-                            width: '100%',
-                            height: '100%',
-                            gridColumn: (child.col ?? 0) + 1,
-                            gridRow: (child.row ?? 0) + 1,
-                            zIndex: (selections as any[])?.some((s: any) => s.id === child.id) ? 100 : 1
-                        }}
-                        onClick={(e) => {
-                            if (onSelect) {
-                                e.stopPropagation();
-                                onSelect(child.id, pageId, e.shiftKey);
-                            }
-                        }}
-                    >
-                        <WidgetRenderer it={{ ...child, parentId: it.id }} panels={panels} pageId={pageId} onSelect={onSelect} onDragStart={onDragStart} selections={selections} />
-                    </div>
-                ))}
+                {emptySlots}
+                {children.map((child: any) => {
+                    const isChildSelected = (selections as any[])?.some((s: any) => (s.id || s) == child.id);
+                    return (
+                        <div
+                            key={child.id}
+                            style={{
+                                position: 'relative',
+                                gridColumn: `${Number(child.col ?? 0) + 1} / span ${Number(child.cols || 1)}`,
+                                gridRow: `${Number(child.row ?? 0) + 1} / span ${Number(child.rows || 1)}`,
+                                zIndex: isChildSelected ? 100 : 2,
+                                outline: isChildSelected ? '2px solid #6366f1' : 'none',
+                                outlineOffset: '1px',
+                                borderRadius: '6px',
+                                display: 'flex',
+                                alignItems: 'stretch',
+                                justifyContent: 'stretch'
+                            }}
+                             onMouseDown={(e) => {
+                                if (onSelect) {
+                                    e.stopPropagation();
+                                    onSelect(child.id, pageId, e.shiftKey);
+                                }
+                                if (onDragStart) {
+                                    onDragStart(child.id, pageId, e);
+                                }
+                            }}
+                            onClick={(e) => {
+                                if (onSelect) {
+                                    e.stopPropagation();
+                                    onSelect(child.id, pageId, e.shiftKey);
+                                }
+                            }}
+                        >
+                            <WidgetRenderer it={{ ...child, parentId: it.id }} panels={panels} pageId={pageId} onSelect={onSelect} onDragStart={onDragStart} onResizeStart={onResizeStart} selections={selections} />
+                        </div>
+                    );
+                })}
             </div>
         );
     } else {

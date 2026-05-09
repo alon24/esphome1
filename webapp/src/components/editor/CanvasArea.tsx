@@ -281,6 +281,7 @@ export const CanvasArea: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
     }, [selections, activeScreenId, project]);
 
     const [guides, setGuides] = useState<{x?: number, y?: number, pageId: string}[]>([]);
+    const [hoveredCell, setHoveredCell] = useState<{pageId: string, gridId: string, col: number, row: number} | null>(null);
 
     useEffect(() => {
         const onMove = (e: MouseEvent) => {
@@ -360,6 +361,34 @@ export const CanvasArea: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
                     });
                     setPreviews(next);
                     setGuides(newGuides);
+
+                    // Compute which pane-grid cell the dragged item's top-left is over
+                    if (dragInfo.ids.length === 1 && dragInfo.scrId !== 'panel') {
+                        const hId = dragInfo.ids[0];
+                        const hpv = next[hId];
+                        if (hpv) {
+                            const hScr = project.screens.find((s:any) => s.id === activeScreenId);
+                            const hPg = hScr?.pages.find((p:any) => p.id === dragInfo.pageId);
+                            if (hPg) {
+                                const tg = findGridAtPositionRecursive(hPg.items, hpv.x, hpv.y);
+                                if (tg && tg.type === 'pane-grid') {
+                                    const tgAbs = getAbsoluteOffset(hPg.items, tg.id);
+                                    const tgGap = tg.gap ?? 10;
+                                    const tgCols = tg.cols || 4;
+                                    const tgRows = tg.rows || 4;
+                                    const tgColStep = (tg.width - tgGap * (tgCols - 1)) / tgCols + tgGap;
+                                    const tgRowStep = (tg.height - tgGap * (tgRows - 1)) / tgRows + tgGap;
+                                    const tgRelX = hpv.x - tgAbs.x;
+                                    const tgRelY = hpv.y - tgAbs.y;
+                                    const tgCol = Math.floor(Math.max(0, tgRelX) / tgColStep);
+                                    const tgRow = Math.floor(Math.max(0, tgRelY) / tgRowStep);
+                                    if (tgCol >= 0 && tgCol < tgCols && tgRow >= 0 && tgRow < tgRows) {
+                                        setHoveredCell({ pageId: hPg.id, gridId: tg.id, col: tgCol, row: tgRow });
+                                    } else { setHoveredCell(null); }
+                                } else { setHoveredCell(null); }
+                            }
+                        }
+                    } else { setHoveredCell(null); }
                 } else if (dragInfo.mode === 'resize' && dragInfo.ids.length === 1) {
                     const id = dragInfo.ids[0];
                     const init = dragInfo.initialOffsets[id];
@@ -379,6 +408,43 @@ export const CanvasArea: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
                         w = it.width; h = it.height; 
                         if (it.type === 'header') {
                             x = 0; y = 0; w = baseWidth;
+                        }
+
+                        // Grid snapping for nested items
+                        if (it.parentId) {
+                            const allItems = project.screens.flatMap((s:any) => s.pages.flatMap((p:any) => p.items)).concat(project.panels.flatMap((p:any) => p.elements));
+                            const parent = findItemRecursive(allItems, it.parentId);
+                            if (parent && parent.type === 'pane-grid') {
+                                const gCols = parent.cols || 4;
+                                const gRows = parent.rows || 4;
+                                const gap = parent.gap ?? 10;
+                                const cellW = (parent.width - gap * (gCols - 1)) / gCols;
+                                const cellH = (parent.height - gap * (gRows - 1)) / gRows;
+
+                                // Use actual rendered span width as the baseline (not stored pixel width)
+                                const currentColSpan = it.cols || 1;
+                                const currentRowSpan = it.rows || 1;
+                                const baseW = currentColSpan * (cellW + gap) - gap;
+                                const baseH = currentRowSpan * (cellH + gap) - gap;
+
+                                let colSpan = currentColSpan;
+                                let rowSpan = currentRowSpan;
+                                if (dragInfo.handle?.includes('e')) {
+                                    colSpan = Math.max(1, Math.min(gCols - (it.col || 0), Math.round((baseW + dx + gap) / (cellW + gap))));
+                                }
+                                if (dragInfo.handle?.includes('s')) {
+                                    rowSpan = Math.max(1, Math.min(gRows - (it.row || 0), Math.round((baseH + dy + gap) / (cellH + gap))));
+                                }
+
+                                // Preview rect: absolute coords within the page
+                                const previewX = parent.x + (it.col || 0) * (cellW + gap);
+                                const previewY = parent.y + (it.row || 0) * (cellH + gap);
+                                const previewW = colSpan * (cellW + gap) - gap;
+                                const previewH = rowSpan * (cellH + gap) - gap;
+
+                                setPreviews({ [id]: { x: previewX, y: previewY, w: previewW, h: previewH, _gridResize: true, _colSpan: colSpan, _rowSpan: rowSpan } as any });
+                                return;
+                            }
                         }
                     }
                     if (dragInfo.handle?.includes('e')) w = Math.round(w + dx);
@@ -460,44 +526,35 @@ export const CanvasArea: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
                                         updateItem(dragInfo.pageId, id, { x: finalX, y: finalY });
                                     } else {
                                         const parentGrid = getParentRecursive(pg?.items || [], id);
-                                        
-                                        // Calculate center relative to target page
-                                        const centerRelX = centerX - (targetScr.offsetX + (targetPage.x || 0) * baseWidth);
-                                        const centerRelY = centerY - (targetScr.offsetY + (targetPage.y || 0) * baseHeight);
 
-                                        const targetGrid = findGridAtPositionRecursive(targetPage.items, centerRelX, centerRelY);
-                                        
+                                        // Use cursor position (= top-left anchor) for grid placement
+                                        const cursorRelX = worldX - (targetScr.offsetX + (targetPage.x || 0) * baseWidth);
+                                        const cursorRelY = worldY - (targetScr.offsetY + (targetPage.y || 0) * baseHeight);
+
+                                        const targetGrid = findGridAtPositionRecursive(targetPage.items, cursorRelX, cursorRelY);
+
                                         if (targetGrid && (it?.type === 'grid-item' || it?.type === 'label' || it?.type === 'panel-ref' || it?.type === 'btn')) {
                                             const gridAbs = getAbsoluteOffset(targetPage.items, targetGrid.id);
                                             const gap = targetGrid.gap !== undefined ? targetGrid.gap : 10;
-                                            const colStep = (targetGrid.width - gap) / (targetGrid.cols || (targetGrid.type === 'pane-grid' ? 3 : 2));
-                                            const rowStep = (targetGrid.height - gap) / (targetGrid.rows || 1);
+                                            const gCols = targetGrid.cols || (targetGrid.type === 'pane-grid' ? 4 : 2);
+                                            const gRows = targetGrid.rows || (targetGrid.type === 'pane-grid' ? 4 : 1);
+                                            const colStep = (targetGrid.width - gap * (gCols - 1)) / gCols + gap;
+                                            const rowStep = (targetGrid.height - gap * (gRows - 1)) / gRows + gap;
+
+                                            // Cursor = top-left anchor: use cursor position relative to grid origin
+                                            const relX = worldX - (targetScr.offsetX + (targetPage.x || 0) * baseWidth + gridAbs.x);
+                                            const relY = worldY - (targetScr.offsetY + (targetPage.y || 0) * baseHeight + gridAbs.y);
+
+                                            const newCol = Math.floor(Math.max(0, relX) / colStep);
+                                            const newRow = Math.floor(Math.max(0, relY) / rowStep);
                                             
-                                            const relX = centerX - (targetScr.offsetX + (targetPage.x || 0) * baseWidth + gridAbs.x);
-                                            const relY = centerY - (targetScr.offsetY + (targetPage.y || 0) * baseHeight + gridAbs.y);
-                                            
-                                            const newCol = Math.floor(Math.max(0, relX - gap) / colStep);
-                                            const newRow = Math.floor(Math.max(0, relY - gap) / rowStep);
-                                            
-                                            console.log('DRAG_GRID', {
-                                                targetGridId: targetGrid.id,
-                                                gap, colStep, rowStep, relX, relY, newCol, newRow,
-                                                cols: targetGrid.cols || (targetGrid.type === 'pane-grid' ? 3 : 2),
-                                                rows: targetGrid.rows || 1,
-                                                parentGridId: parentGrid?.id
-                                            });
-                                            
-                                            if (newCol >= 0 && newCol < (targetGrid.cols || (targetGrid.type === 'pane-grid' ? 3 : 2)) && newRow >= 0 && newRow < (targetGrid.rows || 1)) {
+                                            if (newCol >= 0 && newCol < gCols && newRow >= 0 && newRow < gRows) {
                                                 if (parentGrid && parentGrid.id === targetGrid.id) {
-                                                    console.log('DRAG_GRID_REORDER', parentGrid.id, id, newCol, newRow);
                                                     context.reorderGridItem(parentGrid.id, id, newCol, newRow);
                                                 } else {
-                                                    console.log('DRAG_GRID_MOVE', targetGrid.id, id, newCol, newRow);
                                                     context.moveItemToGrid(dragInfo.pageId, targetGrid.id, id, newCol, newRow);
                                                 }
                                                 return;
-                                            } else {
-                                                console.log('DRAG_GRID_FAILED_BOUNDS');
                                             }
                                         }
                                         
@@ -557,12 +614,37 @@ export const CanvasArea: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
                             }
                         }
                         const upPatch: any = { x: finalX, y: finalY };
-                        if (pv?.w !== undefined) upPatch.width = pv.w;
-                        if (pv?.h !== undefined) upPatch.height = pv.h;
+                        if (pv?.w !== undefined) {
+                            if (it?.parentId) {
+                                const allItems = project.screens.flatMap((s:any) => s.pages.flatMap((p:any) => p.items)).concat(project.panels.flatMap((p:any) => p.elements));
+                                const parent = findItemRecursive(allItems, it.parentId);
+                                if (parent && parent.type === 'pane-grid') {
+                                    // If the preview has precomputed span values, use them directly
+                                    if ((pv as any)._gridResize) {
+                                        upPatch.cols = (pv as any)._colSpan;
+                                        upPatch.rows = (pv as any)._rowSpan;
+                                    } else {
+                                    const gCols = parent.cols || 4;
+                                    const gRows = parent.rows || 4;
+                                    const gap = parent.gap ?? 10;
+                                    const cellW = (parent.width - gap * (gCols - 1)) / gCols;
+                                    const cellH = (parent.height - gap * (gRows - 1)) / gRows;
+
+                                    upPatch.cols = Math.max(1, Math.min(gCols, Math.round((pv.w + gap) / (cellW + gap))));
+                                    upPatch.rows = Math.max(1, Math.min(gRows, Math.round(((pv.h ?? it.height) + gap) / (cellH + gap))));
+                                    }
+                                } else {
+                                    upPatch.width = pv.w;
+                                }
+                            } else {
+                                upPatch.width = pv.w;
+                            }
+                        }
+                        if (pv?.h !== undefined && upPatch.rows === undefined) upPatch.height = pv.h;
                         updateItem(dragInfo.pageId, id, upPatch);
                     }
                 });
-                setDragInfo(null); setPreviews({}); setGuides([]);
+                setDragInfo(null); setPreviews({}); setGuides([]); setHoveredCell(null);
             } else if (lasso) {
                 const scr = project.screens.find((s: any) => s.id === activeScreenId);
                 const selected: any[] = [];
@@ -821,7 +903,9 @@ export const CanvasArea: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
                                                     <WidgetRenderer it={it} panels={project.panels} pageId={pg.id} onSelect={(id, pid, multi) => setSelectedEntity({ type: 'item', id, pageId: pid }, activeScreenId, multi)} onDragStart={(id, pid, e) => {
                                                         const offset = getAbsoluteOffset(pg.items, id);
                                                         const rect = (e.currentTarget as any).getBoundingClientRect();
-                                                         setDragInfo({ ids: [id], initialOffsets: { [id]: { ...offset, w: rect.width / scale, h: rect.height / scale } } as any, startX: e.clientX, startY: e.clientY, mode: 'move', pageId: pid, scrId: scr.id });
+                                                        setDragInfo({ ids: [id], initialOffsets: { [id]: { x: offset.x, y: offset.y, w: rect.width / scale, h: rect.height / scale } } as any, startX: e.clientX, startY: e.clientY, mode: 'move', pageId: pid, scrId: scr.id });
+                                                    }} onResizeStart={(id, pid, e, handle) => {
+                                                        setDragInfo({ ids: [id], initialOffsets: {[id]: {x: it.x, y: it.y}}, startX: e.clientX, startY: e.clientY, mode: 'resize', handle, pageId: pid, scrId: scr.id });
                                                     }} selections={itemSel} />
                                                     {isSingle && !isHeader && !isSidePanel && (
                                                         <div onMouseDown={e => { e.stopPropagation(); setDragInfo({ ids: [it.id], initialOffsets: {[it.id]: {x:it.x, y:it.y}}, startX: e.clientX, startY: e.clientY, mode: 'resize', handle: 'se', pageId: pg.id, scrId: scr.id }); }}
@@ -864,10 +948,63 @@ export const CanvasArea: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
                                                 </div>
                                             );
                                         })}
+                                        {/* Resize Preview for Pane-Grid Children */}
+                                        {dragInfo && dragInfo.mode === 'resize' && dragInfo.ids.map(id => {
+                                            const pv = previews[id] as any;
+                                            if (!pv?._gridResize) return null;
+                                            const item = findItemRecursive(pg.items, id);
+                                            if (!item) return null;
+                                            return (
+                                                <div key={`resize-preview-${id}`} style={{
+                                                    position: 'absolute',
+                                                    left: pv.x,
+                                                    top: pv.y,
+                                                    width: pv.w,
+                                                    height: pv.h,
+                                                    background: 'rgba(99,102,241,0.15)',
+                                                    border: '2px dashed #6366f1',
+                                                    borderRadius: '8px',
+                                                    zIndex: 9999,
+                                                    pointerEvents: 'none',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    color: '#6366f1',
+                                                    fontSize: '14px',
+                                                    fontWeight: 'bold',
+                                                    boxShadow: '0 0 0 1px rgba(99,102,241,0.3)',
+                                                }}>
+                                                    {pv._colSpan}×{pv._rowSpan}
+                                                </div>
+                                            );
+                                        })}
+                                        {/* Grid Drop Cell Highlight */}
+                                        {hoveredCell?.pageId === pg.id && dragInfo?.mode === 'move' && (() => {
+                                            const tg = findItemRecursive(pg.items, hoveredCell.gridId);
+                                            if (!tg) return null;
+                                            const tgAbs = getAbsoluteOffset(pg.items, hoveredCell.gridId);
+                                            const tgGap = tg.gap ?? 10;
+                                            const tgCols = tg.cols || 4;
+                                            const tgRows = tg.rows || 4;
+                                            const cellW = (tg.width - tgGap * (tgCols - 1)) / tgCols;
+                                            const cellH = (tg.height - tgGap * (tgRows - 1)) / tgRows;
+                                            const cellX = tgAbs.x + hoveredCell.col * (cellW + tgGap);
+                                            const cellY = tgAbs.y + hoveredCell.row * (cellH + tgGap);
+                                            return (
+                                                <div key="hovered-cell" style={{
+                                                    position: 'absolute', left: cellX, top: cellY,
+                                                    width: cellW, height: cellH,
+                                                    background: 'rgba(99, 102, 241, 0.35)',
+                                                    border: '2px solid rgba(99, 102, 241, 0.9)',
+                                                    borderRadius: '8px', zIndex: 9997, pointerEvents: 'none',
+                                                    boxShadow: 'inset 0 0 20px rgba(99, 102, 241, 0.2)',
+                                                }} />
+                                            );
+                                        })()}
                                     </div>
                                 );
                             })}
-                            <div 
+                            <div
                                 onClick={() => context.addPage(scr.id, Math.max(...scr.pages.map((p:any)=>p.x||0)) + 1, 0)}
                                 style={{ 
                                     position: 'absolute', 
@@ -979,9 +1116,13 @@ export const CanvasArea: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
                                             }, 600);
 
                                             setSelectedEntity({ type: 'item', id: it.id, pageId: pan.id }, 'panel');
-                                            setDragInfo({ ids: [it.id], initialOffsets: {[it.id]: {x:it.x, y:it.y}}, startX: e.clientX, startY: e.clientY, mode: 'move', pageId: pan.id, scrId: 'panel' });
+                                            setDragInfo({ ids: [it.id], initialOffsets: {[it.id]: {x: it.x, y: it.y}}, startX: e.clientX, startY: e.clientY, mode: 'move', pageId: pan.id, scrId: 'panel' });
                                         }}>
-                                            <WidgetRenderer it={it} panels={project.panels} pageId={pan.id} onSelect={(id, pid, multi) => setSelectedEntity({ type: 'item', id, pageId: pid }, 'panel', multi)} selections={itemSel} />
+                                            <WidgetRenderer it={it} panels={project.panels} pageId={pan.id} onSelect={(id, pid, multi) => setSelectedEntity({ type: 'item', id, pageId: pid }, 'panel', multi)} onDragStart={(id, pid, e) => {
+                                                setDragInfo({ ids: [id], initialOffsets: { [id]: { x: it.x, y: it.y } } as any, startX: e.clientX, startY: e.clientY, mode: 'move', pageId: pid, scrId: 'panel' });
+                                            }} onResizeStart={(id, pid, e, handle) => {
+                                                setDragInfo({ ids: [id], initialOffsets: {[id]: {x: it.x, y: it.y}}, startX: e.clientX, startY: e.clientY, mode: 'resize', handle, pageId: pid, scrId: 'panel' });
+                                            }} selections={itemSel} />
                                             {itSel && (
                                                 <div onMouseDown={e => { e.stopPropagation(); setDragInfo({ ids: [it.id], initialOffsets: {[it.id]: {x:it.x, y:it.y}}, startX: e.clientX, startY: e.clientY, mode: 'resize', handle: 'se', pageId: pan.id, scrId: 'panel' }); }}
                                                       style={{ position: 'absolute', bottom: -5, right: -5, width: 10, height: 10, background: '#10b981', cursor: 'nwse-resize', borderRadius: '2px', border: '1px solid white' }} />

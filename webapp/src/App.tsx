@@ -27,7 +27,7 @@ import React, {
 	useMemo,
     useContext
 } from "react";
-import { findItemRecursive, applyRecursive } from "./utils";
+import { findItemRecursive, applyRecursive, normalizeGridChildren } from "./utils";
 
 // --- STYLES ---
 
@@ -446,8 +446,27 @@ function App({ isMobile, width }: { isMobile: boolean, width: number }) {
                     newPanels = prev.panels.map(p => p.id === pageId ? { ...p, elements: p.elements.map(e => e.id === id ? { ...e, ...finalPatch } : e) } : p);
                 }
             }
+            // Keep paneGrids definition in sync when cols/rows change on a pane-grid item
+            let newPaneGrids = prev.paneGrids || [];
+            if (!isPanel && (finalPatch.cols !== undefined || finalPatch.rows !== undefined)) {
+                newPaneGrids = newPaneGrids.map((pg: any) => {
+                    // Match by paneGridId stored on the item (find item first)
+                    const screen = prev.screens.find(s => s.pages.some((p: any) => p.id === pageId));
+                    const page = screen?.pages.find((p: any) => p.id === pageId);
+                    const item = page ? findItemRecursive(page.items, id) : null;
+                    if (item && (item as any).paneGridId === pg.id) {
+                        return {
+                            ...pg,
+                            ...(finalPatch.cols !== undefined ? { cols: finalPatch.cols } : {}),
+                            ...(finalPatch.rows !== undefined ? { rows: finalPatch.rows } : {}),
+                        };
+                    }
+                    return pg;
+                });
+            }
+
             return {
-                ...prev, panels: newPanels,
+                ...prev, panels: newPanels, paneGrids: newPaneGrids,
                 screens: !isPanel ? prev.screens.map(s => ({ ...s, pages: s.pages.map(p => p.id === pageId ? { ...p, items: applyRecursive(p.items, id, it => {
                     const res = { ...it, ...finalPatch };
                     const itPan = it.panelId ? prev.panels.find(p => p.id === it.panelId) : null;
@@ -461,6 +480,20 @@ function App({ isMobile, width }: { isMobile: boolean, width: number }) {
                         const hh = h ? (h.height || 60) : 0;
                         res.x = 0; res.y = hh;
                     }
+
+                    // When a pane-grid's cols/rows changes, clamp all children to fit
+                    if ((it.type === 'pane-grid' || it.type === 'grid') && (finalPatch.cols !== undefined || finalPatch.rows !== undefined) && res.children) {
+                        const newCols = res.cols || 4;
+                        const newRows = res.rows || 4;
+                        res.children = res.children.map((child: any) => {
+                            const col = Math.min(child.col || 0, Math.max(0, newCols - 1));
+                            const row = Math.min(child.row || 0, Math.max(0, newRows - 1));
+                            const cols = Math.min(child.cols || 1, Math.max(1, newCols - col));
+                            const rows = Math.min(child.rows || 1, Math.max(1, newRows - row));
+                            return { ...child, col, row, cols, rows };
+                        });
+                    }
+
                     return res;
                 }) } : p) })) : prev.screens
             };
@@ -600,13 +633,13 @@ function App({ isMobile, width }: { isMobile: boolean, width: number }) {
         try {
             const sortedScreens = [...project.screens].sort((a, b) => a.id === activeScreenId ? 1 : b.id === activeScreenId ? -1 : 0);
             for (const screen of sortedScreens) {
-                const deviceConfig = { 
-                    ...screen, 
-                    width: baseWidth, 
+                const deviceConfig = {
+                    ...screen,
+                    width: baseWidth,
                     height: baseHeight,
                     pages: screen.pages.map(pg => ({
                         ...pg,
-                        items: pg.items // Keep items inside pages
+                        items: normalizeGridChildren(pg.items)
                     }))
                 };
                 await fetch(`http://${remoteIp}/api/grid/config?name=${screen.id}`, { method: 'POST', body: JSON.stringify(deviceConfig), headers: { 'Content-Type': 'application/json' } });
@@ -633,19 +666,28 @@ function App({ isMobile, width }: { isMobile: boolean, width: number }) {
                             return grid;
                         }
                         
-                        const targetIdx = children.findIndex(c => c.col === newCol && c.row === newRow);
-                        console.log('REORDER_GRID: Found', { sourceIdx, targetIdx, newCol, newRow });
-                        
-                        if (targetIdx !== -1 && targetIdx !== sourceIdx) {
-                            // Swap positions
-                            console.log('REORDER_GRID: Swapping', sourceIdx, targetIdx);
-                            const sourceCol = children[sourceIdx].col;
-                            const sourceRow = children[sourceIdx].row;
+                        const srcItem = children[sourceIdx];
+                        const srcSpanC = srcItem.cols || 1;
+                        const srcSpanR = srcItem.rows || 1;
+
+                        // Span-aware: find any sibling whose occupied cells overlap the destination span
+                        const overlapsDestination = (c: any, idx: number) => {
+                            if (idx === sourceIdx) return false;
+                            const cSpanC = c.cols || 1;
+                            const cSpanR = c.rows || 1;
+                            // Check if rectangles overlap
+                            return c.col < newCol + srcSpanC && c.col + cSpanC > newCol &&
+                                   c.row < newRow + srcSpanR && c.row + cSpanR > newRow;
+                        };
+                        const targetIdx = children.findIndex((c, idx) => overlapsDestination(c, idx));
+
+                        if (targetIdx !== -1) {
+                            // Swap: move blocking sibling to where source was
+                            const sourceCol = srcItem.col;
+                            const sourceRow = srcItem.row;
                             children[targetIdx] = { ...children[targetIdx], col: sourceCol, row: sourceRow };
                             children[sourceIdx] = { ...children[sourceIdx], col: newCol, row: newRow };
                         } else {
-                            // Move to empty cell
-                            console.log('REORDER_GRID: Moving to empty cell', sourceIdx);
                             children[sourceIdx] = { ...children[sourceIdx], col: newCol, row: newRow };
                         }
                         return { ...grid, children };

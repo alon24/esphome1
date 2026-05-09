@@ -1,4 +1,26 @@
 #pragma once
+#include <string>
+#include <fstream>
+#include <algorithm>
+
+inline std::string g_fw_version = "v1000"; // Fallback
+
+inline void load_version_info() {
+    FILE *f = fopen("/littlefs/version.txt", "r");
+    if (f) {
+        char buf[32];
+        if (fgets(buf, sizeof(buf), f)) {
+            g_fw_version = buf;
+            // Remove newline
+            g_fw_version.erase(std::remove(g_fw_version.begin(), g_fw_version.end(), '\n'), g_fw_version.end());
+            g_fw_version.erase(std::remove(g_fw_version.begin(), g_fw_version.end(), '\r'), g_fw_version.end());
+        }
+        fclose(f);
+        ESP_LOGI("GRID", "Loaded Firmware Version: %s", g_fw_version.c_str());
+    } else {
+        ESP_LOGW("GRID", "Could not load version.txt from LittleFS");
+    }
+}
 #include <vector>
 #include <string>
 #include <map>
@@ -77,7 +99,7 @@ struct PaneGrid {
     std::deque<Pane> panes;
 };
 
-static std::deque<PaneGrid> g_pane_grids;
+inline std::deque<PaneGrid> g_pane_grids;
 
 struct Page {
     std::string id;
@@ -95,20 +117,20 @@ struct Panel {
     std::deque<GridItem> elements;
 };
 
-static std::deque<Page> g_grid_pages;
-static std::deque<GridItem> g_grid_items; 
-static std::deque<Panel> g_panels;
-static uint32_t g_grid_bg = 0x0e0e0e;
-static uint32_t g_grid_border_color = 0x222222;
-static int g_grid_border_width = 0;
+inline std::deque<Page> g_grid_pages;
+inline std::deque<GridItem> g_grid_items; 
+inline std::deque<Panel> g_panels;
+inline uint32_t g_grid_bg = 0x0e0e0e;
+inline uint32_t g_grid_border_color = 0x222222;
+inline int g_grid_border_width = 0;
 // Shared State
-static std::string g_current_screen = "main";
+inline std::string g_current_screen = "main";
 inline char g_grid_json_cache[65536] __attribute__((weak)); 
 inline bool g_grid_needs_refresh = false;
 inline bool g_grid_needs_cache_clear = false;
 inline std::string g_pending_nav_screen = "";
-static bool g_grid_clear_needed = false;
-static std::string g_grid_clear_screen = "";
+inline bool g_grid_clear_needed = false;
+inline std::string g_grid_clear_screen = "";
 
 inline std::string get_screen_path(const std::string& name) {
     std::string n = name;
@@ -123,7 +145,7 @@ extern void grid_config_clear_cache();
 extern void grid_config_clear_screen_cache(const std::string& name);
 extern bool grid_config_has_screen_cache(const std::string& name);
 
-static void parse_grid_item(JsonObject eObj, GridItem& it) {
+static inline void parse_grid_item(JsonObject eObj, GridItem& it) {
     it.id        = eObj["id"]        | "";
     it.type      = eObj["type"]      | "label";
     it.name      = eObj["name"]      | "Item";
@@ -166,8 +188,8 @@ static void parse_grid_item(JsonObject eObj, GridItem& it) {
     it.opacity = eObj["opacity"] | 255;
     it.hidden = eObj["hidden"] | false;
     it.noBg = eObj["noBg"] | false;
-    it.cols = eObj["cols"] | 2;
-    it.rows = eObj["rows"] | 2;
+    it.cols = eObj["cols"] | 1;
+    it.rows = eObj["rows"] | 1;
     it.gap  = eObj["gap"]  | 10;
     it.locked = eObj["locked"] | false;
     it.topText = eObj["topText"] | "";
@@ -188,7 +210,7 @@ static void parse_grid_item(JsonObject eObj, GridItem& it) {
     }
 }
 
-void grid_panels_load() {
+inline void grid_panels_load() {
     FILE* f = fopen("/littlefs/panels.json", "r");
     if (!f) {
         ESP_LOGW("GRID", "[PANELS] panels.json not found on LittleFS");
@@ -236,7 +258,7 @@ void grid_panels_load() {
     free(buf);
 }
 
-void grid_pane_grids_load() {
+inline void grid_pane_grids_load() {
     FILE* f = fopen("/littlefs/grids.json", "r");
     if (!f) {
         ESP_LOGW("GRID", "[PANE-GRIDS] grids.json not found on disk");
@@ -263,7 +285,7 @@ void grid_pane_grids_load() {
         pg.id = gObj["id"] | "";
         pg.name = gObj["name"] | "";
         pg.columns = gObj["cols"] | gObj["columns"] | 3;
-        pg.rows = gObj["rows"] | 3;
+        pg.rows = gObj["rows"] | 1;
         pg.gap = gObj["gap"] | 10;
         JsonArray pArr = gObj["panes"].as<JsonArray>();
         for (JsonObject pObj : pArr) {
@@ -286,7 +308,7 @@ void grid_pane_grids_load() {
     free(buf);
 }
 
-void grid_config_load(const char* name, bool force = false) {
+inline void grid_config_load(const char* name, bool force = false) {
     if (!force && name && strlen(name) > 0 && name == g_current_screen && g_grid_items.size() > 0) {
         ESP_LOGI("GRID", "Using memory-cached screen: %s", name);
         return; // Skip SPIFFS hit
@@ -371,11 +393,11 @@ void grid_config_load(const char* name, bool force = false) {
     free(buf);
 }
 
-void grid_config_save(const char* json_str, const char* name) {
+inline void grid_config_save(const char* json_str, const char* name) {
     if (name && strlen(name) > 0) {
         g_current_screen = name;
         strncpy(g_active_screen, name, 63);
-        void system_settings_save(); 
+        g_active_screen[63] = '\0';
         system_settings_save();
     }
     std::string path = get_screen_path(g_current_screen);
@@ -391,7 +413,7 @@ void grid_config_save(const char* json_str, const char* name) {
     g_grid_needs_refresh = true;
 }
 
-void ui_navigate_to(const char* name) {
+inline void ui_navigate_to(const char* name) {
     if (name && strlen(name) > 0) {
         g_current_screen = name;
         strncpy(g_active_screen, name, 63);
@@ -401,7 +423,7 @@ void ui_navigate_to(const char* name) {
     grid_config_load(g_current_screen.c_str(), true); // Always force reload from disk
 }
 
-void grid_panels_save(const char* json_str) {
+inline void grid_panels_save(const char* json_str) {
     FILE* f = fopen("/littlefs/panels.json", "w");
     if (f) {
         fputs(json_str, f);
@@ -415,7 +437,7 @@ void grid_panels_save(const char* json_str) {
 
 
 
-void grid_pane_grids_save(const char* json_str) {
+inline void grid_pane_grids_save(const char* json_str) {
     FILE* f = fopen("/littlefs/grids.json", "w");
     if (f) {
         fputs(json_str, f);
@@ -426,7 +448,7 @@ void grid_pane_grids_save(const char* json_str) {
     g_grid_needs_refresh = true;
 }
 
-void grid_list_screens(char* out, size_t max_len) {
+inline void grid_list_screens(char* out, size_t max_len) {
     JsonDocument doc;
     JsonArray arr = doc["screens"].to<JsonArray>();
     
@@ -453,7 +475,7 @@ void grid_list_screens(char* out, size_t max_len) {
     serializeJson(doc, out, max_len);
 }
 
-void grid_config_tick() {
+inline void grid_config_tick() {
     if (g_grid_needs_refresh) {
         if (g_grid_needs_cache_clear) {
             void grid_config_clear_screen_cache(const std::string& name);

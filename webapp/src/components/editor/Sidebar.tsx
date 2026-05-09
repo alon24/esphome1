@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext, useMemo } from "react";
+import React, { useState, useEffect, useContext, useMemo, useRef } from "react";
 import { GridContext } from "../../context/GridContext";
 import { 
     type GridItem, 
@@ -117,6 +117,8 @@ export const Sidebar: React.FC = () => {
           { type: 'btn',     label: 'Button',     icon: '⬡',   defaultW: 160, defaultH: 50 },
           { type: 'clock',   label: 'Clock',      icon: '⏱',   defaultW: 200, defaultH: 60 },
           { type: 'border',  label: 'Frame',      icon: '□',   defaultW: 200, defaultH: 120 },
+          { type: 'circle',  label: 'Circle',     icon: '○',   defaultW: 100, defaultH: 100 },
+          { type: 'rounded_rect', label: 'Round Rect', icon: '▢', defaultW: 200, defaultH: 120 },
         ]
       },
       {
@@ -179,7 +181,7 @@ export const Sidebar: React.FC = () => {
         id: 'advanced', label: 'ADVANCED', icon: '◈',
         widgets: [
           { type: 'panel-ref', label: 'Panel Ref',  icon: '❏',  defaultW: 240, defaultH: 300 },
-          { type: 'pane-grid', label: 'Pane Grid',  icon: '⊞',  defaultW: 800, defaultH: 400 },
+          { type: 'pane-grid', label: 'Pane Grid',  icon: '⊞',  defaultW: 800, defaultH: 400, meta: { cols: 4, rows: 4, gap: 10 } },
           { type: 'grid',      label: 'Grid',       icon: '▦',  defaultW: 400, defaultH: 400, meta: { cols: 2, rows: 2, gap: 10 } },
           { type: 'grid-item', label: 'Grid Item',  icon: '⏹',  defaultW: 100, defaultH: 100, meta: { color: 0xFFFF00, radius: 10, topText: 'Top', icon: '💡', bottomText: 'Bottom' } },
         ]
@@ -386,24 +388,43 @@ const PaletteCard = ({ widget, handlePaletteClick }: { widget: any, handlePalett
 
 const PaletteSection = ({ category, widgets, searchQuery, handlePaletteClick }: { category: any, widgets: any[], searchQuery: string, handlePaletteClick: any }) => {
     const { theme } = useContext(GridContext) as any;
-    const [isOpen, setIsOpen] = useState(category.id !== 'advanced' && category.id !== 'sensors');
-    
+    const storageKey = `gridos-palette-open-${category.id}`;
+    const defaultOpen = category.id !== 'advanced' && category.id !== 'sensors';
+    const [isOpen, setIsOpen] = useState(() => {
+        try {
+            const v = localStorage.getItem(storageKey);
+            return v !== null ? v === 'true' : defaultOpen;
+        } catch { return defaultOpen; }
+    });
+    const sectionRef = useRef<HTMLDivElement>(null);
+
     useEffect(() => {
         if (searchQuery && widgets.length > 0) {
             setIsOpen(true);
         }
     }, [searchQuery, widgets.length]);
 
+    const toggle = () => {
+        const next = !isOpen;
+        setIsOpen(next);
+        try { localStorage.setItem(storageKey, String(next)); } catch {}
+        if (next) {
+            setTimeout(() => {
+                sectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 50);
+        }
+    };
+
     if (widgets.length === 0) return null;
 
-    const labelBg = theme === 'dark' 
+    const labelBg = theme === 'dark'
         ? (isOpen ? 'rgba(30, 41, 59, 0.3)' : 'transparent')
         : (isOpen ? '#f8fafc' : 'transparent');
 
     return (
-        <div style={{ marginBottom: '4px' }}>
-            <div 
-                onClick={() => setIsOpen(!isOpen)} 
+        <div ref={sectionRef} style={{ marginBottom: '4px' }}>
+            <div
+                onClick={toggle}
                 style={{
                     display: 'flex', 
                     alignItems: 'center', 
