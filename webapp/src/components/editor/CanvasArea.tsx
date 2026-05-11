@@ -21,6 +21,8 @@ export const CanvasArea: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
     const [lasso, setLasso] = useState<{ startX: number, startY: number, x: number, y: number, w: number, h: number } | null>(null);
     // Ref mirrors lasso state for synchronous reads in window event handlers (avoids stale closure)
     const lassoRef = useRef<{ startX: number, startY: number, x: number, y: number, w: number, h: number } | null>(null);
+    // Ref mirrors hoveredCell so onUp always reads the latest cell without stale closure
+    const hoveredCellRef = useRef<{ pageId: string, gridId: string, col: number, row: number } | null>(null);
     const [screenDragInfo, setScreenDragInfo] = useState<any>(null);
     const [screenPreview, setScreenPreview] = useState<any>(null);
     const [panelPreview, setPanelPreview] = useState<any>(null);
@@ -405,12 +407,13 @@ export const CanvasArea: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
                                         const clampedY = Math.max(0, Math.min(curY, tg.height - 1));
                                         const tgCol = Math.floor(clampedX / (tgColW + tgGap));
                                         const tgRow = Math.floor(clampedY / (tgRowH + tgGap));
-                                        setHoveredCell({ pageId: hPg.id, gridId: tg.id, col: Math.min(tgCol, tgCols - 1), row: Math.min(tgRow, tgRows - 1) });
-                                    } else { setHoveredCell(null); }
-                                } else { setHoveredCell(null); }
+                                        const hc = { pageId: hPg.id, gridId: tg.id, col: Math.min(tgCol, tgCols - 1), row: Math.min(tgRow, tgRows - 1) };
+                                        hoveredCellRef.current = hc; setHoveredCell(hc);
+                                    } else { hoveredCellRef.current = null; setHoveredCell(null); }
+                                } else { hoveredCellRef.current = null; setHoveredCell(null); }
                             }
                         }
-                    } else { setHoveredCell(null); }
+                    } else { hoveredCellRef.current = null; setHoveredCell(null); }
                 } else if (dragInfo.mode === 'resize' && dragInfo.ids.length === 1) {
                     const id = dragInfo.ids[0];
                     const init = dragInfo.initialOffsets[id];
@@ -574,21 +577,30 @@ export const CanvasArea: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
                                         const isGridableType = it?.type === 'grid-item' || it?.type === 'label' || it?.type === 'panel-ref' || it?.type === 'btn';
 
                                         if (targetGrid && isGridableType) {
-                                            const gridAbs = getAbsoluteOffset(targetPage.items, targetGrid.id);
-                                            const gap = targetGrid.gap !== undefined ? targetGrid.gap : 10;
                                             const gCols = targetGrid.cols || (targetGrid.type === 'pane-grid' ? 4 : 2);
                                             const gRows = targetGrid.rows || (targetGrid.type === 'pane-grid' ? 4 : 1);
-                                            const colStep = (targetGrid.width - gap * (gCols - 1)) / gCols + gap;
-                                            const rowStep = (targetGrid.height - gap * (gRows - 1)) / gRows + gap;
-
-                                            const relX = worldX - (targetScr.offsetX + (targetPage.x || 0) * baseWidth + gridAbs.x);
-                                            const relY = worldY - (targetScr.offsetY + (targetPage.y || 0) * baseHeight + gridAbs.y);
-
                                             const itemColSpan = it?.cols || 1;
                                             const itemRowSpan = it?.rows || 1;
-                                            // Clamp both for span-safety AND for grid-edge overshoot
-                                            const newCol = Math.max(0, Math.min(Math.floor(relX / colStep), gCols - itemColSpan));
-                                            const newRow = Math.max(0, Math.min(Math.floor(relY / rowStep), gRows - itemRowSpan));
+
+                                            let newCol: number, newRow: number;
+
+                                            // Prefer hoveredCellRef: it tracks the cursor-based highlight the user actually sees
+                                            const hcSnap = hoveredCellRef.current;
+                                            if (hcSnap && hcSnap.gridId === targetGrid.id) {
+                                                // hoveredCell col/row already clamped to grid; just clamp for span safety
+                                                newCol = Math.min(hcSnap.col, gCols - itemColSpan);
+                                                newRow = Math.min(hcSnap.row, gRows - itemRowSpan);
+                                            } else {
+                                                // Fallback: compute from ghost top-left position
+                                                const gridAbs = getAbsoluteOffset(targetPage.items, targetGrid.id);
+                                                const gap = targetGrid.gap !== undefined ? targetGrid.gap : 10;
+                                                const colStep = (targetGrid.width - gap * (gCols - 1)) / gCols + gap;
+                                                const rowStep = (targetGrid.height - gap * (gRows - 1)) / gRows + gap;
+                                                const relX = worldX - (targetScr.offsetX + (targetPage.x || 0) * baseWidth + gridAbs.x);
+                                                const relY = worldY - (targetScr.offsetY + (targetPage.y || 0) * baseHeight + gridAbs.y);
+                                                newCol = Math.max(0, Math.min(Math.floor(relX / colStep), gCols - itemColSpan));
+                                                newRow = Math.max(0, Math.min(Math.floor(relY / rowStep), gRows - itemRowSpan));
+                                            }
 
                                             if (parentGrid && parentGrid.id === targetGrid.id) {
                                                 context.reorderGridItem(parentGrid.id, id, newCol, newRow);
@@ -690,7 +702,7 @@ export const CanvasArea: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
                 setTimeout(() => setSettledIds(new Set()), 200);
                 setDraggingIds(new Set());
                 setResizeTooltip(null);
-                setDragInfo(null); setPreviews({}); setGuides([]); setHoveredCell(null);
+                hoveredCellRef.current = null; setDragInfo(null); setPreviews({}); setGuides([]); setHoveredCell(null);
             } else if (lassoRef.current) {
                 const currentLasso = lassoRef.current;
                 lassoRef.current = null;
