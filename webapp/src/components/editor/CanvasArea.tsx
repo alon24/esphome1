@@ -383,7 +383,12 @@ export const CanvasArea: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
                             const hScr = project.screens.find((s:any) => s.id === activeScreenId);
                             const hPg = hScr?.pages.find((p:any) => p.id === dragInfo.pageId);
                             if (hPg) {
-                                const tg = findGridAtPositionRecursive(hPg.items, hpv.x, hpv.y);
+                                // Find grid by ghost position first; fallback to parent grid if ghost drifted outside
+                                let tg = findGridAtPositionRecursive(hPg.items, hpv.x, hpv.y);
+                                if (!tg) {
+                                    const hItem = findItemRecursive(hPg.items, hId);
+                                    if (hItem?.parentId) tg = findItemRecursive(hPg.items, hItem.parentId) as any || null;
+                                }
                                 if (tg && tg.type === 'pane-grid') {
                                     const tgEl = document.getElementById(`item-${tg.id}`);
                                     if (tgEl) {
@@ -395,11 +400,12 @@ export const CanvasArea: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
                                         const tgRows = tg.rows || 4;
                                         const tgColW = (tg.width - tgGap * (tgCols - 1)) / tgCols;
                                         const tgRowH = (tg.height - tgGap * (tgRows - 1)) / tgRows;
-                                        const tgCol = Math.floor(Math.max(0, curX) / (tgColW + tgGap));
-                                        const tgRow = Math.floor(Math.max(0, curY) / (tgRowH + tgGap));
-                                        if (tgCol >= 0 && tgCol < tgCols && tgRow >= 0 && tgRow < tgRows) {
-                                            setHoveredCell({ pageId: hPg.id, gridId: tg.id, col: tgCol, row: tgRow });
-                                        } else { setHoveredCell(null); }
+                                        // Clamp cursor to grid bounds so highlight stays visible at edges
+                                        const clampedX = Math.max(0, Math.min(curX, tg.width - 1));
+                                        const clampedY = Math.max(0, Math.min(curY, tg.height - 1));
+                                        const tgCol = Math.floor(clampedX / (tgColW + tgGap));
+                                        const tgRow = Math.floor(clampedY / (tgRowH + tgGap));
+                                        setHoveredCell({ pageId: hPg.id, gridId: tg.id, col: Math.min(tgCol, tgCols - 1), row: Math.min(tgRow, tgRows - 1) });
                                     } else { setHoveredCell(null); }
                                 } else { setHoveredCell(null); }
                             }
@@ -553,13 +559,21 @@ export const CanvasArea: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
                                     } else {
                                         const parentGrid = getParentRecursive(pg?.items || [], id);
 
-                                        // Use cursor position (= top-left anchor) for grid placement
+                                        // Use ghost top-left to find the target grid
                                         const cursorRelX = worldX - (targetScr.offsetX + (targetPage.x || 0) * baseWidth);
                                         const cursorRelY = worldY - (targetScr.offsetY + (targetPage.y || 0) * baseHeight);
 
-                                        const targetGrid = findGridAtPositionRecursive(targetPage.items, cursorRelX, cursorRelY);
+                                        let targetGrid = findGridAtPositionRecursive(targetPage.items, cursorRelX, cursorRelY);
 
-                                        if (targetGrid && (it?.type === 'grid-item' || it?.type === 'label' || it?.type === 'panel-ref' || it?.type === 'btn')) {
+                                        // Fallback: if ghost drifted past the edge, the item is still a grid child —
+                                        // keep it in its parent grid with a clamped position
+                                        if (!targetGrid && parentGrid && it?.parentId) {
+                                            targetGrid = parentGrid;
+                                        }
+
+                                        const isGridableType = it?.type === 'grid-item' || it?.type === 'label' || it?.type === 'panel-ref' || it?.type === 'btn';
+
+                                        if (targetGrid && isGridableType) {
                                             const gridAbs = getAbsoluteOffset(targetPage.items, targetGrid.id);
                                             const gap = targetGrid.gap !== undefined ? targetGrid.gap : 10;
                                             const gCols = targetGrid.cols || (targetGrid.type === 'pane-grid' ? 4 : 2);
@@ -567,27 +581,25 @@ export const CanvasArea: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
                                             const colStep = (targetGrid.width - gap * (gCols - 1)) / gCols + gap;
                                             const rowStep = (targetGrid.height - gap * (gRows - 1)) / gRows + gap;
 
-                                            // Cursor = top-left anchor: use cursor position relative to grid origin
                                             const relX = worldX - (targetScr.offsetX + (targetPage.x || 0) * baseWidth + gridAbs.x);
                                             const relY = worldY - (targetScr.offsetY + (targetPage.y || 0) * baseHeight + gridAbs.y);
 
                                             const itemColSpan = it?.cols || 1;
                                             const itemRowSpan = it?.rows || 1;
-                                            const newCol = Math.min(Math.floor(Math.max(0, relX) / colStep), gCols - itemColSpan);
-                                            const newRow = Math.min(Math.floor(Math.max(0, relY) / rowStep), gRows - itemRowSpan);
+                                            // Clamp both for span-safety AND for grid-edge overshoot
+                                            const newCol = Math.max(0, Math.min(Math.floor(relX / colStep), gCols - itemColSpan));
+                                            const newRow = Math.max(0, Math.min(Math.floor(relY / rowStep), gRows - itemRowSpan));
 
-                                            if (newCol >= 0 && newCol < gCols && newRow >= 0 && newRow < gRows) {
-                                                if (parentGrid && parentGrid.id === targetGrid.id) {
-                                                    context.reorderGridItem(parentGrid.id, id, newCol, newRow);
-                                                } else {
-                                                    context.moveItemToGrid(dragInfo.pageId, targetGrid.id, id, newCol, newRow);
-                                                }
-                                                return;
+                                            if (parentGrid && parentGrid.id === targetGrid.id) {
+                                                context.reorderGridItem(parentGrid.id, id, newCol, newRow);
+                                            } else {
+                                                context.moveItemToGrid(dragInfo.pageId, targetGrid.id, id, newCol, newRow);
                                             }
+                                            return;
                                         }
-                                        
-                                        else {
-                                            // Regular move on page
+
+                                        // Regular page move (item was never in a grid, or intentionally dragged out)
+                                        if (!it?.parentId) {
                                             if (targetPage.id !== dragInfo.pageId) context.moveItemToPage(dragInfo.pageId, targetPage.id, id, { x: newRelX, y: newRelY });
                                             else updateItem(dragInfo.pageId, id, { x: newRelX, y: newRelY });
                                         }
