@@ -490,13 +490,33 @@ export const PropertiesPanel: React.FC = () => {
                                     Lock Items (D&D Reorder)
                                 </label>
                                 {item.type === 'pane-grid' && (
-                                    <div className="prop-group" style={{ marginTop: '10px', opacity: 0.6 }}>
-                                        <div className="prop-label" style={{ fontSize: '10px', fontStyle: 'italic' }}>Dashboard Link (Advanced)</div>
-                                        <select className="prop-input" value={item.paneGridId || ''} onChange={e => updateItem(selectedEntity.pageId, item.id, { paneGridId: e.target.value })}>
-                                            <option value="">(None)</option>
-                                            {(project.paneGrids || []).map((g: any) => <option key={g.id} value={g.id}>{g.name}</option>)}
-                                        </select>
-                                    </div>
+                                    <>
+                                        <div className="prop-group" style={{ marginTop: '10px', opacity: 0.6 }}>
+                                            <div className="prop-label" style={{ fontSize: '10px', fontStyle: 'italic' }}>Dashboard Link (Advanced)</div>
+                                            <select className="prop-input" value={item.paneGridId || ''} onChange={e => updateItem(selectedEntity.pageId, item.id, { paneGridId: e.target.value })}>
+                                                <option value="">(None)</option>
+                                                {(project.paneGrids || []).map((g: any) => <option key={g.id} value={g.id}>{g.name}</option>)}
+                                            </select>
+                                        </div>
+                                        {(item.children?.length ?? 0) > 0 && (
+                                            <div style={{ marginTop: '12px' }}>
+                                                <div style={{ fontSize: '10px', fontWeight: 900, color: '#6366f1', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '6px' }}>Children</div>
+                                                {(item.children || []).map((child: any) => (
+                                                    <div
+                                                        key={child.id}
+                                                        onClick={() => setSelectedEntity({ type: 'item', id: child.id, pageId: selectedEntity.pageId })}
+                                                        style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '4px 6px', marginBottom: '3px', borderRadius: '4px', cursor: 'pointer', fontSize: '11px', background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.15)' }}
+                                                        onMouseEnter={e => (e.currentTarget.style.background = 'rgba(99,102,241,0.18)')}
+                                                        onMouseLeave={e => (e.currentTarget.style.background = 'rgba(99,102,241,0.08)')}
+                                                    >
+                                                        <span style={{ color: '#94a3b8', fontSize: '10px' }}>{child.col ?? 0},{child.row ?? 0}</span>
+                                                        <span style={{ flex: 1, color: '#e2e8f0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{child.name || child.type}</span>
+                                                        <span style={{ color: '#64748b', fontSize: '10px' }}>{child.cols ?? 1}×{child.rows ?? 1}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </>
                                 )}
                                 <hr className="prop-divider" style={{ margin: '12px 0 8px' }} />
                             </>
