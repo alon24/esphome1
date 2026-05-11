@@ -28,6 +28,7 @@ namespace esphome { namespace react_spa {
 #include "esp_mac.h"
 
 // Forward declarations for grid configuration
+void system_settings_load();
 void grid_config_save(const char* json_str, const char* name);
 void ui_navigate_to(const char* name);
 void grid_config_load(const char* name, bool force);
@@ -116,8 +117,9 @@ class ReactSPAComponent : public Component {
           fclose(f);
       }
   }
-
+  
   void setup() override {
+    ::system_settings_load();
     load_active_path();
     refresh_spa_cache();
 
@@ -125,6 +127,7 @@ class ReactSPAComponent : public Component {
     config.server_port = port_;
     config.uri_match_fn = httpd_uri_match_wildcard;
     config.max_uri_handlers = 40;
+    config.stack_size = 16384; // Increase stack for JSON/FS operations
     config.ctrl_port = 32769; // Shift control port to avoid conflict with default web server
 
     if (httpd_start(&server_, &config) != ESP_OK) return;
@@ -164,6 +167,7 @@ class ReactSPAComponent : public Component {
     reg("/api/wifi/status", HTTP_GET, wifi_status_handler);
     reg("/api/wifi/scan", HTTP_GET, wifi_scan_handler);
     reg("/api/wifi/connect", HTTP_POST, wifi_connect_handler);
+    reg("/api/wifi/forget", HTTP_POST, wifi_forget_handler);
     reg("/api/wifi/ap", HTTP_POST, wifi_ap_handler);
 
     reg("/api/grid/screens", HTTP_GET, [](httpd_req_t *req) {
@@ -195,6 +199,7 @@ class ReactSPAComponent : public Component {
             httpd_query_key_value(query, "name", name, sizeof(name));
         }
         int total = (int)req->content_len;
+        if (total <= 0 || total > 65535) return httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Payload too large");
         char *body = (char*)malloc(total + 1);
         
         int received = 0;
@@ -208,6 +213,7 @@ class ReactSPAComponent : public Component {
             received += r;
         }
         body[total] = '\0';
+        ESP_LOGI(TAG, "Sync: Saving screen config '%s' (%d bytes)", name, total);
         ::grid_config_save(body, name);
         
         // HIGH-4: Thread safe navigation
@@ -261,6 +267,7 @@ class ReactSPAComponent : public Component {
 
     reg("/api/grid/pane-grids", HTTP_POST, [](httpd_req_t *req) {
         int total = (int)req->content_len;
+        if (total <= 0 || total > 65535) return httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Payload too large");
         char *body = (char*)malloc(total + 1);
         int received = 0;
         while (received < total) {
@@ -273,6 +280,7 @@ class ReactSPAComponent : public Component {
             received += r;
         }
         body[total] = '\0';
+        ESP_LOGI(TAG, "Sync: Saving pane-grids (%d bytes)", total);
         grid_pane_grids_save(body);
         free(body);
         httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
@@ -450,15 +458,29 @@ class ReactSPAComponent : public Component {
     return httpd_resp_sendstr(req, "{\"status\":\"ok\"}");
   }
 
+  static void set_cors(httpd_req_t *req) {
+    httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
+    httpd_resp_set_hdr(req, "Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+    httpd_resp_set_hdr(req, "Access-Control-Allow-Headers", "Content-Type");
+  }
+
   static esp_err_t wifi_status_handler(httpd_req_t *req) {
+    set_cors(req);
     esp_netif_ip_info_t sta_ip_info;
     esp_netif_t *sta_netif = esp_netif_get_handle_from_ifkey("WIFI_STA_DEF");
     char sta_ip_str[16] = "0.0.0.0";
     bool connected = false;
-    if (sta_netif) { 
-        esp_netif_get_ip_info(sta_netif, &sta_ip_info); 
+    if (sta_netif) {
+        esp_netif_get_ip_info(sta_netif, &sta_ip_info);
         snprintf(sta_ip_str, sizeof(sta_ip_str), IPSTR, IP2STR(&sta_ip_info.ip));
         connected = (sta_ip_info.ip.addr != 0);
+    }
+
+    // Read saved STA SSID from flash config
+    char sta_ssid[33] = "";
+    wifi_config_t sta_cfg;
+    if (esp_wifi_get_config(WIFI_IF_STA, &sta_cfg) == ESP_OK) {
+        strncpy(sta_ssid, (char*)sta_cfg.sta.ssid, 32);
     }
 
     esp_netif_ip_info_t ap_ip_info;
@@ -468,21 +490,24 @@ class ReactSPAComponent : public Component {
         esp_netif_get_ip_info(ap_netif, &ap_ip_info);
         snprintf(ap_ip_str, sizeof(ap_ip_str), IPSTR, IP2STR(&ap_ip_info.ip));
     }
-    
+
     wifi_mode_t mode;
     esp_wifi_get_mode(&mode);
     bool ap_active = (mode == WIFI_MODE_AP || mode == WIFI_MODE_APSTA);
-    
-    char json[1024]; 
-    int pos = snprintf(json, sizeof(json), "{\"connected\":%s,\"ip\":\"%s\",\"ap_active\":%s,\"ap_always_on\":%s,\"ss_enabled\":%s,\"mqtt_enabled\":%s,\"ap_ssid\":\"%s\",\"ap_ip\":\"%s\",\"ap_clients\":[", 
-                       connected?"true":"false", sta_ip_str, ap_active?"true":"false", ::g_ap_always_on?"true":"false", ::g_ss_enabled?"true":"false", ::g_mqtt_enabled?"true":"false", ::g_ap_ssid, ap_ip_str);
-    
+
+    char json[1024];
+    int pos = snprintf(json, sizeof(json), "{\"connected\":%s,\"ip\":\"%s\",\"ssid\":\"%s\",\"ap_active\":%s,\"ap_always_on\":%s,\"ss_enabled\":%s,\"mqtt_enabled\":%s,\"ap_ssid\":\"%s\",\"ap_ip\":\"%s\",\"ap_clients\":[",
+                       connected?"true":"false", sta_ip_str, sta_ssid,
+                       ap_active?"true":"false", ::g_ap_always_on?"true":"false",
+                       ::g_ss_enabled?"true":"false", ::g_mqtt_enabled?"true":"false",
+                       ::g_ap_ssid, ap_ip_str);
+
     // Get AP Clients
     wifi_sta_list_t clients;
     esp_wifi_ap_get_sta_list(&clients);
     for (int i = 0; i < clients.num; i++) {
         uint8_t *m = clients.sta[i].mac;
-        pos += snprintf(json + pos, sizeof(json) - pos, "%s{\"mac\":\"%02x:%02x:%02x:%02x:%02x:%02x\",\"ip\":\"%d dBm\"}", 
+        pos += snprintf(json + pos, sizeof(json) - pos, "%s{\"mac\":\"%02x:%02x:%02x:%02x:%02x:%02x\",\"ip\":\"%d dBm\"}",
                         (i==0)?"":",", m[0], m[1], m[2], m[3], m[4], m[5], clients.sta[i].rssi);
     }
     snprintf(json + pos, sizeof(json) - pos, "]}");
@@ -530,26 +555,65 @@ class ReactSPAComponent : public Component {
   }
 
   static esp_err_t wifi_connect_handler(httpd_req_t *req) {
+    set_cors(req);
     int total = (int)req->content_len;
     if (total <= 0 || total > 1024) return httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Too big");
     char *body = (char*)malloc(total + 1);
     httpd_req_recv(req, body, total);
     body[total] = '\0';
     ESP_LOGI(TAG, "WiFi Connect requested: %s", body);
+
+    JsonDocument doc;
+    deserializeJson(doc, body);
     free(body);
-    return httpd_resp_sendstr(req, "{\"status\":\"pending\"}");
+
+    const char* ssid = doc["ssid"] | "";
+    const char* pass = doc["password"] | "";
+
+    if (!ssid || ssid[0] == '\0') return httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "No SSID");
+
+    wifi_config_t cfg;
+    memset(&cfg, 0, sizeof(cfg));
+    strncpy((char*)cfg.sta.ssid, ssid, sizeof(cfg.sta.ssid) - 1);
+    if (pass && pass[0]) strncpy((char*)cfg.sta.password, pass, sizeof(cfg.sta.password) - 1);
+    cfg.sta.threshold.authmode = strlen(pass) ? WIFI_AUTH_WPA2_PSK : WIFI_AUTH_OPEN;
+
+    esp_wifi_disconnect();
+    vTaskDelay(pdMS_TO_TICKS(100));
+    esp_wifi_set_storage(WIFI_STORAGE_FLASH);
+    esp_wifi_set_config(WIFI_IF_STA, &cfg);
+    esp_wifi_connect();
+
+    return httpd_resp_sendstr(req, "{\"status\":\"connecting\"}");
+  }
+
+  static esp_err_t wifi_forget_handler(httpd_req_t *req) {
+    set_cors(req);
+    wifi_config_t cfg;
+    memset(&cfg, 0, sizeof(cfg));
+    esp_wifi_disconnect();
+    vTaskDelay(pdMS_TO_TICKS(100));
+    esp_wifi_set_storage(WIFI_STORAGE_FLASH);
+    esp_wifi_set_config(WIFI_IF_STA, &cfg);
+    ESP_LOGI(TAG, "WiFi STA credentials cleared");
+    return httpd_resp_sendstr(req, "{\"status\":\"forgotten\"}");
   }
 
   static esp_err_t wifi_scan_handler(httpd_req_t *req) {
+    set_cors(req);
     wifi_scan_config_t cfg = {}; esp_wifi_scan_start(&cfg, true);
     uint16_t count = 0; esp_wifi_scan_get_ap_num(&count);
-    if (count > 10) count = 10;
+    if (count > 20) count = 20;
     wifi_ap_record_t *recs = (wifi_ap_record_t *)malloc(count * sizeof(wifi_ap_record_t));
     esp_wifi_scan_get_ap_records(&count, recs);
     httpd_resp_set_type(req, "application/json");
     httpd_resp_sendstr_chunk(req, "{\"networks\":[");
     for (int i = 0; i < count; i++) {
-        char entry[128]; snprintf(entry, sizeof(entry), "%s{\"ssid\":\"%s\",\"rssi\":%d}", (i==0)?"":",", recs[i].ssid, recs[i].rssi);
+        if (recs[i].ssid[0] == '\0') continue;
+        bool secure = (recs[i].authmode != WIFI_AUTH_OPEN);
+        char entry[160];
+        snprintf(entry, sizeof(entry), "%s{\"ssid\":\"%s\",\"rssi\":%d,\"secure\":%s}",
+                 (i==0)?"":",", recs[i].ssid, recs[i].rssi, secure ? "true" : "false");
         httpd_resp_sendstr_chunk(req, entry);
     }
     free(recs); httpd_resp_sendstr_chunk(req, "]}");

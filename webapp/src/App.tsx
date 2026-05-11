@@ -39,17 +39,60 @@ const s: Record<string, React.CSSProperties> = {
 	secondaryBtn: { background: "white", border: "1px solid #e2e8f0", color: "#475569", borderRadius: "14px", cursor: "pointer", fontSize: "11px", fontWeight: "800", display: "flex", alignItems: "center", justifyContent: "center", transition: "0.2s" }, 
 };
 
-// --- MOCK API ---
+// --- API ---
+// When served from the device itself, use the current hostname as the device URL.
+// In development (localhost), use the configured remoteIp.
+const getDeviceBaseUrl = () => {
+    const h = window.location.hostname;
+    if (h !== 'localhost' && h !== '127.0.0.1') return `http://${h}`;
+    const ip = localStorage.getItem("ds_remote_ip") || "";
+    return ip ? `http://${ip}` : "";
+};
+
 const API = {
-	async getWifi(): Promise<WifiStatus> {
-		const saved = localStorage.getItem("ds_mock_wifi");
-		return saved ? JSON.parse(saved) : { connected: true, ip: "192.168.1.100", ssid: "MOCK_WIFI", ap_active: false, ap_always_on: false };
-	},
-	async updateSettings(opts: any) {
-        const ip = localStorage.getItem("ds_remote_ip");
-        if (!ip) return true;
+    async getWifi(): Promise<WifiStatus | null> {
+        const base = getDeviceBaseUrl();
+        if (!base) return { connected: false, ip: "0.0.0.0", ssid: "", ap_active: false, ap_always_on: false };
         try {
-            await fetch(`http://${ip}/api/wifi/ap`, {
+            const r = await fetch(`${base}/api/wifi/status`);
+            return r.ok ? r.json() : null;
+        } catch { return null; }
+    },
+    async scanWifi(): Promise<{ ssid: string; rssi: number; secure: boolean }[]> {
+        const base = getDeviceBaseUrl();
+        if (!base) return [];
+        try {
+            const r = await fetch(`${base}/api/wifi/scan`);
+            if (!r.ok) return [];
+            const data = await r.json();
+            return data.networks || [];
+        } catch { return []; }
+    },
+    async connectWifi({ ssid, password }: { ssid: string; password: string }): Promise<boolean> {
+        const base = getDeviceBaseUrl();
+        if (!base) return false;
+        try {
+            const r = await fetch(`${base}/api/wifi/connect`, {
+                method: 'POST',
+                body: JSON.stringify({ ssid, password }),
+                headers: { 'Content-Type': 'application/json' }
+            });
+            return r.ok;
+        } catch { return false; }
+    },
+    async forgetWifi(): Promise<boolean> {
+        const base = getDeviceBaseUrl();
+        if (!base) return false;
+        try {
+            const r = await fetch(`${base}/api/wifi/forget`, { method: 'POST', headers: { 'Content-Type': 'application/json' } });
+            return r.ok;
+        } catch { return false; }
+    },
+    async updateSettings(opts: any) {
+        const base = getDeviceBaseUrl();
+        if (!base) return true;
+        try {
+            await fetch(`${base}/api/wifi/ap`, {
                 method: 'POST',
                 body: JSON.stringify(opts),
                 headers: { 'Content-Type': 'application/json' }
@@ -60,8 +103,8 @@ const API = {
             return false;
         }
     },
-	async saveGrid(name: string, data: any) { return true; },
-	async savePanels(panels: Panel[]) { return true; }
+    async saveGrid(name: string, data: any) { return true; },
+    async savePanels(panels: Panel[]) { return true; }
 };
 
 // --- ERROR BOUNDARY ---
@@ -190,7 +233,7 @@ function App({ isMobile, width }: { isMobile: boolean, width: number }) {
 
 	const refreshWifi = useCallback(async () => {
 		const sw = await API.getWifi();
-		if (sw) setStatus(sw);
+		if (sw !== null) setStatus(sw);
 	}, []);
 
 	useEffect(() => {

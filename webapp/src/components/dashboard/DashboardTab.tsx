@@ -35,7 +35,8 @@ export const DashboardTab: React.FC<any> = ({ theme, setTheme, activeTab, setAct
         const newGrid: PaneGrid = {
             id,
             name: `New Dashboard ${paneGrids.length + 1}`,
-            columns: 3,
+            cols: 3,
+            rows: 3,
             gap: 10,
             panes: []
         };
