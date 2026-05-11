@@ -323,7 +323,7 @@ static void _item_event_cb(lv_event_t *e) {
     if (code == LV_EVENT_CLICKED || code == LV_EVENT_VALUE_CHANGED || code == LV_EVENT_LONG_PRESSED || code == LV_EVENT_DOUBLE_CLICKED) {
         lv_obj_t *obj = (lv_obj_t *)lv_event_get_target(e);
         GridItem *it = (GridItem *)lv_obj_get_user_data(obj);
-        if (it && it->type == "grid-item" && code == LV_EVENT_CLICKED) {
+        if (it && (it->type == "grid-item" || it->type == "tile") && code == LV_EVENT_CLICKED) {
             if (lv_obj_has_state(obj, LV_STATE_CHECKED)) lv_obj_clear_state(obj, LV_STATE_CHECKED);
             else lv_obj_add_state(obj, LV_STATE_CHECKED);
         }
@@ -417,7 +417,7 @@ static void _mqtt_lvgl_update_async(void *arg) {
             if (cur_val != new_val) {
                 lv_roller_set_selected(u->obj, new_val, LV_ANIM_OFF);
             }
-        } else if (u->type == "grid-item") {
+        } else if (u->type == "grid-item" || u->type == "tile") {
             // Update the bottom label (last child usually, if 3 labels were added)
             uint32_t cnt = lv_obj_get_child_cnt(u->obj);
             if (cnt > 0) {
@@ -454,7 +454,7 @@ static void _home_item_mqtt_cb(lv_event_t *e) {
         val = std::to_string(sel);
     } else if (it->type == "dropdown") {
         val = std::to_string(lv_dropdown_get_selected(obj));
-    } else if (it->type == "grid-item") {
+    } else if (it->type == "grid-item" || it->type == "tile") {
         val = lv_obj_has_state(obj, LV_STATE_CHECKED) ? "ON" : "OFF";
     } else {
         val = "PRESS";
@@ -670,7 +670,7 @@ static void _home_render_item_actual(lv_obj_t *parent, const GridItem &it, int o
         for (const auto& child : it.children) {
             _home_render_item(obj, child, 0, 0, depth + 1);
         }
-    } else if (it.type == "grid-item") {
+    } else if (it.type == "grid-item" || it.type == "tile") {
         obj = lv_btn_create(parent);
         // _panel_reset(obj); // Skip reset for now to keep button style
         lv_obj_set_flex_flow(obj, LV_FLEX_FLOW_COLUMN);
@@ -830,7 +830,7 @@ static void _home_render_item_actual(lv_obj_t *parent, const GridItem &it, int o
             }
         }
 
-        if (it.type == "btn" || it.type == "label" || it.type == "menu-item" || it.type == "nav-item" || it.type == "grid-item") {
+        if (it.type == "btn" || it.type == "label" || it.type == "menu-item" || it.type == "nav-item" || it.type == "grid-item" || it.type == "tile") {
             lv_obj_set_style_bg_color(obj, lv_color_hex(it.color), 0);
             lv_obj_set_style_bg_opa(obj, it.noBg ? 0 : LV_OPA_COVER, 0);
         } else if (it.type == "border") {
