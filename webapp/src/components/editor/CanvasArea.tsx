@@ -14,8 +14,13 @@ export const CanvasArea: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
 
     const [previews, setPreviews] = useState<Record<string, {x:number, y:number, w?:number, h?:number}>>({});
     const [xrayMode, setXrayMode] = useState(false);
-    const [dragInfo, setDragInfo] = useState<{ ids: string[], initialOffsets: Record<string, {x:number, y:number}>, startX: number, startY: number, mode: 'move' | 'resize', pageId: string, scrId: string, handle?: string } | null>(null);
+    const [dragInfo, setDragInfo] = useState<{ ids: string[], initialOffsets: Record<string, {x:number, y:number}>, startX: number, startY: number, mode: 'move' | 'resize', pageId: string, scrId: string, handle?: string, committed?: boolean } | null>(null);
+    const [draggingIds, setDraggingIds] = useState<Set<string>>(new Set());
+    const [resizeTooltip, setResizeTooltip] = useState<{ w: number, h: number, screenX: number, screenY: number } | null>(null);
+    const [settledIds, setSettledIds] = useState<Set<string>>(new Set());
     const [lasso, setLasso] = useState<{ startX: number, startY: number, x: number, y: number, w: number, h: number } | null>(null);
+    // Ref mirrors lasso state for synchronous reads in window event handlers (avoids stale closure)
+    const lassoRef = useRef<{ startX: number, startY: number, x: number, y: number, w: number, h: number } | null>(null);
     const [screenDragInfo, setScreenDragInfo] = useState<any>(null);
     const [screenPreview, setScreenPreview] = useState<any>(null);
     const [panelPreview, setPanelPreview] = useState<any>(null);
@@ -286,6 +291,14 @@ export const CanvasArea: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
     useEffect(() => {
         const onMove = (e: MouseEvent) => {
             if (dragInfo) {
+                // 5px threshold before drag becomes "committed"
+                const totalDist = Math.hypot(e.clientX - dragInfo.startX, e.clientY - dragInfo.startY);
+                if (!dragInfo.committed && totalDist < 5) return;
+                if (!dragInfo.committed) {
+                    setDragInfo(prev => prev ? { ...prev, committed: true } : null);
+                    if (dragInfo.mode === 'move') setDraggingIds(new Set(dragInfo.ids));
+                }
+
                 const dx = (e.clientX - dragInfo.startX) / scale;
                 const dy = (e.clientY - dragInfo.startY) / scale;
                 if (dragInfo.mode === 'move') {
@@ -311,7 +324,7 @@ export const CanvasArea: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
                             let newX = Math.round(init.x + dx);
                             let newY = Math.round(init.y + dy);
 
-                            if (!e.altKey && dragInfo.scrId !== 'panel') {
+                            if (!e.altKey && dragInfo.scrId !== 'panel' && !it?.parentId) {
                                 const SNAP_DIST = 8;
                                 const scr = project.screens.find((s:any)=>s.id===activeScreenId);
                                 const pg = scr?.pages.find((p:any)=>p.id===dragInfo.pageId);
@@ -362,7 +375,7 @@ export const CanvasArea: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
                     setPreviews(next);
                     setGuides(newGuides);
 
-                    // Compute which pane-grid cell the dragged item's top-left is over
+                    // Compute which pane-grid cell the cursor is over (cursor-based, immune to snap interference)
                     if (dragInfo.ids.length === 1 && dragInfo.scrId !== 'panel') {
                         const hId = dragInfo.ids[0];
                         const hpv = next[hId];
@@ -372,18 +385,21 @@ export const CanvasArea: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
                             if (hPg) {
                                 const tg = findGridAtPositionRecursive(hPg.items, hpv.x, hpv.y);
                                 if (tg && tg.type === 'pane-grid') {
-                                    const tgAbs = getAbsoluteOffset(hPg.items, tg.id);
-                                    const tgGap = tg.gap ?? 10;
-                                    const tgCols = tg.cols || 4;
-                                    const tgRows = tg.rows || 4;
-                                    const tgColStep = (tg.width - tgGap * (tgCols - 1)) / tgCols + tgGap;
-                                    const tgRowStep = (tg.height - tgGap * (tgRows - 1)) / tgRows + tgGap;
-                                    const tgRelX = hpv.x - tgAbs.x;
-                                    const tgRelY = hpv.y - tgAbs.y;
-                                    const tgCol = Math.floor(Math.max(0, tgRelX) / tgColStep);
-                                    const tgRow = Math.floor(Math.max(0, tgRelY) / tgRowStep);
-                                    if (tgCol >= 0 && tgCol < tgCols && tgRow >= 0 && tgRow < tgRows) {
-                                        setHoveredCell({ pageId: hPg.id, gridId: tg.id, col: tgCol, row: tgRow });
+                                    const tgEl = document.getElementById(`item-${tg.id}`);
+                                    if (tgEl) {
+                                        const tgRect = tgEl.getBoundingClientRect();
+                                        const curX = (e.clientX - tgRect.left) / scale;
+                                        const curY = (e.clientY - tgRect.top) / scale;
+                                        const tgGap = tg.gap ?? 10;
+                                        const tgCols = tg.cols || 4;
+                                        const tgRows = tg.rows || 4;
+                                        const tgColW = (tg.width - tgGap * (tgCols - 1)) / tgCols;
+                                        const tgRowH = (tg.height - tgGap * (tgRows - 1)) / tgRows;
+                                        const tgCol = Math.floor(Math.max(0, curX) / (tgColW + tgGap));
+                                        const tgRow = Math.floor(Math.max(0, curY) / (tgRowH + tgGap));
+                                        if (tgCol >= 0 && tgCol < tgCols && tgRow >= 0 && tgRow < tgRows) {
+                                            setHoveredCell({ pageId: hPg.id, gridId: tg.id, col: tgCol, row: tgRow });
+                                        } else { setHoveredCell(null); }
                                     } else { setHoveredCell(null); }
                                 } else { setHoveredCell(null); }
                             }
@@ -447,16 +463,26 @@ export const CanvasArea: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
                             }
                         }
                     }
-                    if (dragInfo.handle?.includes('e')) w = Math.round(w + dx);
-                    if (dragInfo.handle?.includes('s')) h = Math.round(h + dy);
-                    setPreviews({ [id]: { x, y, w, h } });
+                    // Handle all 8 resize directions
+                    const h_str = dragInfo.handle || 'se';
+                    let newX = x, newY = y, newW = w, newH = h;
+                    if (h_str.includes('e') && !h_str.includes('w')) newW = Math.max(24, Math.round(w + dx));
+                    if (h_str.includes('s') && !h_str.includes('n')) newH = Math.max(20, Math.round(h + dy));
+                    if (h_str.includes('w') && !h_str.includes('e')) { newX = Math.round(x + dx); newW = Math.max(24, Math.round(w - dx)); }
+                    if (h_str.includes('n') && !h_str.includes('s')) { newY = Math.round(y + dy); newH = Math.max(20, Math.round(h - dy)); }
+                    setPreviews({ [id]: { x: newX, y: newY, w: newW, h: newH } });
+                    setResizeTooltip({ w: newW, h: newH, screenX: e.clientX + 12, screenY: e.clientY + 12 });
                 }
-            } else if (lasso) {
-                const rect = document.getElementById('canvas-root')?.getBoundingClientRect();
+            } else if (lassoRef.current) {
+                const el = document.getElementById('canvas-root') as HTMLElement | null;
+                const rect = el?.getBoundingClientRect();
                 if (!rect) return;
-                const curX = (e.clientX - rect.left) / scale;
-                const curY = (e.clientY - rect.top) / scale;
-                setLasso(prev => prev ? ({ ...prev, x: Math.min(prev.startX, curX), y: Math.min(prev.startY, curY), w: Math.abs(curX - prev.startX), h: Math.abs(curY - prev.startY) }) : null);
+                const curX = (e.clientX - rect.left + (el?.scrollLeft || 0)) / scale;
+                const curY = (e.clientY - rect.top + (el?.scrollTop || 0)) / scale;
+                const cur = lassoRef.current;
+                const newLasso = { ...cur, x: Math.min(cur.startX, curX), y: Math.min(cur.startY, curY), w: Math.abs(curX - cur.startX), h: Math.abs(curY - cur.startY) };
+                lassoRef.current = newLasso;
+                setLasso(newLasso);
             } else if (screenDragInfo) {
                 const dx = (e.clientX - screenDragInfo.startX) / scale;
                 const dy = (e.clientY - screenDragInfo.startY) / scale;
@@ -644,19 +670,62 @@ export const CanvasArea: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
                         updateItem(dragInfo.pageId, id, upPatch);
                     }
                 });
+                // Settle animation for moved items
+                const movedIds = new Set(dragInfo.ids);
+                setSettledIds(movedIds);
+                setTimeout(() => setSettledIds(new Set()), 200);
+                setDraggingIds(new Set());
+                setResizeTooltip(null);
                 setDragInfo(null); setPreviews({}); setGuides([]); setHoveredCell(null);
-            } else if (lasso) {
+            } else if (lassoRef.current) {
+                const currentLasso = lassoRef.current;
+                lassoRef.current = null;
+                setLasso(null);
+
                 const scr = project.screens.find((s: any) => s.id === activeScreenId);
+                const scrEntry = worldScreens.find((e: any) => e.scr.id === activeScreenId);
                 const selected: any[] = [];
-                scr?.pages.forEach((pg: any) => pg.items.forEach((it: any) => {
-                    const overlap = !(it.x > lasso.x + lasso.w || it.x + it.width < lasso.x || it.y > lasso.y + lasso.h || it.y + it.height < lasso.y);
-                    if (overlap) selected.push({ type: 'item', id: it.id, pageId: pg.id });
-                }));
+
+                const gatherItems = (items: any[]): any[] => {
+                    const result: any[] = [];
+                    items.forEach((it: any) => { result.push(it); if (it.children) result.push(...gatherItems(it.children)); });
+                    return result;
+                };
+
+                scr?.pages.forEach((pg: any) => {
+                    const pgX = scrEntry ? scrEntry.offsetX + (pg.x || 0) * baseWidth : 0;
+                    const pgY = scrEntry ? scrEntry.offsetY + (pg.y || 0) * baseHeight + 24 : 0;
+                    const allItems = gatherItems(pg.items);
+                    allItems.forEach((it: any) => {
+                        const abs = getAbsoluteOffset(pg.items, it.id);
+                        const itX = pgX + abs.x;
+                        const itY = pgY + abs.y;
+                        let itW = it.width || 120;
+                        let itH = it.height || 40;
+                        if (it.parentId) {
+                            const parent = findItemRecursive(pg.items, it.parentId);
+                            if (parent && parent.type === 'pane-grid') {
+                                const gap = parent.gap ?? 10;
+                                const gCols = parent.cols || 4; const gRows = parent.rows || 4;
+                                const cellW = (parent.width - gap * (gCols - 1)) / gCols;
+                                const cellH = (parent.height - gap * (gRows - 1)) / gRows;
+                                itW = (it.cols || 1) * (cellW + gap) - gap;
+                                itH = (it.rows || 1) * (cellH + gap) - gap;
+                            } else if (parent && parent.type === 'grid') {
+                                const gap = parent.gap ?? 10;
+                                const gCols = parent.cols || 2; const gRows = parent.rows || 1;
+                                itW = (parent.width - (gCols + 1) * gap) / gCols;
+                                itH = (parent.height - (gRows + 1) * gap) / gRows;
+                            }
+                        }
+                        const overlap = !(itX > currentLasso.x + currentLasso.w || itX + itW < currentLasso.x || itY > currentLasso.y + currentLasso.h || itY + itH < currentLasso.y);
+                        if (overlap) selected.push({ type: 'item', id: it.id, pageId: pg.id });
+                    });
+                });
                 if (selected.length > 0) {
                     setSelectedEntity(null, activeScreenId);
                     selected.forEach((s: any) => setSelectedEntity(s, activeScreenId, true));
                 } else setSelectedEntity(null, activeScreenId);
-                setLasso(null);
             }
             if (screenDragInfo) {
                 if (screenDragInfo.type === 'panel' && panelPreview) {
@@ -672,7 +741,7 @@ export const CanvasArea: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
         };
         window.addEventListener('mousemove', onMove); window.addEventListener('mouseup', onUp);
         return () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
-    }, [dragInfo, previews, scale, updateItem, screenDragInfo, updateScreen, project.panels, context, screenPreview, panelPreview, baseWidth, baseHeight, worldScreens, lasso, activeScreenId, project.screens, setSelectedEntity]);
+    }, [dragInfo, previews, scale, updateItem, screenDragInfo, updateScreen, project.panels, context, screenPreview, panelPreview, baseWidth, baseHeight, worldScreens, activeScreenId, project.screens, setSelectedEntity]);
 
     // Zoom with Ctrl+Wheel
     useEffect(() => {
@@ -717,13 +786,14 @@ export const CanvasArea: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
             ref={containerRef}
             style={{ flex: 1, position: 'relative', overflow: 'auto', background: '#ffffff', cursor: lasso ? 'crosshair' : 'default' }}
             onMouseDown={(e) => {
-                if (e.target === e.currentTarget) {
-                    const rect = e.currentTarget.getBoundingClientRect();
-                    const x = (e.clientX - rect.left) / scale;
-                    const y = (e.clientY - rect.top) / scale;
-                    setLasso({ startX: x, startY: y, x, y, w: 0, h: 0 });
-                    setSelectedEntity(null, activeScreenId);
-                }
+                // Widgets/screens call stopPropagation, so anything reaching here is a background click
+                const rect = e.currentTarget.getBoundingClientRect();
+                const x = (e.clientX - rect.left + e.currentTarget.scrollLeft) / scale;
+                const y = (e.clientY - rect.top + e.currentTarget.scrollTop) / scale;
+                const newLasso = { startX: x, startY: y, x, y, w: 0, h: 0 };
+                lassoRef.current = newLasso;
+                setLasso(newLasso);
+                setSelectedEntity(null, activeScreenId);
             }}
         >
             <div style={{ position: 'absolute', transform: `scale(${scale})`, transformOrigin: '0 0', width: '5000px', height: '5000px', padding: '1000px' }}
@@ -858,8 +928,12 @@ export const CanvasArea: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
                                             if (isHeader) { x = 0; y = 0; w = baseWidth; }
                                             else if (isSidePanel) { x = 0; y = headerHeight; }
                                             
+                                            const isDragging = draggingIds.has(it.id);
+                                            const isSettling = settledIds.has(it.id);
                                             return (
-                                                <div key={it.id} id={`item-${it.id}`} className="cv-widget-item" style={{ position: 'absolute', left: x, top: y, width: w, height: h, zIndex: isSelected ? 100 : 1 }}
+                                                <div key={it.id} id={`item-${it.id}`}
+                                                    className={`cv-widget-item${isDragging ? ' cv-dragging' : ''}${isSettling ? ' cv-settled' : ''}`}
+                                                    style={{ position: 'absolute', left: x, top: y, width: w, height: h, zIndex: isSelected ? 100 : 1 }}
                                                      onContextMenu={e => { e.preventDefault(); e.stopPropagation(); setContextMenu({ x: e.clientX, y: e.clientY, type: 'item', id: it.id, pageId: pg.id }); }}
                                                      onMouseDown={e => {
                                                          e.stopPropagation();
@@ -907,9 +981,31 @@ export const CanvasArea: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
                                                     }} onResizeStart={(id, pid, e, handle) => {
                                                         setDragInfo({ ids: [id], initialOffsets: {[id]: {x: it.x, y: it.y}}, startX: e.clientX, startY: e.clientY, mode: 'resize', handle, pageId: pid, scrId: scr.id });
                                                     }} selections={itemSel} />
-                                                    {isSingle && !isHeader && !isSidePanel && (
-                                                        <div onMouseDown={e => { e.stopPropagation(); setDragInfo({ ids: [it.id], initialOffsets: {[it.id]: {x:it.x, y:it.y}}, startX: e.clientX, startY: e.clientY, mode: 'resize', handle: 'se', pageId: pg.id, scrId: scr.id }); }}
-                                                              style={{ position: 'absolute', bottom: -5, right: -5, width: 10, height: 10, background: '#6366f1', cursor: 'nwse-resize', borderRadius: '2px', border: '1px solid white' }} />
+                                                    {isSingle && !isHeader && !isSidePanel && !it.parentId && (() => {
+                                                        const startResize = (handle: string) => (e: React.MouseEvent) => {
+                                                            e.stopPropagation();
+                                                            setDragInfo({ ids: [it.id], initialOffsets: { [it.id]: { x: it.x, y: it.y } }, startX: e.clientX, startY: e.clientY, mode: 'resize', handle, pageId: pg.id, scrId: scr.id, committed: true });
+                                                        };
+                                                        const H = { position: 'absolute' as const, background: '#6366f1', border: '1px solid white', borderRadius: '2px' };
+                                                        const SZ = 9;
+                                                        return (
+                                                            <>
+                                                                {/* Corners */}
+                                                                <div onMouseDown={startResize('nw')} style={{ ...H, top: -4, left: -4, width: SZ, height: SZ, cursor: 'nwse-resize' }} />
+                                                                <div onMouseDown={startResize('ne')} style={{ ...H, top: -4, right: -4, width: SZ, height: SZ, cursor: 'nesw-resize' }} />
+                                                                <div onMouseDown={startResize('sw')} style={{ ...H, bottom: -4, left: -4, width: SZ, height: SZ, cursor: 'nesw-resize' }} />
+                                                                <div onMouseDown={startResize('se')} style={{ ...H, bottom: -4, right: -4, width: SZ, height: SZ, cursor: 'nwse-resize' }} />
+                                                                {/* Edge midpoints */}
+                                                                <div onMouseDown={startResize('n')} style={{ ...H, top: -4, left: '50%', transform: 'translateX(-50%)', width: SZ, height: SZ, cursor: 'ns-resize' }} />
+                                                                <div onMouseDown={startResize('s')} style={{ ...H, bottom: -4, left: '50%', transform: 'translateX(-50%)', width: SZ, height: SZ, cursor: 'ns-resize' }} />
+                                                                <div onMouseDown={startResize('w')} style={{ ...H, top: '50%', left: -4, transform: 'translateY(-50%)', width: SZ, height: SZ, cursor: 'ew-resize' }} />
+                                                                <div onMouseDown={startResize('e')} style={{ ...H, top: '50%', right: -4, transform: 'translateY(-50%)', width: SZ, height: SZ, cursor: 'ew-resize' }} />
+                                                            </>
+                                                        );
+                                                    })()}
+                                                    {/* Grid-items: show span hint instead of resize handles */}
+                                                    {isSingle && it.parentId && (
+                                                        <div title="Resize via Span Cols/Rows in Layout tab" style={{ position: 'absolute', bottom: -4, right: -4, width: 9, height: 9, background: '#94a3b8', borderRadius: '2px', border: '1px solid white', cursor: 'not-allowed' }} />
                                                     )}
                                                 </div>
                                             );
@@ -978,7 +1074,7 @@ export const CanvasArea: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
                                                 </div>
                                             );
                                         })}
-                                        {/* Grid Drop Cell Highlight */}
+                                        {/* Grid Drop Cell Highlight — indigo=free, amber=occupied */}
                                         {hoveredCell?.pageId === pg.id && dragInfo?.mode === 'move' && (() => {
                                             const tg = findItemRecursive(pg.items, hoveredCell.gridId);
                                             if (!tg) return null;
@@ -990,15 +1086,26 @@ export const CanvasArea: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
                                             const cellH = (tg.height - tgGap * (tgRows - 1)) / tgRows;
                                             const cellX = tgAbs.x + hoveredCell.col * (cellW + tgGap);
                                             const cellY = tgAbs.y + hoveredCell.row * (cellH + tgGap);
+                                            const draggingItemId = dragInfo.ids[0];
+                                            const occupied = (tg.children || []).some((c: any) =>
+                                                c.id !== draggingItemId &&
+                                                c.col <= hoveredCell.col && hoveredCell.col < c.col + (c.cols || 1) &&
+                                                c.row <= hoveredCell.row && hoveredCell.row < c.row + (c.rows || 1)
+                                            );
+                                            const cellColor = occupied ? 'rgba(245,158,11,0.35)' : 'rgba(99,102,241,0.35)';
+                                            const borderColor = occupied ? 'rgba(245,158,11,0.9)' : 'rgba(99,102,241,0.9)';
                                             return (
                                                 <div key="hovered-cell" style={{
                                                     position: 'absolute', left: cellX, top: cellY,
                                                     width: cellW, height: cellH,
-                                                    background: 'rgba(99, 102, 241, 0.35)',
-                                                    border: '2px solid rgba(99, 102, 241, 0.9)',
+                                                    background: cellColor,
+                                                    border: `2px solid ${borderColor}`,
                                                     borderRadius: '8px', zIndex: 9997, pointerEvents: 'none',
-                                                    boxShadow: 'inset 0 0 20px rgba(99, 102, 241, 0.2)',
-                                                }} />
+                                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                    fontSize: '10px', fontWeight: 800, color: occupied ? '#92400e' : '#4338ca',
+                                                }}>
+                                                    {occupied ? '⚠ occupied' : `${hoveredCell.col},${hoveredCell.row}`}
+                                                </div>
                                             );
                                         })()}
                                     </div>
@@ -1265,6 +1372,17 @@ export const CanvasArea: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
                 <button onClick={() => setScale(Math.max(0.2, scale - 0.1))} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer' }}>−</button>
                 <span style={{ fontSize: '12px', fontWeight: 800 }}>{Math.round(scale * 100)}%</span>
                 <button onClick={() => setScale(Math.min(2, scale + 0.1))} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer' }}>+</button>
+                {/* Resize size tooltip */}
+                {resizeTooltip && (
+                    <div style={{
+                        position: 'fixed', left: resizeTooltip.screenX, top: resizeTooltip.screenY,
+                        background: '#1e293b', color: 'white', fontSize: '11px', fontWeight: 800,
+                        padding: '3px 8px', borderRadius: '5px', pointerEvents: 'none', zIndex: 100001,
+                        fontFamily: 'monospace', border: '1px solid #334155',
+                    }}>
+                        {resizeTooltip.w} × {resizeTooltip.h}
+                    </div>
+                )}
                 {contextMenu && (
                     <div style={{ position: 'fixed', left: contextMenu.x, top: contextMenu.y, zIndex: 100000, background: '#1e293b', border: '1px solid #334155', borderRadius: '8px', padding: '4px', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.5)', minWidth: '160px' }}>
                         <div onClick={() => context.reorderItem(contextMenu.pageId, contextMenu.id, 'front')} style={{ padding: '8px 12px', color: 'white', fontSize: '12px', cursor: 'pointer', borderRadius: '4px' }} onMouseEnter={e => e.currentTarget.style.background = '#334155'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>Bring to Front</div>
