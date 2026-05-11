@@ -93,6 +93,10 @@ export const Sidebar: React.FC = () => {
             if (item && (item.type === 'nav-menu' || item.type === 'grid' || item.type === 'pane-grid')) {
                 parentId = item.id;
                 targetPageId = activeTarget.pageId!;
+            } else if (item && (item as any).parentId) {
+                // Selected item is a grid child (e.g. tile) — add into the same parent grid
+                parentId = (item as any).parentId;
+                targetPageId = activeTarget.pageId!;
             } else {
                 targetPageId = activeTarget.pageId!;
             }
