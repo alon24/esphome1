@@ -339,7 +339,7 @@ export const PropertiesPanel: React.FC = () => {
                         </div>
 
                         {/* tile top/bottom text */}
-                        {item.type === 'tile' && (
+                        {(item.type === 'tile' || item.type === 'grid-item') && (
                             <>
                                 <div className="prop-group">
                                     <div className="prop-label">Top Text</div>

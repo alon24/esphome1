@@ -322,7 +322,7 @@ export const WidgetRenderer: React.FC<{
                 ))}
             </div>
         );
-    } else if (it.type === "tile") {
+    } else if (it.type === "tile" || it.type === "grid-item") {
         content = (
             <div style={{ 
                 ...baseStyle, 

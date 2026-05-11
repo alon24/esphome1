@@ -574,7 +574,7 @@ export const CanvasArea: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
                                             targetGrid = parentGrid;
                                         }
 
-                                        const isGridableType = it?.type === 'tile' || it?.type === 'label' || it?.type === 'panel-ref' || it?.type === 'btn';
+                                        const isGridableType = it?.type === 'tile' || it?.type === 'grid-item' || it?.type === 'label' || it?.type === 'panel-ref' || it?.type === 'btn';
 
                                         if (targetGrid && isGridableType) {
                                             const gCols = targetGrid.cols || (targetGrid.type === 'pane-grid' ? 4 : 2);

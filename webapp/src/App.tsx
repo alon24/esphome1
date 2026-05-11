@@ -116,6 +116,32 @@ function App({ isMobile, width }: { isMobile: boolean, width: number }) {
 		    };
         }
         if (!data.paneGrids) data.paneGrids = [];
+
+        // Migrate grid-item → tile and fix stored cell dimensions
+        const migrateItems = (items: any[]): any[] => items.map(it => {
+            const migrated = { ...it };
+            if (migrated.type === 'grid-item') migrated.type = 'tile';
+            if (migrated.children?.length) migrated.children = migrateItems(migrated.children);
+            // Fix stored width/height for pane-grid children to match actual CSS cell size
+            if (migrated.parentId && migrated.type === 'tile') {
+                const parent = items.find((p: any) => p.id === migrated.parentId) ||
+                    data.screens.flatMap((s: any) => s.pages.flatMap((p: any) => p.items)).find((p: any) => p.id === migrated.parentId);
+                if (parent?.type === 'pane-grid') {
+                    const gap = parent.gap ?? 10;
+                    const cols = parent.cols || 4;
+                    const rows = parent.rows || 4;
+                    const cW = (parent.width - gap * (cols - 1)) / cols;
+                    const cH = (parent.height - gap * (rows - 1)) / rows;
+                    migrated.width = Math.round((migrated.cols || 1) * (cW + gap) - gap);
+                    migrated.height = Math.round((migrated.rows || 1) * (cH + gap) - gap);
+                }
+            }
+            return migrated;
+        });
+        data.screens = data.screens.map((s: any) => ({
+            ...s, pages: s.pages.map((p: any) => ({ ...p, items: migrateItems(p.items) }))
+        }));
+
         return { past: [], present: data, future: [] };
 	});
 
@@ -345,9 +371,9 @@ function App({ isMobile, width }: { isMobile: boolean, width: number }) {
                     targetGrid = page?.items.find(it => (it.type === 'grid' || it.type === 'pane-grid') && fx! >= it.x && fx! <= it.x + it.width && fy! >= it.y && fy! <= it.y + it.height);
                 }
                 
-                const isNestableInGrid = (tGrid: GridItem, droppedType: ElementType) => {
-                    if (tGrid.type === 'grid' && droppedType === 'tile') return true;
-                    if (tGrid.type === 'pane-grid' && (droppedType === 'panel-ref' || droppedType === 'tile' || droppedType === 'label')) return true;
+                const isNestableInGrid = (tGrid: GridItem, droppedType: string) => {
+                    if (tGrid.type === 'grid' && (droppedType === 'tile' || droppedType === 'grid-item')) return true;
+                    if (tGrid.type === 'pane-grid' && (droppedType === 'panel-ref' || droppedType === 'tile' || droppedType === 'grid-item' || droppedType === 'label')) return true;
                     return false;
                 };
 
@@ -422,7 +448,7 @@ function App({ isMobile, width }: { isMobile: boolean, width: number }) {
                     };
                 }
 
-                if (type === 'tile' && !targetGrid) return prev; // Disallow tile on regular page
+                if ((type === 'tile' || type === 'grid-item') && !targetGrid) return prev; // Disallow tile on regular page
 
                 return { ...prev, screens: prev.screens.map(s => ({ ...s, pages: s.pages.map(p => p.id === pageId ? { ...p, items: [...p.items, pageItem] } : p) })) };
             }
