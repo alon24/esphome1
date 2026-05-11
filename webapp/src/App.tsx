@@ -346,27 +346,41 @@ function App({ isMobile, width }: { isMobile: boolean, width: number }) {
                 }
                 
                 const isNestableInGrid = (tGrid: GridItem, droppedType: ElementType) => {
-                    if (tGrid.type === 'grid' && droppedType === 'grid-item') return true;
-                    if (tGrid.type === 'pane-grid' && (droppedType === 'panel-ref' || droppedType === 'grid-item' || droppedType === 'label')) return true;
+                    if (tGrid.type === 'grid' && droppedType === 'tile') return true;
+                    if (tGrid.type === 'pane-grid' && (droppedType === 'panel-ref' || droppedType === 'tile' || droppedType === 'label')) return true;
                     return false;
                 };
 
                 if (targetGrid && isNestableInGrid(targetGrid, type)) {
-                    const colWidth = targetGrid.width / (targetGrid.cols || (targetGrid.type === 'pane-grid' ? 3 : 2));
-                    const rowHeight = targetGrid.height / (targetGrid.rows || 1);
-                    
+                    const tgGap = targetGrid.gap ?? 10;
+                    const tgCols = targetGrid.cols || (targetGrid.type === 'pane-grid' ? 3 : 2);
+                    const tgRows = targetGrid.rows || 1;
+                    let cellW: number, cellH: number, colStep: number, rowStep: number;
+                    if (targetGrid.type === 'pane-grid') {
+                        cellW = (targetGrid.width - tgGap * (tgCols - 1)) / tgCols;
+                        cellH = (targetGrid.height - tgGap * (tgRows - 1)) / tgRows;
+                        colStep = cellW + tgGap;
+                        rowStep = cellH + tgGap;
+                    } else {
+                        cellW = (targetGrid.width - (tgCols + 1) * tgGap) / tgCols;
+                        cellH = (targetGrid.height - (tgRows + 1) * tgGap) / tgRows;
+                        colStep = cellW + tgGap;
+                        rowStep = cellH + tgGap;
+                    }
+
                     let col = 0;
                     let row = 0;
-                    
+
                     if (fx !== undefined && fy !== undefined && !parentId) {
-                        col = Math.floor((fx! - targetGrid.x) / colWidth);
-                        row = Math.floor((fy! - targetGrid.y) / rowHeight);
+                        const originX = targetGrid.type === 'pane-grid' ? targetGrid.x : targetGrid.x + tgGap;
+                        const originY = targetGrid.type === 'pane-grid' ? targetGrid.y : targetGrid.y + tgGap;
+                        col = Math.max(0, Math.min(Math.floor((fx! - originX) / colStep), tgCols - 1));
+                        row = Math.max(0, Math.min(Math.floor((fy! - originY) / rowStep), tgRows - 1));
                     } else {
-                        // Find first empty cell if parentId was forced
                         const occupied = (targetGrid.children || []).map((c: any) => `${c.col},${c.row}`);
                         let found = false;
-                        for (let r = 0; r < (targetGrid.rows || 1); r++) {
-                            for (let c = 0; c < (targetGrid.cols || (targetGrid.type === 'pane-grid' ? 3 : 2)); c++) {
+                        for (let r = 0; r < tgRows; r++) {
+                            for (let c = 0; c < tgCols; c++) {
                                 if (!occupied.includes(`${c},${r}`)) {
                                     col = c; row = r; found = true; break;
                                 }
@@ -374,17 +388,17 @@ function App({ isMobile, width }: { isMobile: boolean, width: number }) {
                             if (found) break;
                         }
                     }
-                    
-                    const nestedItem = { 
-                        ...pageItem, 
-                        col, 
-                        row, 
-                        color: type === 'grid-item' ? 0xFFFF00 : pageItem.color, 
-                        radius: type === 'grid-item' ? 10 : pageItem.radius, 
-                        noBg: type === 'grid-item' ? false : pageItem.noBg, 
+
+                    const nestedItem = {
+                        ...pageItem,
+                        col,
+                        row,
+                        color: type === 'tile' ? 0xFFFF00 : pageItem.color,
+                        radius: type === 'tile' ? 10 : pageItem.radius,
+                        noBg: type === 'tile' ? false : pageItem.noBg,
                         parentId: targetGrid.id,
-                        width: colWidth - (targetGrid.gap || 10),
-                        height: rowHeight - (targetGrid.gap || 10)
+                        width: Math.floor(cellW),
+                        height: Math.floor(cellH),
                     };
                     
                     return {
@@ -408,7 +422,7 @@ function App({ isMobile, width }: { isMobile: boolean, width: number }) {
                     };
                 }
 
-                if (type === 'grid-item' && !targetGrid) return prev; // Disallow grid-item on regular page
+                if (type === 'tile' && !targetGrid) return prev; // Disallow tile on regular page
 
                 return { ...prev, screens: prev.screens.map(s => ({ ...s, pages: s.pages.map(p => p.id === pageId ? { ...p, items: [...p.items, pageItem] } : p) })) };
             }

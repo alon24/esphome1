@@ -213,7 +213,7 @@ export const Sidebar: React.FC = () => {
           { type: 'panel-ref', label: 'Panel Ref',  icon: '❏',  defaultW: 240, defaultH: 300 },
           { type: 'pane-grid', label: 'Pane Grid',  icon: '⊞',  defaultW: 800, defaultH: 400, meta: { cols: 4, rows: 4, gap: 10 } },
           { type: 'grid',      label: 'Grid',       icon: '▦',  defaultW: 400, defaultH: 400, meta: { cols: 2, rows: 2, gap: 10 } },
-          { type: 'grid-item', label: 'Grid Item',  icon: '⏹',  defaultW: 100, defaultH: 100, meta: { color: 0xFFFF00, radius: 10, topText: 'Top', icon: '💡', bottomText: 'Bottom' } },
+          { type: 'tile',      label: 'Tile',       icon: '⏹',  defaultW: 100, defaultH: 100, meta: { color: 0xFFFF00, radius: 10, topText: 'Top', icon: '💡', bottomText: 'Bottom' } },
         ]
       }
     ], [dynamicSensors]);

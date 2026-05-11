@@ -338,8 +338,8 @@ export const PropertiesPanel: React.FC = () => {
                             </div>
                         </div>
 
-                        {/* grid-item top/bottom text */}
-                        {item.type === 'grid-item' && (
+                        {/* tile top/bottom text */}
+                        {item.type === 'tile' && (
                             <>
                                 <div className="prop-group">
                                     <div className="prop-label">Top Text</div>
@@ -764,7 +764,7 @@ export const PropertiesPanel: React.FC = () => {
                     <button className="props-close" onClick={() => setSelectedEntity(null)}>✕</button>
                 </div>
 
-                {/* Breadcrumb for grid-items */}
+                {/* Breadcrumb for tiles */}
                 {showTabs && parentGrid && (
                     <div style={{
                         display: 'flex', alignItems: 'center', gap: '4px',
