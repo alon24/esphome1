@@ -144,6 +144,22 @@ body {
 
 .pulse { animation: pulseGlow 2s infinite; }
 
+/* ── Canvas drag / settle ── */
+@keyframes drop-settle {
+    0%   { transform: scale(1.025); }
+    60%  { transform: scale(0.995); }
+    100% { transform: scale(1); }
+}
+
+.cv-widget-item.cv-dragging {
+    opacity: 0.52 !important;
+    pointer-events: none;
+}
+
+.cv-widget-item.cv-settled {
+    animation: drop-settle 180ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
 ::-webkit-scrollbar {
 	width: 6px;
 }

@@ -377,7 +377,9 @@ export const CanvasArea: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
                     setPreviews(next);
                     setGuides(newGuides);
 
-                    // Compute which pane-grid cell the cursor is over (cursor-based, immune to snap interference)
+                    // Compute hovered pane-grid cell from the ghost's top-left (= item anchor),
+                    // so the highlight tracks where the item would actually land regardless of
+                    // where within the item the user grabbed.
                     if (dragInfo.ids.length === 1 && dragInfo.scrId !== 'panel') {
                         const hId = dragInfo.ids[0];
                         const hpv = next[hId];
@@ -385,31 +387,29 @@ export const CanvasArea: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
                             const hScr = project.screens.find((s:any) => s.id === activeScreenId);
                             const hPg = hScr?.pages.find((p:any) => p.id === dragInfo.pageId);
                             if (hPg) {
-                                // Find grid by ghost position first; fallback to parent grid if ghost drifted outside
+                                // Find grid via ghost; fallback to parent when ghost drifted outside bounds
                                 let tg = findGridAtPositionRecursive(hPg.items, hpv.x, hpv.y);
                                 if (!tg) {
                                     const hItem = findItemRecursive(hPg.items, hId);
                                     if (hItem?.parentId) tg = findItemRecursive(hPg.items, hItem.parentId) as any || null;
                                 }
                                 if (tg && tg.type === 'pane-grid') {
-                                    const tgEl = document.getElementById(`item-${tg.id}`);
-                                    if (tgEl) {
-                                        const tgRect = tgEl.getBoundingClientRect();
-                                        const curX = (e.clientX - tgRect.left) / scale;
-                                        const curY = (e.clientY - tgRect.top) / scale;
-                                        const tgGap = tg.gap ?? 10;
-                                        const tgCols = tg.cols || 4;
-                                        const tgRows = tg.rows || 4;
-                                        const tgColW = (tg.width - tgGap * (tgCols - 1)) / tgCols;
-                                        const tgRowH = (tg.height - tgGap * (tgRows - 1)) / tgRows;
-                                        // Clamp cursor to grid bounds so highlight stays visible at edges
-                                        const clampedX = Math.max(0, Math.min(curX, tg.width - 1));
-                                        const clampedY = Math.max(0, Math.min(curY, tg.height - 1));
-                                        const tgCol = Math.floor(clampedX / (tgColW + tgGap));
-                                        const tgRow = Math.floor(clampedY / (tgRowH + tgGap));
-                                        const hc = { pageId: hPg.id, gridId: tg.id, col: Math.min(tgCol, tgCols - 1), row: Math.min(tgRow, tgRows - 1) };
-                                        hoveredCellRef.current = hc; setHoveredCell(hc);
-                                    } else { hoveredCellRef.current = null; setHoveredCell(null); }
+                                    const tgGap = tg.gap ?? 10;
+                                    const tgCols = tg.cols || 4;
+                                    const tgRows = tg.rows || 4;
+                                    const colStep = (tg.width - tgGap * (tgCols - 1)) / tgCols + tgGap;
+                                    const rowStep = (tg.height - tgGap * (tgRows - 1)) / tgRows + tgGap;
+                                    // Ghost position relative to grid origin (clamped to valid range)
+                                    const tgAbs = getAbsoluteOffset(hPg.items, tg.id);
+                                    const relX = hpv.x - tgAbs.x;
+                                    const relY = hpv.y - tgAbs.y;
+                                    const hItem = findItemRecursive(hPg.items, hId);
+                                    const itemColSpan = hItem?.cols || 1;
+                                    const itemRowSpan = hItem?.rows || 1;
+                                    const tgCol = Math.max(0, Math.min(Math.floor(relX / colStep), tgCols - itemColSpan));
+                                    const tgRow = Math.max(0, Math.min(Math.floor(relY / rowStep), tgRows - itemRowSpan));
+                                    const hc = { pageId: hPg.id, gridId: tg.id, col: tgCol, row: tgRow };
+                                    hoveredCellRef.current = hc; setHoveredCell(hc);
                                 } else { hoveredCellRef.current = null; setHoveredCell(null); }
                             }
                         }

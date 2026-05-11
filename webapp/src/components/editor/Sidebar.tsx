@@ -1,14 +1,14 @@
 import React, { useState, useEffect, useContext, useMemo, useRef } from "react";
 import { GridContext } from "../../context/GridContext";
-import { 
-    type GridItem, 
-    type Page, 
-    type Screen, 
-    type Panel, 
+import {
+    type GridItem,
+    type Page,
+    type Screen,
+    type Panel,
     type ElementType,
-    SMART_COMPONENTS 
+    SMART_COMPONENTS
 } from "../../types";
-import { findItemRecursive } from "../../utils";
+import { findItemRecursive, findFirstFreePosition } from "../../utils";
 
 const createGhostImage = (label: string, icon: string, w: number, h: number) => {
     const ghost = document.createElement('div');
@@ -40,12 +40,12 @@ const createGhostImage = (label: string, icon: string, w: number, h: number) => 
 };
 
 export const Sidebar: React.FC = () => {
-    const { 
-        project, 
-        activeScreenId, 
-        setActiveScreenId, 
-        selections, 
-        setSelectedEntity, 
+    const {
+        project,
+        activeScreenId,
+        setActiveScreenId,
+        selections,
+        setSelectedEntity,
         addItem,
         addScreen,
         updateScreen,
@@ -55,7 +55,9 @@ export const Sidebar: React.FC = () => {
         updatePanel,
         selectedEntity,
         theme,
-        remoteIp
+        remoteIp,
+        baseWidth,
+        baseHeight,
     } = useContext(GridContext) as any;
 
     const [dynamicSensors, setDynamicSensors] = useState<any[]>([]);
@@ -101,7 +103,35 @@ export const Sidebar: React.FC = () => {
         if (!targetPageId) return;
 
         if (e.detail >= 2) {
-            addItem(type, targetPageId, parentId, panelId, 20, 20, meta, true);
+            const defaultW = meta?.w || 120;
+            const defaultH = meta?.h || 40;
+            let sx = 40, sy = 40;
+
+            if (!parentId) {
+                // Smart placement: below selected item, or center of page
+                const scr = project?.screens?.find((s: any) => s.id === activeScreenId);
+                const pg = scr?.pages?.find((p: any) => p.id === targetPageId);
+                const pageItems: GridItem[] = pg?.items || [];
+
+                if (activeTarget?.type === 'item' && activeTarget.pageId === targetPageId) {
+                    const selItem = findItemRecursive(pageItems, activeTarget.id);
+                    if (selItem && !(selItem as any).parentId) {
+                        // Place below the selected item
+                        sx = selItem.x;
+                        sy = selItem.y + selItem.height + 12;
+                    }
+                } else {
+                    // Center of page with overlap avoidance
+                    sx = Math.max(0, Math.floor(((baseWidth || 800) - defaultW) / 2));
+                    sy = Math.max(0, Math.floor(((baseHeight || 480) - defaultH) / 2));
+                }
+
+                const { x, y } = findFirstFreePosition(pageItems, defaultW, defaultH, sx, sy);
+                addItem(type, targetPageId, parentId, panelId, x, y, meta);
+            } else {
+                // Has parent grid — addItem handles cell assignment
+                addItem(type, targetPageId, parentId, panelId, 20, 20, meta);
+            }
         } else {
             if (activeTarget?.type !== 'page' && activeTarget?.type !== 'item') {
                 setSelectedEntity({ type: 'page', id: targetPageId }, activeScreenId, true);
@@ -340,14 +370,6 @@ const PaletteCard = ({ widget, handlePaletteClick }: { widget: any, handlePalett
     const [isHovered, setIsHovered] = useState(false);
     const { theme } = useContext(GridContext) as any;
 
-    const bgColor = theme === 'dark' 
-        ? (isHovered ? '#1e293b' : '#111827')
-        : (isHovered ? '#f1f5f9' : '#ffffff');
-    
-    const borderColor = theme === 'dark'
-        ? (isHovered ? '#6366f1' : '#1e293b')
-        : (isHovered ? '#6366f1' : '#e2e8f0');
-
     return (
         <div
             draggable
@@ -356,32 +378,72 @@ const PaletteCard = ({ widget, handlePaletteClick }: { widget: any, handlePalett
                 e.dataTransfer.setData("application/gridos-item", JSON.stringify({ type: widget.type, meta: widget.meta }));
                 e.dataTransfer.effectAllowed = "copy";
                 const ghost = createGhostImage(widget.label, widget.icon, widget.defaultW || 120, widget.defaultH || 40);
-                e.dataTransfer.setDragImage(ghost, (widget.defaultW || 120)/2, (widget.defaultH || 40)/2);
+                e.dataTransfer.setDragImage(ghost, (widget.defaultW || 120) / 2, (widget.defaultH || 40) / 2);
                 setTimeout(() => ghost.remove(), 0);
             }}
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
             style={{
-                background: bgColor,
-                border: `1px solid ${borderColor}`,
-                borderRadius: '10px',
-                padding: '14px 8px',
-                cursor: 'grab',
                 display: 'flex',
-                flexDirection: 'column',
                 alignItems: 'center',
                 gap: '8px',
-                transition: 'all 0.15s',
+                padding: '0 6px 0 10px',
+                height: '34px',
+                cursor: 'grab',
+                borderRadius: '6px',
+                background: isHovered
+                    ? (theme === 'dark' ? '#1e293b' : '#f1f5f9')
+                    : 'transparent',
+                border: `1px solid ${isHovered ? '#6366f1' : 'transparent'}`,
+                transition: 'background 0.1s, border-color 0.1s',
                 userSelect: 'none',
-                minHeight: '80px',
-                justifyContent: 'center',
-                boxShadow: theme === 'light' ? '0 1px 2px rgba(0,0,0,0.05)' : 'none'
             }}
         >
-            <div style={{ fontSize: '24px', opacity: isHovered ? 1 : 0.7, transform: isHovered ? 'scale(1.1)' : 'scale(1)', transition: '0.2s' }}>{widget.icon}</div>
-            <div style={{ fontSize: '10px', color: isHovered ? (theme === 'dark' ? '#e2e8f0' : '#475569') : '#94a3b8', textAlign: 'center', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.02em' }}>
-                {widget.label}
-            </div>
+            <span style={{
+                fontSize: '14px',
+                width: '18px',
+                textAlign: 'center',
+                opacity: isHovered ? 1 : 0.65,
+                flexShrink: 0,
+            }}>{widget.icon}</span>
+            <span style={{
+                flex: 1,
+                fontSize: '11px',
+                fontWeight: 600,
+                color: isHovered
+                    ? (theme === 'dark' ? '#e6edf3' : '#1e293b')
+                    : (theme === 'dark' ? '#8b949e' : '#64748b'),
+                letterSpacing: '0.01em',
+                overflow: 'hidden',
+                whiteSpace: 'nowrap',
+                textOverflow: 'ellipsis',
+            }}>{widget.label}</span>
+            {isHovered && (
+                <button
+                    title="Add to canvas"
+                    onMouseDown={e => {
+                        e.stopPropagation();
+                        // Simulate double-click by setting detail = 2
+                        const synth = { ...e, detail: 2 } as any;
+                        handlePaletteClick(synth, widget.type, widget.meta);
+                    }}
+                    style={{
+                        width: '20px',
+                        height: '20px',
+                        borderRadius: '4px',
+                        background: '#6366f1',
+                        color: 'white',
+                        border: 'none',
+                        fontSize: '15px',
+                        lineHeight: '1',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0,
+                    }}
+                >+</button>
+            )}
         </div>
     );
 };
@@ -457,10 +519,10 @@ const PaletteSection = ({ category, widgets, searchQuery, handlePaletteClick }: 
             </div>
             {isOpen && (
                 <div style={{
-                    display: 'grid',
-                    gridTemplateColumns: '1fr 1fr',
-                    gap: '10px',
-                    padding: '12px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '1px',
+                    padding: '4px 8px 8px',
                     background: theme === 'dark' ? 'transparent' : '#f8fafc'
                 }}>
                     {widgets.map((w: any) => (

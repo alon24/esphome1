@@ -103,6 +103,25 @@ export const normalizeGridChildren = (items: GridItem[]): GridItem[] => {
     });
 };
 
+export const findFirstFreePosition = (
+    items: GridItem[],
+    w: number,
+    h: number,
+    startX = 40,
+    startY = 40
+): { x: number; y: number } => {
+    const topLevel = items.filter(it => !(it as any).parentId);
+    for (let attempt = 0; attempt < 14; attempt++) {
+        const tx = startX + attempt * 24;
+        const ty = startY + attempt * 24;
+        const overlaps = topLevel.some(it =>
+            !(tx + w <= it.x || tx >= it.x + it.width || ty + h <= it.y || ty >= it.y + it.height)
+        );
+        if (!overlaps) return { x: tx, y: ty };
+    }
+    return { x: startX, y: startY + 14 * 24 };
+};
+
 export const findGridAtPositionRecursive = (items: GridItem[], x: number, y: number): GridItem | undefined => {
     for (let i = items.length - 1; i >= 0; i--) {
         const it = items[i];
