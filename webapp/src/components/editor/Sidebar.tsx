@@ -90,7 +90,7 @@ export const Sidebar: React.FC = () => {
         } else if (activeTarget?.type === 'item') {
             const scr = project?.screens?.find((s: any) => s.id === activeScreenId);
             const item = findItemRecursive(scr?.pages.flatMap((p: any) => p.items) || [], activeTarget.id);
-            if (item && (item.type === 'nav-menu' || item.type === 'grid' || item.type === 'pane-grid')) {
+            if (item && (item.type === 'nav-menu' || item.type === 'grid' || item.type === 'tilesGrid' || item.type === 'pane-grid')) {
                 parentId = item.id;
                 targetPageId = activeTarget.pageId!;
             } else if (item && (item as any).parentId) {
@@ -215,7 +215,7 @@ export const Sidebar: React.FC = () => {
         id: 'advanced', label: 'ADVANCED', icon: '◈',
         widgets: [
           { type: 'panel-ref', label: 'Panel Ref',  icon: '❏',  defaultW: 240, defaultH: 300 },
-          { type: 'pane-grid', label: 'Pane Grid',  icon: '⊞',  defaultW: 800, defaultH: 400, meta: { cols: 4, rows: 4, gap: 10 } },
+          { type: 'tilesGrid', label: 'Tiles Grid', icon: '⊞',  defaultW: 800, defaultH: 400, meta: { cols: 4, rows: 4, gap: 10 } },
           { type: 'grid',      label: 'Grid',       icon: '▦',  defaultW: 400, defaultH: 400, meta: { cols: 2, rows: 2, gap: 10 } },
           { type: 'tile',      label: 'Tile',       icon: '⏹',  defaultW: 100, defaultH: 100, meta: { color: 0xFFFF00, radius: 10, topText: 'Top', icon: '💡', bottomText: 'Bottom' } },
         ]
@@ -553,7 +553,7 @@ const HierarchyItem = ({ it, pageId, screenId }: { it: GridItem, pageId: string,
 	if (it.type === "panel-ref") {
 		const panel = project.panels.find((p: any) => p.id === it.panelId);
 		children = panel?.elements || [];
-	} else if (it.type === "nav-menu" || it.type === "grid" || it.type === "pane-grid") {
+	} else if (it.type === "nav-menu" || it.type === "grid" || it.type === "tilesGrid" || it.type === "pane-grid") {
 		children = it.children || [];
 	}
 

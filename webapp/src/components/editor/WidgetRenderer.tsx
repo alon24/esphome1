@@ -545,7 +545,7 @@ export const WidgetRenderer: React.FC<{
                 </div>
             </div>
         );
-    } else if (it.type === "pane-grid") {
+    } else if (it.type === "tilesGrid" || it.type === "pane-grid") {
         const paneGrid = project.paneGrids?.find((p: any) => p.id === (it.paneGridId || it.id));
         const cols = it.cols || paneGrid?.cols || 4;
         const rows = it.rows || paneGrid?.rows || 4;

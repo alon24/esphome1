@@ -792,7 +792,7 @@ static void _home_render_item_actual(lv_obj_t *parent, const GridItem &it, int o
         lv_obj_set_style_text_font(time_lbl, &lv_font_montserrat_14, 0);
         lv_obj_set_style_text_color(time_lbl, lv_color_hex(0xffffff), 0);
         lv_obj_set_user_data(time_lbl, (void*)"header_time");
-    } else if (it.type == "pane-grid") {
+    } else if (it.type == "tilesGrid" || it.type == "pane-grid") {
         _home_render_pane_grid(parent, it, offsetX, offsetY, depth + 1);
         return; // Already handled positioning inside grid helper
     } else if (it.type == "chart") {

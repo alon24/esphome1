@@ -393,7 +393,7 @@ export const CanvasArea: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
                                     const hItem = findItemRecursive(hPg.items, hId);
                                     if (hItem?.parentId) tg = findItemRecursive(hPg.items, hItem.parentId) as any || null;
                                 }
-                                if (tg && tg.type === 'pane-grid') {
+                                if (tg && (tg.type === 'tilesGrid' || tg.type === 'pane-grid')) {
                                     const tgGap = tg.gap ?? 10;
                                     const tgCols = tg.cols || 4;
                                     const tgRows = tg.rows || 4;
@@ -439,7 +439,7 @@ export const CanvasArea: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
                         if (it.parentId) {
                             const allItems = project.screens.flatMap((s:any) => s.pages.flatMap((p:any) => p.items)).concat(project.panels.flatMap((p:any) => p.elements));
                             const parent = findItemRecursive(allItems, it.parentId);
-                            if (parent && parent.type === 'pane-grid') {
+                            if (parent && (parent.type === 'tilesGrid' || parent.type === 'pane-grid')) {
                                 const gCols = parent.cols || 4;
                                 const gRows = parent.rows || 4;
                                 const gap = parent.gap ?? 10;
@@ -577,8 +577,8 @@ export const CanvasArea: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
                                         const isGridableType = it?.type === 'tile' || it?.type === 'grid-item' || it?.type === 'label' || it?.type === 'panel-ref' || it?.type === 'btn';
 
                                         if (targetGrid && isGridableType) {
-                                            const gCols = targetGrid.cols || (targetGrid.type === 'pane-grid' ? 4 : 2);
-                                            const gRows = targetGrid.rows || (targetGrid.type === 'pane-grid' ? 4 : 1);
+                                            const gCols = targetGrid.cols || ((targetGrid.type === 'tilesGrid' || targetGrid.type === 'pane-grid') ? 4 : 2);
+                                            const gRows = targetGrid.rows || ((targetGrid.type === 'tilesGrid' || targetGrid.type === 'pane-grid') ? 4 : 1);
                                             const itemColSpan = it?.cols || 1;
                                             const itemRowSpan = it?.rows || 1;
 
@@ -670,7 +670,7 @@ export const CanvasArea: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
                             if (it?.parentId) {
                                 const allItems = project.screens.flatMap((s:any) => s.pages.flatMap((p:any) => p.items)).concat(project.panels.flatMap((p:any) => p.elements));
                                 const parent = findItemRecursive(allItems, it.parentId);
-                                if (parent && parent.type === 'pane-grid') {
+                                if (parent && (parent.type === 'tilesGrid' || parent.type === 'pane-grid')) {
                                     // If the preview has precomputed span values, use them directly
                                     if ((pv as any)._gridResize) {
                                         upPatch.cols = (pv as any)._colSpan;
@@ -730,7 +730,7 @@ export const CanvasArea: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
                         let itH = it.height || 40;
                         if (it.parentId) {
                             const parent = findItemRecursive(pg.items, it.parentId);
-                            if (parent && parent.type === 'pane-grid') {
+                            if (parent && (parent.type === 'tilesGrid' || parent.type === 'pane-grid')) {
                                 const gap = parent.gap ?? 10;
                                 const gCols = parent.cols || 4; const gRows = parent.rows || 4;
                                 const cellW = (parent.width - gap * (gCols - 1)) / gCols;
@@ -1069,7 +1069,7 @@ export const CanvasArea: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
                                             let ghostH = pv.h;
                                             if (ghostW === undefined || ghostH === undefined) {
                                                 const parentItem = findItemRecursive(pg.items, item.parentId);
-                                                if (parentItem && parentItem.type === 'pane-grid') {
+                                                if (parentItem && (parentItem.type === 'tilesGrid' || parentItem.type === 'pane-grid')) {
                                                     const gap = parentItem.gap ?? 10;
                                                     const gCols = parentItem.cols || 4;
                                                     const gRows = parentItem.rows || 4;

@@ -44,7 +44,7 @@ export const getAbsoluteOffset = (items: GridItem[], id: string): { x: number, y
             const parentOffset = getAbsoluteOffset(items, parent.id);
             const gap = parent.gap !== undefined ? parent.gap : 10;
 
-            if (parent.type === 'pane-grid') {
+            if (parent.type === 'tilesGrid' || parent.type === 'pane-grid') {
                 // No padding — gap only between cells
                 const cols = parent.cols || 4;
                 const rows = parent.rows || 4;
@@ -86,7 +86,7 @@ export const getParentRecursive = (items: GridItem[], id: string): GridItem | un
 // Call before syncing to device to prevent out-of-range placements.
 export const normalizeGridChildren = (items: GridItem[]): GridItem[] => {
     return items.map(it => {
-        if ((it.type === 'pane-grid' || it.type === 'grid') && it.children?.length) {
+        if ((it.type === 'tilesGrid' || it.type === 'pane-grid' || it.type === 'grid') && it.children?.length) {
             const gCols = it.cols || 4;
             const gRows = it.rows || 4;
             const children = it.children.map(child => {
@@ -126,7 +126,7 @@ export const findGridAtPositionRecursive = (items: GridItem[], x: number, y: num
     for (let i = items.length - 1; i >= 0; i--) {
         const it = items[i];
         const abs = getAbsoluteOffset(items, it.id);
-        if (it.type === 'grid' || it.type === 'pane-grid') {
+        if (it.type === 'grid' || it.type === 'tilesGrid' || it.type === 'pane-grid') {
             if (x >= abs.x && x <= abs.x + it.width && y >= abs.y && y <= abs.y + it.height) {
                 if (it.children) {
                     const nested = findGridAtPositionRecursive(it.children, x, y);

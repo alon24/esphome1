@@ -117,16 +117,17 @@ function App({ isMobile, width }: { isMobile: boolean, width: number }) {
         }
         if (!data.paneGrids) data.paneGrids = [];
 
-        // Migrate grid-item → tile and fix stored cell dimensions
+        // Migrate grid-item → tile, pane-grid → tilesGrid, and fix stored cell dimensions
         const migrateItems = (items: any[]): any[] => items.map(it => {
             const migrated = { ...it };
             if (migrated.type === 'grid-item') migrated.type = 'tile';
+            if (migrated.type === 'pane-grid') migrated.type = 'tilesGrid';
             if (migrated.children?.length) migrated.children = migrateItems(migrated.children);
-            // Fix stored width/height for pane-grid children to match actual CSS cell size
+            // Fix stored width/height for tilesGrid children to match actual CSS cell size
             if (migrated.parentId && migrated.type === 'tile') {
                 const parent = items.find((p: any) => p.id === migrated.parentId) ||
                     data.screens.flatMap((s: any) => s.pages.flatMap((p: any) => p.items)).find((p: any) => p.id === migrated.parentId);
-                if (parent?.type === 'pane-grid') {
+                if (parent?.type === 'tilesGrid' || parent?.type === 'pane-grid') {
                     const gap = parent.gap ?? 10;
                     const cols = parent.cols || 4;
                     const rows = parent.rows || 4;
@@ -361,28 +362,28 @@ function App({ isMobile, width }: { isMobile: boolean, width: number }) {
                     pageItem = { ...pageItem, borderWidth: 2, borderColor: 0x6366f1, noBg: true };
                 }
 
-                // Grid Drop Logic (supports 'grid' and 'pane-grid')
+                // Grid Drop Logic (supports 'grid' and 'tilesGrid')
                 const screen = prev.screens.find(s => s.pages.some(p => p.id === pageId));
                 const page = screen?.pages.find(p => p.id === pageId);
-                
+
                 // If parentId is explicitly provided, use it. Otherwise, look for a grid at (fx, fy)
                 let targetGrid = parentId ? findItemRecursive(page?.items || [], parentId) : null;
                 if (!targetGrid && fx !== undefined && fy !== undefined) {
-                    targetGrid = page?.items.find(it => (it.type === 'grid' || it.type === 'pane-grid') && fx! >= it.x && fx! <= it.x + it.width && fy! >= it.y && fy! <= it.y + it.height);
+                    targetGrid = page?.items.find(it => (it.type === 'grid' || it.type === 'tilesGrid' || it.type === 'pane-grid') && fx! >= it.x && fx! <= it.x + it.width && fy! >= it.y && fy! <= it.y + it.height);
                 }
-                
+
                 const isNestableInGrid = (tGrid: GridItem, droppedType: string) => {
                     if (tGrid.type === 'grid' && (droppedType === 'tile' || droppedType === 'grid-item')) return true;
-                    if (tGrid.type === 'pane-grid' && (droppedType === 'panel-ref' || droppedType === 'tile' || droppedType === 'grid-item' || droppedType === 'label')) return true;
+                    if ((tGrid.type === 'tilesGrid' || tGrid.type === 'pane-grid') && (droppedType === 'panel-ref' || droppedType === 'tile' || droppedType === 'grid-item' || droppedType === 'label')) return true;
                     return false;
                 };
 
                 if (targetGrid && isNestableInGrid(targetGrid, type)) {
                     const tgGap = targetGrid.gap ?? 10;
-                    const tgCols = targetGrid.cols || (targetGrid.type === 'pane-grid' ? 3 : 2);
+                    const tgCols = targetGrid.cols || ((targetGrid.type === 'tilesGrid' || targetGrid.type === 'pane-grid') ? 3 : 2);
                     const tgRows = targetGrid.rows || 1;
                     let cellW: number, cellH: number, colStep: number, rowStep: number;
-                    if (targetGrid.type === 'pane-grid') {
+                    if (targetGrid.type === 'tilesGrid' || targetGrid.type === 'pane-grid') {
                         cellW = (targetGrid.width - tgGap * (tgCols - 1)) / tgCols;
                         cellH = (targetGrid.height - tgGap * (tgRows - 1)) / tgRows;
                         colStep = cellW + tgGap;
@@ -398,8 +399,8 @@ function App({ isMobile, width }: { isMobile: boolean, width: number }) {
                     let row = 0;
 
                     if (fx !== undefined && fy !== undefined && !parentId) {
-                        const originX = targetGrid.type === 'pane-grid' ? targetGrid.x : targetGrid.x + tgGap;
-                        const originY = targetGrid.type === 'pane-grid' ? targetGrid.y : targetGrid.y + tgGap;
+                        const originX = (targetGrid.type === 'tilesGrid' || targetGrid.type === 'pane-grid') ? targetGrid.x : targetGrid.x + tgGap;
+                        const originY = (targetGrid.type === 'tilesGrid' || targetGrid.type === 'pane-grid') ? targetGrid.y : targetGrid.y + tgGap;
                         col = Math.max(0, Math.min(Math.floor((fx! - originX) / colStep), tgCols - 1));
                         row = Math.max(0, Math.min(Math.floor((fy! - originY) / rowStep), tgRows - 1));
                     } else {
@@ -439,7 +440,7 @@ function App({ isMobile, width }: { isMobile: boolean, width: number }) {
                     };
                 }
 
-                if (type === 'pane-grid') {
+                if (type === 'tilesGrid' || type === 'pane-grid') {
                     const newPaneGrid = { id, name: `Grid ${id}`, cols: 3, rows: 3, gap: 10, panes: [] };
                     return {
                         ...prev,
@@ -521,8 +522,8 @@ function App({ isMobile, width }: { isMobile: boolean, width: number }) {
                         res.x = 0; res.y = hh;
                     }
 
-                    // When a pane-grid's cols/rows changes, clamp all children to fit
-                    if ((it.type === 'pane-grid' || it.type === 'grid') && (finalPatch.cols !== undefined || finalPatch.rows !== undefined) && res.children) {
+                    // When a tilesGrid's cols/rows changes, clamp all children to fit
+                    if ((it.type === 'tilesGrid' || it.type === 'pane-grid' || it.type === 'grid') && (finalPatch.cols !== undefined || finalPatch.rows !== undefined) && res.children) {
                         const newCols = res.cols || 4;
                         const newRows = res.rows || 4;
                         res.children = res.children.map((child: any) => {
@@ -698,7 +699,7 @@ function App({ isMobile, width }: { isMobile: boolean, width: number }) {
                 pages: s.pages.map(p => ({
                     ...p,
                     items: applyRecursive(p.items, gridId, (grid) => {
-                        if (grid.type !== 'grid' && grid.type !== 'pane-grid') return grid;
+                        if (grid.type !== 'grid' && grid.type !== 'tilesGrid' && grid.type !== 'pane-grid') return grid;
                         const children = [...(grid.children || [])];
                         const sourceIdx = children.findIndex(c => c.id === itemId);
                         if (sourceIdx === -1) {

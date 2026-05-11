@@ -1,4 +1,4 @@
-export type ElementType = "btn" | "switch" | "slider" | "label" | "clock" | "panel-ref" | "arc" | "checkbox" | "dropdown" | "roller" | "bar" | "border" | "nav-menu" | "side-menu" | "menu-item" | "nav-item" | "native-wifi" | "native-wifi-info" | "native-system" | "native-sd" | "native-tests" | "component" | "circle" | "shape_circle" | "battery_icon" | "rounded_rect" | "pane-grid" | "chart" | "grid" | "tile" | "grid-item" | "header";
+export type ElementType = "btn" | "switch" | "slider" | "label" | "clock" | "panel-ref" | "arc" | "checkbox" | "dropdown" | "roller" | "bar" | "border" | "nav-menu" | "side-menu" | "menu-item" | "nav-item" | "native-wifi" | "native-wifi-info" | "native-system" | "native-sd" | "native-tests" | "component" | "circle" | "shape_circle" | "battery_icon" | "rounded_rect" | "tilesGrid" | "pane-grid" | "chart" | "grid" | "tile" | "grid-item" | "header";
 
 export type GridItem = {
 	id: string;

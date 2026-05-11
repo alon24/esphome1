@@ -17,7 +17,7 @@ const findItemRecursive = (items: GridItem[], id: string): GridItem | undefined 
 type InspectorTab = 'content' | 'position' | 'style' | 'events';
 
 const defaultTabForType = (type: string): InspectorTab => {
-    if (type === 'pane-grid' || type === 'grid') return 'position';
+    if (type === 'tilesGrid' || type === 'pane-grid' || type === 'grid') return 'position';
     return 'content';
 };
 
@@ -270,7 +270,7 @@ export const PropertiesPanel: React.FC = () => {
         type = item.type.toUpperCase();
 
         const isGridChild = !!(item.parentId && parentGrid);
-        const isGridContainer = item.type === 'pane-grid' || item.type === 'grid';
+        const isGridContainer = item.type === 'tilesGrid' || item.type === 'pane-grid' || item.type === 'grid';
 
         // Overlap checker for span validation
         const sibOccupied = new Set<string>();
@@ -478,7 +478,7 @@ export const PropertiesPanel: React.FC = () => {
                                     </div>
                                     <div className="prop-group">
                                         <div className="prop-label">Rows</div>
-                                        <input className="prop-input" type="number" value={item.rows || (item.type === 'pane-grid' ? 1 : 2)} onChange={e => updateItem(selectedEntity.pageId, item.id, { rows: parseInt(e.target.value) || 1 })} />
+                                        <input className="prop-input" type="number" value={item.rows || (item.type === 'tilesGrid' || item.type === 'pane-grid' ? 1 : 2)} onChange={e => updateItem(selectedEntity.pageId, item.id, { rows: parseInt(e.target.value) || 1 })} />
                                     </div>
                                 </div>
                                 <div className="prop-group" style={{ marginTop: '8px' }}>
@@ -489,7 +489,7 @@ export const PropertiesPanel: React.FC = () => {
                                     <input type="checkbox" checked={!!item.locked} onChange={e => updateItem(selectedEntity.pageId, item.id, { locked: e.target.checked })} />
                                     Lock Items (D&D Reorder)
                                 </label>
-                                {item.type === 'pane-grid' && (
+                                {(item.type === 'tilesGrid' || item.type === 'pane-grid') && (
                                     <>
                                         <div className="prop-group" style={{ marginTop: '10px', opacity: 0.6 }}>
                                             <div className="prop-label" style={{ fontSize: '10px', fontStyle: 'italic' }}>Dashboard Link (Advanced)</div>
