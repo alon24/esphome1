@@ -12,7 +12,8 @@ export const WidgetRenderer: React.FC<{
     onDragStart?: (id: string, pgId: string, e: React.MouseEvent) => void;
     onResizeStart?: (id: string, pgId: string, e: React.MouseEvent, handle: string) => void;
     selections?: any[];
-}> = ({ it, panels, pageId, onSelect, onDragStart, onResizeStart, selections = [] }) => {
+    draggingIds?: Set<string>;
+}> = ({ it, panels, pageId, onSelect, onDragStart, onResizeStart, selections = [], draggingIds }) => {
     React.useEffect(() => {
         document.title = "GRIDOS";
     }, []);
@@ -608,6 +609,7 @@ export const WidgetRenderer: React.FC<{
                 {emptySlots}
                 {children.map((child: any) => {
                     const isChildSelected = (selections as any[])?.some((s: any) => (s.id || s) == child.id);
+                    const isChildDragging = draggingIds?.has(child.id) ?? false;
                     return (
                         <div
                             key={child.id}
@@ -621,7 +623,10 @@ export const WidgetRenderer: React.FC<{
                                 borderRadius: '6px',
                                 display: 'flex',
                                 alignItems: 'stretch',
-                                justifyContent: 'stretch'
+                                justifyContent: 'stretch',
+                                opacity: isChildDragging ? 0.2 : 1,
+                                pointerEvents: isChildDragging ? 'none' : 'auto',
+                                transition: isChildDragging ? 'none' : 'opacity 0.15s',
                             }}
                              onMouseDown={(e) => {
                                 if (onSelect) {
@@ -639,7 +644,7 @@ export const WidgetRenderer: React.FC<{
                                 }
                             }}
                         >
-                            <WidgetRenderer it={{ ...child, parentId: it.id }} panels={panels} pageId={pageId} onSelect={onSelect} onDragStart={onDragStart} onResizeStart={onResizeStart} selections={selections} />
+                            <WidgetRenderer it={{ ...child, parentId: it.id }} panels={panels} pageId={pageId} onSelect={onSelect} onDragStart={onDragStart} onResizeStart={onResizeStart} selections={selections} draggingIds={draggingIds} />
                         </div>
                     );
                 })}

@@ -571,9 +571,11 @@ export const CanvasArea: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
                                             const relX = worldX - (targetScr.offsetX + (targetPage.x || 0) * baseWidth + gridAbs.x);
                                             const relY = worldY - (targetScr.offsetY + (targetPage.y || 0) * baseHeight + gridAbs.y);
 
-                                            const newCol = Math.floor(Math.max(0, relX) / colStep);
-                                            const newRow = Math.floor(Math.max(0, relY) / rowStep);
-                                            
+                                            const itemColSpan = it?.cols || 1;
+                                            const itemRowSpan = it?.rows || 1;
+                                            const newCol = Math.min(Math.floor(Math.max(0, relX) / colStep), gCols - itemColSpan);
+                                            const newRow = Math.min(Math.floor(Math.max(0, relY) / rowStep), gRows - itemRowSpan);
+
                                             if (newCol >= 0 && newCol < gCols && newRow >= 0 && newRow < gRows) {
                                                 if (parentGrid && parentGrid.id === targetGrid.id) {
                                                     context.reorderGridItem(parentGrid.id, id, newCol, newRow);
@@ -980,7 +982,7 @@ export const CanvasArea: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
                                                         setDragInfo({ ids: [id], initialOffsets: { [id]: { x: offset.x, y: offset.y, w: rect.width / scale, h: rect.height / scale } } as any, startX: e.clientX, startY: e.clientY, mode: 'move', pageId: pid, scrId: scr.id });
                                                     }} onResizeStart={(id, pid, e, handle) => {
                                                         setDragInfo({ ids: [id], initialOffsets: {[id]: {x: it.x, y: it.y}}, startX: e.clientX, startY: e.clientY, mode: 'resize', handle, pageId: pid, scrId: scr.id });
-                                                    }} selections={itemSel} />
+                                                    }} selections={itemSel} draggingIds={draggingIds} />
                                                     {isSingle && !isHeader && !isSidePanel && !it.parentId && (() => {
                                                         const startResize = (handle: string) => (e: React.MouseEvent) => {
                                                             e.stopPropagation();
@@ -1038,9 +1040,26 @@ export const CanvasArea: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
                                             if (!pv) return null;
                                             const item = findItemRecursive(pg.items, id);
                                             if (!item || !item.parentId) return null; // Top-level items are handled above
+                                            // Compute rendered size from grid geometry as fallback
+                                            let ghostW = pv.w;
+                                            let ghostH = pv.h;
+                                            if (ghostW === undefined || ghostH === undefined) {
+                                                const parentItem = findItemRecursive(pg.items, item.parentId);
+                                                if (parentItem && parentItem.type === 'pane-grid') {
+                                                    const gap = parentItem.gap ?? 10;
+                                                    const gCols = parentItem.cols || 4;
+                                                    const gRows = parentItem.rows || 4;
+                                                    const cW = (parentItem.width - gap * (gCols - 1)) / gCols;
+                                                    const cH = (parentItem.height - gap * (gRows - 1)) / gRows;
+                                                    ghostW = ghostW ?? (item.cols || 1) * (cW + gap) - gap;
+                                                    ghostH = ghostH ?? (item.rows || 1) * (cH + gap) - gap;
+                                                }
+                                                ghostW = ghostW ?? item.width;
+                                                ghostH = ghostH ?? item.height;
+                                            }
                                             return (
-                                                <div key={`drag-nested-${id}`} style={{ position: 'absolute', left: pv.x, top: pv.y, width: pv.w ?? item.width, height: pv.h ?? item.height, zIndex: 9999, opacity: 0.6, pointerEvents: 'none', filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.3))' }}>
-                                                    <WidgetRenderer it={{ ...item, parentId: undefined, x: 0, y: 0 }} panels={project.panels} pageId={pg.id} />
+                                                <div key={`drag-nested-${id}`} style={{ position: 'absolute', left: pv.x, top: pv.y, width: ghostW, height: ghostH, zIndex: 9999, opacity: 0.75, pointerEvents: 'none', filter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.45))' }}>
+                                                    <WidgetRenderer it={{ ...item, parentId: undefined, x: 0, y: 0, width: ghostW, height: ghostH }} panels={project.panels} pageId={pg.id} />
                                                 </div>
                                             );
                                         })}
@@ -1076,35 +1095,45 @@ export const CanvasArea: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
                                         })}
                                         {/* Grid Drop Cell Highlight — indigo=free, amber=occupied */}
                                         {hoveredCell?.pageId === pg.id && dragInfo?.mode === 'move' && (() => {
-                                            const tg = findItemRecursive(pg.items, hoveredCell.gridId);
+                                            const hc = hoveredCell!;
+                                            const tg = findItemRecursive(pg.items, hc.gridId);
                                             if (!tg) return null;
-                                            const tgAbs = getAbsoluteOffset(pg.items, hoveredCell.gridId);
+                                            const tgAbs = getAbsoluteOffset(pg.items, hc.gridId);
                                             const tgGap = tg.gap ?? 10;
                                             const tgCols = tg.cols || 4;
                                             const tgRows = tg.rows || 4;
                                             const cellW = (tg.width - tgGap * (tgCols - 1)) / tgCols;
                                             const cellH = (tg.height - tgGap * (tgRows - 1)) / tgRows;
-                                            const cellX = tgAbs.x + hoveredCell.col * (cellW + tgGap);
-                                            const cellY = tgAbs.y + hoveredCell.row * (cellH + tgGap);
                                             const draggingItemId = dragInfo.ids[0];
-                                            const occupied = (tg.children || []).some((c: any) =>
-                                                c.id !== draggingItemId &&
-                                                c.col <= hoveredCell.col && hoveredCell.col < c.col + (c.cols || 1) &&
-                                                c.row <= hoveredCell.row && hoveredCell.row < c.row + (c.rows || 1)
-                                            );
+                                            const draggingItem = findItemRecursive(pg.items, draggingItemId);
+                                            const colSpan = draggingItem?.cols || 1;
+                                            const rowSpan = draggingItem?.rows || 1;
+                                            // Clamp so the full span fits inside the grid
+                                            const anchorCol = Math.min(hc.col, tgCols - colSpan);
+                                            const anchorRow = Math.min(hc.row, tgRows - rowSpan);
+                                            const cellX = tgAbs.x + anchorCol * (cellW + tgGap);
+                                            const cellY = tgAbs.y + anchorRow * (cellH + tgGap);
+                                            const highlightW = colSpan * (cellW + tgGap) - tgGap;
+                                            const highlightH = rowSpan * (cellH + tgGap) - tgGap;
+                                            const occupied = (tg.children || []).some((c: any) => {
+                                                if (c.id === draggingItemId) return false;
+                                                const noOverlapCol = anchorCol + colSpan <= (c.col ?? 0) || anchorCol >= (c.col ?? 0) + (c.cols || 1);
+                                                const noOverlapRow = anchorRow + rowSpan <= (c.row ?? 0) || anchorRow >= (c.row ?? 0) + (c.rows || 1);
+                                                return !noOverlapCol && !noOverlapRow;
+                                            });
                                             const cellColor = occupied ? 'rgba(245,158,11,0.35)' : 'rgba(99,102,241,0.35)';
                                             const borderColor = occupied ? 'rgba(245,158,11,0.9)' : 'rgba(99,102,241,0.9)';
                                             return (
                                                 <div key="hovered-cell" style={{
                                                     position: 'absolute', left: cellX, top: cellY,
-                                                    width: cellW, height: cellH,
+                                                    width: highlightW, height: highlightH,
                                                     background: cellColor,
                                                     border: `2px solid ${borderColor}`,
                                                     borderRadius: '8px', zIndex: 9997, pointerEvents: 'none',
                                                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                                                     fontSize: '10px', fontWeight: 800, color: occupied ? '#92400e' : '#4338ca',
                                                 }}>
-                                                    {occupied ? '⚠ occupied' : `${hoveredCell.col},${hoveredCell.row}`}
+                                                    {occupied ? '⚠ occupied' : `${anchorCol},${anchorRow} (${colSpan}×${rowSpan})`}
                                                 </div>
                                             );
                                         })()}
