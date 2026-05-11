@@ -601,23 +601,42 @@ class ReactSPAComponent : public Component {
 
   static esp_err_t wifi_scan_handler(httpd_req_t *req) {
     set_cors(req);
-    wifi_scan_config_t cfg = {}; esp_wifi_scan_start(&cfg, true);
-    uint16_t count = 0; esp_wifi_scan_get_ap_num(&count);
+    wifi_scan_config_t cfg = {};
+    cfg.show_hidden = 0;
+    esp_wifi_scan_start(&cfg, true);
+
+    uint16_t count = 0;
+    esp_wifi_scan_get_ap_num(&count);
     if (count > 20) count = 20;
-    wifi_ap_record_t *recs = (wifi_ap_record_t *)malloc(count * sizeof(wifi_ap_record_t));
-    esp_wifi_scan_get_ap_records(&count, recs);
-    httpd_resp_set_type(req, "application/json");
-    httpd_resp_sendstr_chunk(req, "{\"networks\":[");
-    for (int i = 0; i < count; i++) {
-        if (recs[i].ssid[0] == '\0') continue;
-        bool secure = (recs[i].authmode != WIFI_AUTH_OPEN);
-        char entry[160];
-        snprintf(entry, sizeof(entry), "%s{\"ssid\":\"%s\",\"rssi\":%d,\"secure\":%s}",
-                 (i==0)?"":",", recs[i].ssid, recs[i].rssi, secure ? "true" : "false");
-        httpd_resp_sendstr_chunk(req, entry);
+
+    char *json = (char*)malloc(4096);
+    if (!json) {
+        httpd_resp_set_type(req, "application/json");
+        return httpd_resp_sendstr(req, "{\"networks\":[]}");
     }
-    free(recs); httpd_resp_sendstr_chunk(req, "]}");
-    return httpd_resp_send_chunk(req, nullptr, 0);
+
+    int pos = snprintf(json, 4096, "{\"networks\":[");
+    bool first = true;
+
+    if (count > 0) {
+        wifi_ap_record_t *recs = (wifi_ap_record_t*)malloc(count * sizeof(wifi_ap_record_t));
+        if (recs && esp_wifi_scan_get_ap_records(&count, recs) == ESP_OK) {
+            for (int i = 0; i < count && pos < 3900; i++) {
+                if (recs[i].ssid[0] == '\0') continue;
+                bool secure = (recs[i].authmode != WIFI_AUTH_OPEN);
+                pos += snprintf(json + pos, 4096 - pos, "%s{\"ssid\":\"%s\",\"rssi\":%d,\"secure\":%s}",
+                    first ? "" : ",", (char*)recs[i].ssid, recs[i].rssi, secure ? "true" : "false");
+                first = false;
+            }
+        }
+        if (recs) free(recs);
+    }
+
+    snprintf(json + pos, 4096 - pos, "]}");
+    httpd_resp_set_type(req, "application/json");
+    esp_err_t ret = httpd_resp_sendstr(req, json);
+    free(json);
+    return ret;
   }
 
   static esp_err_t wifi_file_list_handler(httpd_req_t *req) {

@@ -50,6 +50,7 @@ const getDeviceBaseUrl = () => {
 };
 
 const API = {
+    getDeviceUrl(): string { return getDeviceBaseUrl(); },
     async getWifi(): Promise<WifiStatus | null> {
         const base = getDeviceBaseUrl();
         if (!base) return { connected: false, ip: "0.0.0.0", ssid: "", ap_active: false, ap_always_on: false };
@@ -60,13 +61,16 @@ const API = {
     },
     async scanWifi(): Promise<{ ssid: string; rssi: number; secure: boolean }[]> {
         const base = getDeviceBaseUrl();
-        if (!base) return [];
+        if (!base) throw new Error("NO_DEVICE");
         try {
             const r = await fetch(`${base}/api/wifi/scan`);
-            if (!r.ok) return [];
+            if (!r.ok) throw new Error(`HTTP ${r.status}`);
             const data = await r.json();
             return data.networks || [];
-        } catch { return []; }
+        } catch (e: any) {
+            if (e?.message === "NO_DEVICE") throw e;
+            throw new Error("FETCH_FAILED");
+        }
     },
     async connectWifi({ ssid, password }: { ssid: string; password: string }): Promise<boolean> {
         const base = getDeviceBaseUrl();
@@ -925,7 +929,7 @@ function App({ isMobile, width }: { isMobile: boolean, width: number }) {
                                 theme={theme}
                                 setTheme={setTheme}
                             />
-                            {activeTab === "wifi" && <WifiManager status={status} onRefresh={refreshWifi} API={API} />}
+                            {activeTab === "wifi" && <WifiManager status={status} onRefresh={refreshWifi} API={API} remoteIp={remoteIp} setRemoteIp={setRemoteIp} />}
                             {activeTab === "settings" && <SettingsManager status={status} onRefresh={refreshWifi} API={API} />}
                             {activeTab === "logs" && <div style={{ padding: 40 }}>Console logs coming soon...</div>}
                             {activeTab === "mirror" && <div style={{ padding: 40 }}>Mirror mode coming soon...</div>}
