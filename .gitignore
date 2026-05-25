@@ -32,9 +32,8 @@ fix_platformio.py
 scripts/reconnect.sh
 
 # Playwright / browser test screenshots and artifacts
-*.png
-*.jpeg
-*.jpg
+screenshots/*
+!screenshots/.gitkeep
 .playwright-mcp/
 build_log*.txt
 build_output*.txt
