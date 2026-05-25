@@ -53,7 +53,7 @@ export const WidgetRenderer: React.FC<{
     };
 
     const color = (it.color !== undefined ? (typeof (it.color as any) === 'string' ? ((it.color as any).startsWith('#') ? it.color : `#${it.color}`) : `#${safeHex(it.color)}`) : '#4F46E5') as string;
-    const txt = (it.textColor !== undefined ? (typeof (it.textColor as any) === 'string' ? ((it.textColor as any).startsWith('#') ? it.textColor : `#${it.textColor}`) : `#${safeHex(it.textColor)}`) : '#000000') as string;
+    const txt = (it.textColor !== undefined ? (typeof (it.textColor as any) === 'string' ? ((it.textColor as any).startsWith('#') ? it.textColor : `#${it.textColor}`) : `#${safeHex(it.textColor)}`) : '#FFFFFF') as string;
     const bColor = (it.borderColor !== undefined ? (typeof (it.borderColor as any) === 'string' ? ((it.borderColor as any).startsWith('#') ? it.borderColor : `#${it.borderColor}`) : `#${safeHex(it.borderColor)}`) : txt) as string;
 
     const baseStyle: React.CSSProperties = { 
@@ -651,6 +651,42 @@ export const WidgetRenderer: React.FC<{
                         </div>
                     );
                 })}
+            </div>
+        );
+    } else if (it.type === "header") {
+        const children = it.children || [];
+        const bg = it.bg ? `#${safeHex(it.bg)}` : 'rgba(10,10,20,0.95)';
+        content = (
+            <div style={{
+                ...baseStyle,
+                background: bg,
+                display: 'flex',
+                flexDirection: 'row',
+                alignItems: 'center',
+                padding: '0 8px',
+                gap: '8px',
+                position: 'relative',
+                overflow: 'hidden',
+            }}>
+                {children.map((child: any) => (
+                    <div key={child.id}
+                        style={{
+                            position: child.x !== undefined ? 'absolute' : 'relative',
+                            left: child.x !== undefined ? child.x : 'auto',
+                            top: child.x !== undefined ? child.y ?? 0 : 'auto',
+                            width: child.width || 'auto',
+                            height: child.height || '100%',
+                            flexShrink: 0,
+                            zIndex: 2,
+                            display: 'flex',
+                            alignItems: 'center',
+                        }}
+                        onMouseDown={(e) => { if (onSelect) { e.stopPropagation(); onSelect(child.id, pageId, e.shiftKey); } }}
+                        onClick={(e) => { if (onSelect) { e.stopPropagation(); onSelect(child.id, pageId, e.shiftKey); } }}
+                    >
+                        <WidgetRenderer it={{ ...child, parentId: it.id }} panels={panels} pageId={pageId} onSelect={onSelect} onDragStart={onDragStart} onResizeStart={onResizeStart} selections={selections} draggingIds={draggingIds} />
+                    </div>
+                ))}
             </div>
         );
     } else {

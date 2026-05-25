@@ -90,7 +90,7 @@ export const Sidebar: React.FC = () => {
         } else if (activeTarget?.type === 'item') {
             const scr = project?.screens?.find((s: any) => s.id === activeScreenId);
             const item = findItemRecursive(scr?.pages.flatMap((p: any) => p.items) || [], activeTarget.id);
-            if (item && (item.type === 'nav-menu' || item.type === 'grid' || item.type === 'tilesGrid' || item.type === 'pane-grid')) {
+            if (item && (item.type === 'nav-menu' || item.type === 'grid' || item.type === 'tilesGrid' || item.type === 'pane-grid' || item.type === 'header')) {
                 parentId = item.id;
                 targetPageId = activeTarget.pageId!;
             } else if (item && (item as any).parentId) {

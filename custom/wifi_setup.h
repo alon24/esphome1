@@ -52,7 +52,7 @@ static void wifi_scan_and_populate(lv_obj_t *list_obj, lv_obj_t *ssid_ta) {
   for (int i = 0; i < count; i++) {
     if (recs[i].ssid[0] == '\0') continue;
 
-    lv_obj_t *btn = lv_button_create(list_obj);
+    lv_obj_t *btn = lv_btn_create(list_obj);
     lv_obj_set_pos(btn, 0, y);
     lv_obj_set_size(btn, LV_PCT(100), BTN_H);
 
@@ -116,51 +116,157 @@ static void wifi_scan_and_populate(lv_obj_t *list_obj, lv_obj_t *ssid_ta) {
   free(recs);
 }
 
+// Background task: scans for target SSID, then sets config with BSSID+channel
+// and connects. Running off the LVGL thread so blocking is fine.
+struct _WifiConnArgs { char ssid[33]; char pass[65]; };
+
+static void _wifi_connect_task(void *arg) {
+    auto *p = static_cast<_WifiConnArgs*>(arg);
+    printf("\n--- WIFI CONNECT TASK ---\n");
+    printf("Target SSID: [%s]\n", p->ssid);
+    printf("Password:    [%s] (len=%d)\n", p->pass, (int)strlen(p->pass));
+
+    // Ensure STA interface is active
+    wifi_mode_t mode;
+    esp_wifi_get_mode(&mode);
+    if (mode == WIFI_MODE_AP)        esp_wifi_set_mode(WIFI_MODE_APSTA);
+    else if (mode == WIFI_MODE_NULL) esp_wifi_set_mode(WIFI_MODE_STA);
+
+    // STEP 1: Scan BEFORE disconnecting — radio is idle, no ESPHome reconnect
+    // timer racing against us. Gives us BSSID+channel for a directed connect.
+    uint8_t target_bssid[6] = {};
+    uint8_t target_channel   = 0;
+    bool    bssid_found      = false;
+
+    wifi_scan_config_t scan_cfg = {};
+    scan_cfg.show_hidden = 1;
+    esp_err_t scan_err = esp_wifi_scan_start(&scan_cfg, true);
+    if (scan_err == ESP_ERR_WIFI_CONN) {
+        // Mid-connection — abort then retry scan
+        esp_wifi_disconnect();
+        vTaskDelay(pdMS_TO_TICKS(400));
+        scan_err = esp_wifi_scan_start(&scan_cfg, true);
+    }
+    if (scan_err != ESP_OK) {
+        printf("[WIFI] Scan failed: %d — aborting\n", scan_err);
+        free(p); vTaskDelete(NULL); return;
+    }
+
+    uint16_t count = 0;
+    esp_wifi_scan_get_ap_num(&count);
+    printf("[WIFI] Scan found %d APs\n", count);
+    if (count > 0) {
+        wifi_ap_record_t *recs = (wifi_ap_record_t*)malloc(count * sizeof(wifi_ap_record_t));
+        if (recs && esp_wifi_scan_get_ap_records(&count, recs) == ESP_OK) {
+            for (int i = 0; i < (int)count; i++) {
+                printf("[WIFI]  [%d] ssid='%s' rssi=%d\n", i, (char*)recs[i].ssid, recs[i].rssi);
+                if (strcasecmp((char*)recs[i].ssid, p->ssid) == 0) {
+                    memcpy(target_bssid, recs[i].bssid, 6);
+                    target_channel = recs[i].primary;
+                    bssid_found    = true;
+                }
+            }
+        }
+        free(recs);
+    }
+
+    if (bssid_found) {
+        printf("[WIFI] Found '%s' at %02X:%02X:%02X:%02X:%02X:%02X ch=%d — directed connect\n",
+               p->ssid,
+               target_bssid[0], target_bssid[1], target_bssid[2],
+               target_bssid[3], target_bssid[4], target_bssid[5], target_channel);
+    } else {
+        // Not seen in scan — may be hidden. ESP-IDF will probe all channels by SSID name.
+        printf("[WIFI] '%s' not in scan — attempting directed probe (hidden network path)\n", p->ssid);
+    }
+
+    // STEP 2: Disconnect then connect
+    esp_wifi_disconnect();
+    vTaskDelay(pdMS_TO_TICKS(400));
+
+    wifi_config_t cfg;
+    memset(&cfg, 0, sizeof(cfg));
+    strncpy((char*)cfg.sta.ssid, p->ssid, 32);
+    strncpy((char*)cfg.sta.password, p->pass, 64);
+    // WPA2/WPA3 transitional — works for phone hotspots (WPA3) and older routers
+    cfg.sta.threshold.authmode = WIFI_AUTH_WPA2_PSK;
+    cfg.sta.pmf_cfg.capable  = true;
+    cfg.sta.pmf_cfg.required = false;
+    // ALL_CHANNEL scan makes ESP-IDF send directed probe requests — hidden APs respond to these
+    cfg.sta.scan_method = WIFI_ALL_CHANNEL_SCAN;
+
+    if (bssid_found) {
+        // Known BSSID+channel: skip scan, connect directly
+        memcpy(cfg.sta.bssid, target_bssid, 6);
+        cfg.sta.bssid_set = true;
+        cfg.sta.channel   = target_channel;
+    }
+    // bssid_set = false (default) → ESP-IDF probes for the SSID across all channels
+
+    esp_wifi_set_storage(WIFI_STORAGE_FLASH);
+
+    esp_err_t err = ESP_FAIL;
+    for (int i = 0; i < 20; i++) {
+        err = esp_wifi_set_config(WIFI_IF_STA, &cfg);
+        if (err == ESP_OK) { printf("[WIFI] set_config OK (attempt %d)\n", i + 1); break; }
+        printf("[WIFI] set_config err=%d attempt %d, waiting...\n", err, i + 1);
+        vTaskDelay(pdMS_TO_TICKS(150));
+    }
+
+    if (err == ESP_OK) {
+        err = esp_wifi_connect();
+        printf("[WIFI] esp_wifi_connect → %d\n", err);
+    } else {
+        printf("[WIFI] set_config never succeeded, aborting\n");
+    }
+
+    free(p);
+    vTaskDelete(NULL);
+}
+
 // Connect using credentials entered in the LVGL textareas.
 static void wifi_connect_from_ui(lv_obj_t *ssid_ta, lv_obj_t *pass_ta) {
-  const char *ssid = lv_textarea_get_text(ssid_ta);
-  const char *pass = lv_textarea_get_text(pass_ta);
-  if (!ssid || ssid[0] == '\0') return;
+    const char *ssid = lv_textarea_get_text(ssid_ta);
+    const char *pass = lv_textarea_get_text(pass_ta);
+    if (!ssid || ssid[0] == '\0') return;
 
-  printf("\n--- WIFI CONNECT START ---\n");
-  printf("Target SSID: [%s]\n", ssid);
-  printf("Pass length: %d\n", pass ? (int)strlen(pass) : 0);
-  
-  wifi_config_t cfg;
-  memset(&cfg, 0, sizeof(cfg));
-  strncpy((char *)cfg.sta.ssid, ssid, sizeof(cfg.sta.ssid) - 1);
-  if (pass) strncpy((char *)cfg.sta.password, pass, sizeof(cfg.sta.password) - 1);
-  cfg.sta.threshold.authmode = WIFI_AUTH_WPA2_PSK;
+    auto *args = static_cast<_WifiConnArgs*>(malloc(sizeof(_WifiConnArgs)));
+    if (!args) return;
+    strncpy(args->ssid, ssid, 32); args->ssid[32] = '\0';
+    strncpy(args->pass, pass ? pass : "", 64); args->pass[64] = '\0';
 
-  esp_wifi_disconnect();
-  vTaskDelay(pdMS_TO_TICKS(100));
-  
-  esp_wifi_set_storage(WIFI_STORAGE_FLASH); // Persistence
-  
-  esp_err_t err = esp_wifi_set_config(WIFI_IF_STA, &cfg);
-  if (err != ESP_OK) {
-      printf("ERR: esp_wifi_set_config failed: %d\n", err);
-  }
-  
-  err = esp_wifi_connect();
-  if (err != ESP_OK) {
-      printf("ERR: esp_wifi_connect failed: %d\n", err);
-  } else {
-      printf("SUCCESS: esp_wifi_connect command issued.\n");
-  }
-  printf("--- WIFI CONNECT PKT SENT ---\n");
+    xTaskCreate(_wifi_connect_task, "wifi_conn", 4096, args, 5, nullptr);
 }
 
 inline void wifi_apply_ap_settings(bool active, const char* ssid, const char* pass) {
-    ESP_LOGI("WIFI", "Applying AP Settings: active=%s, SSID=%s", active?"YES":"NO", ssid?ssid:"(null)");
-    esp_wifi_set_storage(WIFI_STORAGE_FLASH);
-    
+    ESP_LOGI("WIFI_AP", "=== apply_ap_settings: active=%s, ssid=%s ===", active?"YES":"NO", ssid?ssid:"(null)");
+
     wifi_mode_t mode;
-    esp_wifi_get_mode(&mode);
-    
+    esp_err_t mode_err = esp_wifi_get_mode(&mode);
+    // mode: 0=NULL 1=STA 2=AP 3=APSTA
+    ESP_LOGI("WIFI_AP", "Current wifi mode: %d (get_mode err=%d/%s)", (int)mode, (int)mode_err, esp_err_to_name(mode_err));
+
+    if (!active) {
+        // Turning AP OFF — switch mode only, do NOT touch WIFI_IF_AP config after
+        // the interface is gone (causes crash / serial disconnect).
+        if (mode == WIFI_MODE_APSTA || mode == WIFI_MODE_AP) {
+            ESP_LOGI("WIFI_AP", "Disabling AP: switching to STA mode...");
+            wifi_mode_t target = (mode == WIFI_MODE_APSTA) ? WIFI_MODE_STA : WIFI_MODE_STA;
+            esp_err_t err = esp_wifi_set_mode(target);
+            ESP_LOGI("WIFI_AP", "set_mode(STA) → %d (%s)", (int)err, esp_err_to_name(err));
+        } else {
+            ESP_LOGI("WIFI_AP", "AP was not active (mode=%d), nothing to disable.", (int)mode);
+        }
+        ESP_LOGI("WIFI_AP", "=== AP OFF done ===");
+        return;
+    }
+
+    // Turning AP ON — set mode first, then configure WIFI_IF_AP
+    esp_wifi_set_storage(WIFI_STORAGE_FLASH);
+
     wifi_config_t conf;
-    memset(&conf, 0, sizeof(wifi_config_t)); // CRITICAL: Start clean to override defaults
-    
+    memset(&conf, 0, sizeof(wifi_config_t));
+
     if (ssid) {
         strncpy((char*)conf.ap.ssid, ssid, 32);
         conf.ap.ssid[31] = '\0';
@@ -173,21 +279,27 @@ inline void wifi_apply_ap_settings(bool active, const char* ssid, const char* pa
     }
     conf.ap.max_connection = 4;
     conf.ap.channel = 1;
-    
-    // Mode toggle - MUST happen before or during config application on some IDF versions
-    if (active) {
-        if (mode == WIFI_MODE_STA) esp_wifi_set_mode(WIFI_MODE_APSTA);
-        else if (mode == WIFI_MODE_NULL) esp_wifi_set_mode(WIFI_MODE_AP);
+
+    ESP_LOGI("WIFI_AP", "AP config: ssid='%s' pass_len=%d authmode=%d",
+             (char*)conf.ap.ssid, (int)strlen((char*)conf.ap.password), (int)conf.ap.authmode);
+
+    if (mode == WIFI_MODE_STA) {
+        ESP_LOGI("WIFI_AP", "Switching STA → APSTA");
+        esp_err_t err = esp_wifi_set_mode(WIFI_MODE_APSTA);
+        ESP_LOGI("WIFI_AP", "set_mode(APSTA) → %d (%s)", (int)err, esp_err_to_name(err));
+    } else if (mode == WIFI_MODE_NULL) {
+        ESP_LOGI("WIFI_AP", "Switching NULL → AP");
+        esp_err_t err = esp_wifi_set_mode(WIFI_MODE_AP);
+        ESP_LOGI("WIFI_AP", "set_mode(AP) → %d (%s)", (int)err, esp_err_to_name(err));
     } else {
-        if (mode == WIFI_MODE_APSTA) esp_wifi_set_mode(WIFI_MODE_STA);
-        else if (mode == WIFI_MODE_AP) esp_wifi_set_mode(WIFI_MODE_STA);
+        ESP_LOGI("WIFI_AP", "Mode already includes AP (%d), keeping it.", (int)mode);
     }
 
     esp_err_t err = esp_wifi_set_config(WIFI_IF_AP, &conf);
     if (err != ESP_OK) {
-        ESP_LOGE("WIFI", "FAILED to set AP config: %d", err);
+        ESP_LOGE("WIFI_AP", "FAILED to set AP config: %d (%s)", (int)err, esp_err_to_name(err));
     } else {
-        ESP_LOGI("WIFI", "AP config set successfully: %s", (char*)conf.ap.ssid);
+        ESP_LOGI("WIFI_AP", "AP config set OK: ssid='%s'", (char*)conf.ap.ssid);
     }
-    ESP_LOGI("WIFI", "AP Mode Applied. Current active state: %d", (int)active);
+    ESP_LOGI("WIFI_AP", "=== AP ON done ===");
 }

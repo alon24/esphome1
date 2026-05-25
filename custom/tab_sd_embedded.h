@@ -103,10 +103,10 @@ static void _csd_show_image(const char *path) {
     g_csd_img_dsc.data          = g_csd_img_buf;
 
     if (!g_csd_img_obj) {
-        g_csd_img_obj = lv_image_create(g_csd_right_panel);
+        g_csd_img_obj = lv_img_create(g_csd_right_panel);
         lv_obj_align(g_csd_img_obj, LV_ALIGN_TOP_MID, 0, 10);
     }
-    lv_image_set_src(g_csd_img_obj, &g_csd_img_dsc);
+    lv_img_set_src(g_csd_img_obj, &g_csd_img_dsc);
     lv_obj_set_size(g_csd_img_obj, dw, dh);
     lv_obj_clear_flag(g_csd_img_obj, LV_OBJ_FLAG_HIDDEN);
 
@@ -395,7 +395,7 @@ void tab_sd_create_embedded(lv_obj_t *parent) {
     lv_obj_center(del_lbl);
     lv_obj_add_event_cb(del_btn, [](lv_event_t*) {
         if (g_csd_sel_path.empty()) return;
-        lv_obj_t *mb = lv_msgbox_create(lv_screen_active());
+        lv_obj_t *mb = lv_msgbox_create(lv_scr_act());
         lv_msgbox_add_title(mb, "Delete?");
         lv_msgbox_add_text(mb, ("Delete " + g_csd_sel_path.substr(g_csd_sel_path.find_last_of('/')+1)).c_str());
         lv_msgbox_add_footer_button(mb, "Delete");

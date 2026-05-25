@@ -1,403 +1,131 @@
-# ESP32 Display — ESPHome + React SPA (v110-GRIDOS-ULTIMATE-V9)
+# 🌌 GridOS Ultimate — Next-Gen UI Ecosystem for ESP32
 
-A professional-grade, high-fidelity media station and UI designer powered by an ESP32-S3. This project features a **Memory-Persistent Digital Twin Designer** with pixel-perfect hardware parity, standalone WiFi Access Point modes, and a resilient autonomous filesystem engine.
+[![Hardware Parity](https://img.shields.io/badge/Hardware-1:1_Pixel_Parity-blueviolet?style=for-the-badge&logo=espressif)](https://github.com/alon24/esphome1)
+[![Powered by ESPHome](https://img.shields.io/badge/Engine-ESPHome_2026.4-green?style=for-the-badge&logo=esphome)](https://esphome.io)
+[![UI Framework](https://img.shields.io/badge/UI-LVGL_9.5.0-orange?style=for-the-badge)](https://lvgl.io)
 
-## ✅ DONE
-- [x] **Project Manager**: Sidebar hub for Screens and Master Panels.
-- [x] **Recursive Rendering**: Nested panel-ref support (Device & Web).
-- [x] **Autonomous Persistence**: Filesystem self-mounts for 100% reliable layout restoration on boot.
-- [x] **Standalone AP Mode**: Hotspot support with custom SSID/Password and "Always On" capability.
-- [x] **Industrial Widget Suite**: Roller, Dropdown, Arc, Bar, Switch, and Label with real-time hardware sync.
-- [x] **Smart Refreshes**: Background UI commit to physical hardware on designer "Sync".
-- [x] **Stable Lifecycle**: Parent-anchored rendering to prevent race conditions and memory resets.
-
-## MQTT & Callbacks (tdata)
-
-| Widget Type | Publish Topic | Subscribe Topic | Payload Mapping |
-|-------------|---------------|-----------------|-----------------|
-| **Switch** | `mqttTopic` | `mqttStateTopic` | `ON`/`OFF` |
-| **Slider** | `mqttTopic` | `mqttStateTopic` | `0-100` (integer) |
-| **Dropdown**| `mqttTopic` | `mqttStateTopic` | Publish: String, Subscribe: Index |
-| **Label** | N/A | `mqttStateTopic` | Literal string payload |
-| **Button** | `mqttTopic` | N/A | `"PRESS"` |
-
-## 🛠 PENDING
-- [ ] **Performance optimization** for very deep nests (>8 levels).
-- [ ] **State export/import** for full project backup (local JSON download).
-- [ ] **Advanced Sensor Graphs**: Real-time plotting mirrored in LVGL/React.
-- [ ] **Touch event tunneling** for deeper nested items.
-
-## Hardware
-
-| Board | ESP32-S3-WROOM-1 N16R8 (16 MB flash, 8 MB PSRAM) |
-|-------|--------------------------------------------------|
-| Display | 4.3" 800×480 RGB parallel (ST7262) |
-| Touch | GT911 capacitive (I2C) |
-| Config files | `device.yaml` (main) |
-| Hardware details | [DEVICE_NOTES.md](./DEVICE_NOTES.md) |
-
-## Status: 🥇 v110 ULTIMATE - Field-Ready Designer
-**The studio now operates as a robust, persistent standalone environment.**
-
-### Key Features
-- **Deterministic Restore**: The hardware consumes its own Digital Twin state from SPIFFS on every power cycle.
-- **Standalone WiFi Orchestration**: Configure SSID/Pass in the builder; hardware acts as a primary AP.
-- **Precision 1:1 Rendering**: LVGL 9.5.0 engine maps React widgets with absolute coordinate parity.
-- **Autonomous Mount**: Filesystem ready-checks ensure data integrity before UI initialization.
-- **mDNS Zero-Config**: Access the dashboard at `http://esp32-display.local/` or via AP IP `192.168.4.1`.
-- **SD Media Engine**: Interactive slideshow with touch navigation and remote control.
+**GridOS** is a professional-grade, high-fidelity UI designer and media station ecosystem powered by the ESP32-S3. It bridges the gap between modern web design (React) and high-performance embedded graphics (LVGL), featuring a **Memory-Persistent Digital Twin Designer** that allows you to build, sync, and deploy industrial-grade interfaces in seconds.
 
 ---
 
-## Requirements
-
-| Tool | Version | Notes |
-|------|---------|-------|
-| ESPHome | 2026.4.1 | Pre-installed in `venv/` — no global install needed |
-| Python | 3.12 | Required to recreate venv if needed |
-| Bun | latest | `curl -fsSL https://bun.sh/install \| bash` |
-| curl | any | Pre-installed on most systems |
-
-> **ESPHome venv**: A working Python venv is at `./venv/`. The flash and log scripts use it automatically. To recreate it: `python3 -m venv venv && venv/bin/pip install esphome`
+## 🎯 The Vision
+Most embedded UIs are hardcoded and brittle. **GridOS** flips the script:
+1. **Pixel-Perfect Parity**: What you see in the web builder is exactly what you get on the hardware.
+2. **Autonomous Persistence**: The device is its own master. It stores its Digital Twin state in a resilient SPIFFS/LittleFS partition and restores it on every boot.
+3. **Smart Components**: Native C++ logic (WiFi Scanners, File Browsers) wrapped in easy-to-place designer widgets.
+4. **Zero-Code Deployment**: Design in your browser, click **SYNC**, and watch the physical hardware update in real-time.
 
 ---
 
-## Quick reference
+## 🎨 The Designer Interface
 
-### Flash firmware to device
+### 1. Canvas & Workspace
+*   **Infinite Workspace**: Pan and zoom across multiple screens and master panels.
+*   **World-Space Coordinates**: Drag widgets between pages or screens; the designer translates coordinates automatically.
+*   **Lasso Selection**: Drag on the background to group-select multiple widgets.
+*   **X-Ray Mode**: Toggle via the status bar to see hidden boundaries and widget IDs.
 
+### ⌨️ Power User Shortcuts
+| Key / Action | Result |
+| :--- | :--- |
+| **`L`** | Toggle **Alignment Mode** (shows alignment handles on selection). |
+| **`Alt` (Hold)** | Disable **Smart Snapping** during drag. |
+| **`Delete` / `Backspace`** | Delete selected widget(s). |
+| **`Ctrl + C / V / X`** | Standard Copy, Paste, and Cut support for widgets. |
+| **`Ctrl + Z / Y`** | Infinite Undo / Redo of all designer actions. |
+| **`Shift + Click`** | Multi-select widgets. |
+| **`Alt + Click`** | Open the Context Menu (Layer management). |
+| **`Ctrl + Mouse Wheel`** | Zoom in/out relative to the cursor position. |
+
+---
+
+## 🏗️ Design Mechanics
+
+### Smart Alignment & Snapping
+*   **Intelligent Snapping**: Widgets automatically snap to the edges and centers of other widgets on the same page.
+*   **Visual Guides**: Purple dashed lines appear during drag-and-drop to confirm pixel-perfect alignment.
+*   **Alignment Tool ('L')**: Select multiple widgets and press `L` to show alignment handles. Click a handle to align all selected items to that boundary or center.
+*   **Bulk Properties**: The Inspector panel dynamically updates to show alignment tools and group actions when multiple items are selected.
+
+### 🏠 Home Assistant & MQTT
+GridOS provides three ways to integrate with your smart home:
+
+1.  **Native ESPHome API**: The device shows up in Home Assistant automatically. You can control any widget state via the `api` service.
+2.  **MQTT Bi-directional Sync**: Bind any widget to an MQTT topic in the Properties panel.
+    *   The widget **publishes** state updates when touched.
+    *   The widget **subscribes** to updates from Home Assistant (e.g., a sensor value).
+3.  **Action Strings**: Use `mqtt:topic:payload` in a widget's click action to fire one-off messages.
+
+### 🐍 ESPHome Lambdas & Scripting
+You can manipulate widgets directly from your `device.yaml` using C++ lambdas:
+```cpp
+// Set a label's text
+grid_widget_set_text("my_label_id", "Hello World");
+
+// Set a slider or arc value
+grid_widget_set_value("dimmer_1", 75.0);
+
+// Get a widget's current value
+float current = grid_widget_get_value("switch_main");
+```
+
+---
+
+## 🧬 Developer Guide: Creating Smart Components
+
+Smart Components are native C++ "apps" embedded inside designer widgets.
+
+1.  **Register**: Add to `SMART_COMPONENTS` in `webapp/src/types.ts`.
+2.  **Mock**: Add a preview div in `webapp/src/components/editor/WidgetRenderer.tsx`.
+3.  **Implement**: Dispatch to your C++ constructor in `custom/tab_home.h`.
+
+---
+
+## 🚀 Deployment Guide
+
+GridOS uses a split-deployment model for maximum speed.
+
+### 1. Firmware (C++ / ESPHome)
+Use this when changing hardware pins, adding C++ components, or updating the core engine.
 ```bash
-# Auto-detect (USB if offline, OTA if online)
+# Auto-detect (Prefers OTA if online, falls back to USB)
 ./scripts/flash.sh
 
-# Force USB (device must be connected via USB-C)
+# Force USB (Must be connected via USB-C)
 USB=1 ./scripts/flash.sh
 
-# Force OTA to a specific IP
-DEVICE_IP=10.100.102.46 ./scripts/flash.sh
+# Explicit IP for OTA
+DEVICE_IP=192.168.1.42 ./scripts/flash.sh
 ```
 
-The script bumps the version number, compiles, flashes, and verifies the running version in device logs.
-
----
-
-### View device logs (serial or OTA)
-
+### 2. Designer UI (React)
+Use this when you've finished your UI design and want to "bake" it into the device's persistent storage. **This does not reboot the device.**
 ```bash
-# Auto-detect (USB or IP)
-./scripts/logs.sh
-
-# Specific config
-./scripts/logs.sh sdcardtests_ui.yaml
-
-# Force USB
-USB=1 ./scripts/logs.sh
+# Builds, gzips, and pushes to device filesystem
+./scripts/upload.sh
 
 # Explicit IP
-DEVICE_IP=10.100.102.46 ./scripts/logs.sh
-```
-
-Press `Ctrl+C` to stop. Logs stream in real time at the configured log level.
-
----
-
-### Run React UI locally
-
-```bash
-# Proxy API calls to device on mDNS
-./scripts/dev.sh
-
-# Proxy to a specific IP
-DEVICE_IP=10.100.102.46 ./scripts/dev.sh
-```
-
-Opens at **http://localhost:5173**. Hot-reload is active — edits to `webapp/src/` apply instantly. The device does not need to be connected for frontend-only work.
-
-> **Note:** Port 5173 must be the mapped/exposed Docker port. If something else is already using 5173, set `VITE_PORT=<other-mapped-port> ./scripts/dev.sh`.
-
----
-
-### Push React app to device
-
-```bash
-# Build + gzip + upload via HTTP (device must be on WiFi)
-./scripts/upload.sh
-
-# With explicit IP
-DEVICE_IP=10.100.102.46 ./scripts/upload.sh
-```
-
-No firmware reflash needed — uploads to SPIFFS over WiFi and is served immediately at `http://esp32-display.local/`.
-
----
-
-## First-time setup
-
-### 1. Fill in your credentials
-
-Edit `secrets.yaml`:
-
-```yaml
-wifi_ssid: "your-network"
-wifi_password: "your-password"
-api_encryption_key: "your-long-key"
-ota_password: "choose-a-password"
-
-# MQTT Setup (Optional - leave as is to keep disabled)
-mqtt_broker: "192.168.1.XX"
-mqtt_username: "user"
-mqtt_password: "password"
-```
-
-### 2. Flash the firmware via USB
-...
----
-
-### 2. Flash the firmware via USB
-Connect the board via USB, then:
-
-```bash
-./scripts/flash.sh
-```
-
-This compiles and uploads the ESPHome firmware. After this, all future firmware updates can be done over WiFi (OTA).
-
-### 3. Smart Component Actions (tdata)
-Widgets with "Action" or "MQTT" fields support the following syntax:
-
-| Action Syntax | Effect |
-|---------------|--------|
-| `scr:screenName` | Navigate to a different screen by ID |
-| `toast:Message` | Show a temporary popup notification |
-| `reboot:` | Trigger a hardware reset |
-| `mqtt:topic:payload` | Publish a specific payload to a topic on click |
-
-**MQTT Callback Behavior:**
-- **Publishing (`mqttTopic`)**: Interactive widgets (Buttons, Sliders, Dropdowns) publish their state here automatically.
-- **Subscription (`mqttStateTopic`)**: Widgets listen here for status updates. If received, the widget updates its visual state (e.g., toggling a switch or moving a slider).
-- **Bi-directional**: If `mqttStateTopic` is blank, `mqttTopic` is used for both publishing and subscribing.
-
-### 4. Install webapp dependencies
-
-```bash
-cd webapp && bun install
+DEVICE_IP=192.168.1.42 ./scripts/upload.sh
 ```
 
 ---
 
-## React development
+## 🛠 Project Structure
 
-Start the local dev server on **port 3008**. API calls to `/api/*` are proxied to the device automatically.
-
-```bash
-# Device on mDNS (default)
-./scripts/dev.sh
-
-# Device on a fixed IP
-DEVICE_IP=10.100.102.46 ./scripts/dev.sh
+```text
+.
+├── device.yaml          # Main ESPHome config (Hardware + Engine)
+├── webapp/              # React Designer Studio
+├── custom/              # Native C++ Smart Components (WiFi, SD, etc)
+├── scripts/             # Flash (Firmware), Upload (UI), and Dev utilities
+└── version.txt          # Global firmware version tracker
 ```
 
-Open [http://localhost:3008](http://localhost:3008) in your browser.
-
-The device does **not** need to be connected for frontend-only work. Connect it when you need to test live API calls.
+## 🛠 Recent Updates (May 2026)
+*   **MIPI RGB Stability**: Migrated to `mipi_rgb` driver with custom 800x480 timing porches for Sunton ESP32-S3 boards.
+*   **1:1 Designer Parity**: Synchronized React `utils.ts` and C++ `tab_home.h` coordinate math for perfect layout alignment.
+*   **Nested Interaction**: Fixed callback propagation and handle clipping in the designer studio, enabling WYSIWYG management of complex grid-panes.
 
 ---
 
-## Deploy webapp to device
-
-Builds the React app, gzips it into a single file, and uploads it to the device filesystem. **No firmware reflash needed.**
-
-```bash
-./scripts/upload.sh
-
-# With explicit IP
-DEVICE_IP=10.100.102.46 ./scripts/upload.sh
-```
-
-What it does:
-1. `bun run build` — Vite bundles everything into one `index.html` (JS + CSS inlined)
-2. `gzip -9` — compresses to `dist/app.gz`
-3. `curl POST /upload` — streams the gzip to the device
-4. Device saves it to SPIFFS and serves it at `http://<device>/`
-
----
-
-## Check device connectivity
-
-```bash
-./scripts/check-device.sh
-
-# With explicit IP
-DEVICE_IP=10.100.102.46 ./scripts/check-device.sh
-```
-
-Output on success:
-```
-✔  Device online — response: {"status":"ok"}
-   Web UI: http://10.100.102.46
-```
-
----
-
-## Device endpoints
-
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/` | GET | Serves the React SPA (gzip) |
-| `/api/health` | GET | `{"status":"ok"}` — connectivity check |
-| `/upload` | POST | Upload new `app.gz` (Content-Type: application/gzip) |
-
----
-
-## Project layout
-
-```
-esphome1/
-├── device.yaml              ← Main config (ESP32-S3 800×480)
-├── partitions.csv           ← 16 MB flash: dual OTA + SPIFFS
-├── secrets.yaml             ← WiFi / OTA credentials (gitignored)
-├── version.txt              ← Current firmware version number
-├── custom/
-│   ├── ui_helpers.h         ← Shared LVGL panel/label helpers
-│   ├── maindashboard.h      ← Header, footer nav, tab orchestrator
-│   ├── tab_home.h           ← HOME tab: clock, date, uptime
-│   ├── tab_settings.h       ← SETTINGS tab: device info
-│   ├── tab_wifi.h           ← WIFI tab: scan, password, connect
-│   ├── wifi_setup.h         ← WiFi scan + connect helpers (ESP-IDF)
-│   └── version_info.h       ← Auto-generated FW_VERSION_STR (flash.sh)
-├── components/
-│   └── react_spa/           ← ESPHome custom component
-│       ├── __init__.py      ← Component registration
-│       └── react_spa.h      ← HTTP server + SPIFFS (ESP-IDF)
-├── webapp/
-│   ├── src/
-│   │   ├── App.tsx          ← Edit this to build your browser UI
-│   │   └── main.tsx
-│   ├── vite.config.ts       ← Dev server (port 3008) + API proxy
-│   └── package.json
-└── scripts/
-    ├── dev.sh               ← Start React dev server
-    ├── upload.sh            ← Build + gzip + push to device
-    ├── check-device.sh      ← Ping device health endpoint
-    └── flash.sh             ← Bump version, compile, flash USB/OTA
-```
-
----
-
-## LVGL (on-device UI)
-
-The local touchscreen UI is built with LVGL 9.5.0 via custom C++ headers included in `device.yaml`. The React web app and LVGL display run independently.
-
-### Tab layout (800×480)
-
-```
-y=0    ┌────────────────────────────────────────────────────┐
-       │  CYANIDE •           v6         192.168.x.x        │  ← Header (64px)
-y=64   ├────────────────────────────────────────────────────┤
-       │                                                    │
-       │            Tab content (800×352)                   │
-       │   HOME | SETTINGS | WIFI                           │
-       │                                                    │
-y=416  ├────────────────────────────────────────────────────┤
-       │   [ HOME ]        [ SETTINGS ]       [ WIFI ]      │  ← Footer nav (64px)
-y=480  └────────────────────────────────────────────────────┘
-```
-
-### Tab files
-
-| File | Tab | Content |
-|------|-----|---------|
-| `custom/tab_home.h` | HOME (default) | Live clock, date, network status, **Blueprint Mirror (80x80 grid)** |
-| `custom/tab_settings.h` | SYSTEM | IP info, uptime, board/framework versions |
-| `custom/tab_wifi.h` | WIFI | Network scan list, SSID/pass entry, active connection mgmt |
-| `custom/tab_sd.h` | SD (Director) | High-perf image browser (BMP/JPG/PNG), Slideshow controller |
-| `custom/maindashboard.h` | Orchestrator | Header, vertical nav, tab switching, global API pulse |
-
-### 💎 Digital Twin Mirror
-The web dashboard features a **Digital Twin Mirror** that provides real-time parity with the physical display. Drag, drop, and resize elements in your browser; they sync to the hardware with pixel-perfect accuracy.
-
-
-### 🖼 Slideshow Mode
-The system includes an automatic slideshow engine that cycles through SD card images after 30s of inactivity. It can be remotely controlled via the **Director** tab in the web UI.
-
-### Critical: byte_order must be little_endian
-
-```yaml
-lvgl:
-  color_depth: 16
-  byte_order: little_endian   # REQUIRED — default big_endian causes pink/magenta colors
-```
-
-Without this, all grays appear as pink/magenta on the RGB parallel display.
-
-### Enabling font sizes
-
-ESPHome only compiles LVGL fonts referenced in YAML. Add off-screen dummy labels to force compilation:
-
-```yaml
-- label:
-    text: ""
-    x: -200
-    y: -200
-    text_font: MONTSERRAT_48
-```
-
----
-
-## OTA firmware updates (after first flash)
-
-```bash
-./scripts/flash.sh
-```
-
-ESPHome detects the device on the network and uploads over WiFi automatically.
-
----
-
-## SD Card
-
-The board uses **SPI** for the SD card (not SDMMC). Pins: CS=GPIO10, MOSI=11, CLK=12, MISO=13. FAT32 format required.
-
-### SD Card UI test firmware
-
-`sdcardtests_ui.yaml` is a standalone config with an LVGL file browser — useful for verifying the SD card works before integrating into the main firmware.
-
-```bash
-# Flash the SD UI test
-./scripts/flash.sh sdcardtests_ui.yaml
-
-# Watch SD card logs (filtered)
-./scripts/logs.sh sdcardtests_ui.yaml
-```
-
-Look for `[sd_card]: SD card mounted OK` and a directory listing in the logs. The display will show a scrollable file browser.
-
-### SD card not mounting?
-
-See [DEVICE_NOTES.md](./DEVICE_NOTES.md) for the full list of gotchas. Quick checklist:
-1. Card formatted FAT32
-2. `board_build.flash_mode: qio` present in yaml
-3. `CONFIG_VFS_SUPPORT_IO/POSIX` set in sdkconfig_options
-4. `vfs` in component CMakeLists REQUIRES
-5. GPIO38 pulled HIGH before SD init in component setup()
-
-### Wipe device (boot-loop recovery)
-```bash
-./scripts/erase.sh
-```
-
----
-
-## Troubleshooting
-
-**Device not found by mDNS (`esp32-display.local`)**
-→ Use the IP address directly: find it in your router's DHCP table or ESPHome logs (`esphome logs device.yaml`), then set `DEVICE_IP=<ip>` before any script.
-
-**Upload returns non-200**
-→ Run `./scripts/check-device.sh` first to confirm connectivity. Check SPIFFS has free space via ESPHome logs.
-
-**Blank display after flash**
-→ The backlight defaults to ON. If the screen stays black, check `GPIO2` backlight pin. Verify display pin assignments in `device.yaml` match your board revision.
-
-**Build fails (Arduino libs missing)**
-→ ESPHome auto-installs `AsyncTCP` and `ESP Async WebServer` for Arduino-framework configs. Let the first build complete fully before editing.
+*Built with ❤️ by the GridOS Team.*

@@ -21,7 +21,7 @@ static inline void _panel_reset(lv_obj_t *p) {
     lv_obj_set_style_outline_width(p, 0, 0);
     lv_obj_set_style_pad_all(p, 0, 0);
     lv_obj_set_style_bg_grad_dir(p, LV_GRAD_DIR_NONE, 0);
-    lv_obj_clear_flag(p, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_style_layout(p, 0, 0);
 }
 
 // Give a label a solid bg so LVGL anti-aliases cleanly.
@@ -55,7 +55,6 @@ static inline lv_obj_t *_make_panel(lv_obj_t *parent, int x, int y, int w, int h
     lv_obj_set_style_pad_all(p, 0, LV_STATE_DEFAULT);
     lv_obj_set_style_radius(p, 0, LV_STATE_DEFAULT);
     _panel_reset(p);
-    lv_obj_clear_flag(p, LV_OBJ_FLAG_SCROLLABLE);
     return p;
 }
 
@@ -74,7 +73,6 @@ static inline lv_obj_t *_make_card(lv_obj_t *parent, int x, int y, int w, int h,
     lv_obj_set_style_shadow_width(p, 0, LV_STATE_DEFAULT);
     lv_obj_set_style_outline_width(p, 0, LV_STATE_DEFAULT);
     lv_obj_set_style_bg_grad_dir(p, LV_GRAD_DIR_NONE, LV_STATE_DEFAULT);
-    lv_obj_clear_flag(p, LV_OBJ_FLAG_SCROLLABLE);
     return p;
 }
 

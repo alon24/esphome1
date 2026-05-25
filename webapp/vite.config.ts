@@ -15,11 +15,15 @@ const BASE_PATH = process.env.BASE_PATH ?? "/";
 
 // code-server proxy strips the /proxy/PORT prefix before forwarding to Vite.
 // This plugin re-prepends it so Vite can route correctly without redirects.
-const codeServerPrefixPlugin = (basePath: string) => ({
+// IMPORTANT: proxy paths (e.g. /api) must be excluded — they arrive without the
+// basePath prefix (code-server already stripped it) and must reach Vite's proxy
+// rule unchanged.  Rewriting them breaks the proxy match entirely.
+const codeServerPrefixPlugin = (basePath: string, proxyPaths: string[] = []) => ({
 	name: "code-server-prefix",
 	configureServer(server: any) {
 		server.middlewares.use((req: any, _res: any, next: any) => {
-			if (basePath !== "/" && !req.url?.startsWith(basePath)) {
+			const isProxyPath = proxyPaths.some(p => req.url?.startsWith(p));
+			if (basePath !== "/" && !req.url?.startsWith(basePath) && !isProxyPath) {
 				const url: string = req.url ?? "/";
 				req.url = url === "/" ? basePath : `${basePath.replace(/\/$/, "")}${url}`;
 			}
@@ -31,16 +35,14 @@ const codeServerPrefixPlugin = (basePath: string) => ({
 export default defineConfig(({ command }) => ({
 	plugins: [
 		react(),
-		...(command === "build" ? [viteSingleFile()] : [codeServerPrefixPlugin(BASE_PATH)]),
+		...(command === "build" ? [viteSingleFile()] : [codeServerPrefixPlugin(BASE_PATH, ["/api"])]),
 	],
 	base: BASE_PATH,
 	server: {
 		port: PORT,
 		host: true,
 		allowedHosts: "all",
-		hmr: BASE_PATH === "/"
-			? { clientPort: PORT }
-			: { clientPort: 8080, path: BASE_PATH },
+		hmr: { host: 'localhost', clientPort: PORT },
 		proxy: {
 			"/api": {
 				target: `http://${DEVICE_IP}`,

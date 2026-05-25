@@ -182,28 +182,68 @@ static void _sd_delete_cb(lv_event_t *e) {
     const char *path = (const char *)lv_event_get_user_data(e);
     if (!path) return;
 
-    static const char * btns[] ={"Delete", "Cancel", ""};
-    lv_obj_t * mbox1 = lv_msgbox_create(lv_screen_active());
-    lv_msgbox_add_title(mbox1, "Delete Image?");
-    lv_msgbox_add_text(mbox1, "Are you sure you want to permanently delete this image?");
-    lv_msgbox_add_footer_button(mbox1, "Delete");
-    lv_msgbox_add_footer_button(mbox1, "Cancel");
+    // Create a modal background
+    lv_obj_t * modal = lv_obj_create(lv_scr_act());
+    lv_obj_set_size(modal, 800, 480);
+    lv_obj_set_style_bg_color(modal, lv_color_hex(0x000000), 0);
+    lv_obj_set_style_bg_opa(modal, LV_OPA_50, 0);
+    lv_obj_set_style_border_width(modal, 0, 0);
+    lv_obj_set_style_radius(modal, 0, 0);
+    lv_obj_clear_flag(modal, LV_OBJ_FLAG_SCROLLABLE);
 
-    lv_obj_set_user_data(mbox1, (void*)path);
-    lv_obj_add_event_cb(mbox1, [](lv_event_t *e) {
-        lv_obj_t * obj = (lv_obj_t *)lv_event_get_current_target(e);
-        lv_obj_t * btn = (lv_obj_t *)lv_event_get_target(e);
-        lv_obj_t * label = lv_obj_get_child(btn, 0);
-        if (label) {
-            const char * btn_txt = lv_label_get_text(label);
-            const char * path = (const char *)lv_obj_get_user_data(obj);
-            if (btn_txt && strcmp(btn_txt, "Delete") == 0) {
-                _sd_delete_item(path);
-            }
-        }
-        lv_msgbox_close(obj);
-    }, LV_EVENT_VALUE_CHANGED, NULL);
-    lv_obj_center(mbox1);
+    // Create a dialog panel
+    lv_obj_t * panel = lv_obj_create(modal);
+    lv_obj_set_size(panel, 400, 200);
+    lv_obj_center(panel);
+    lv_obj_set_style_bg_color(panel, lv_color_hex(0x222222), 0);
+    lv_obj_set_style_border_color(panel, lv_color_hex(0x444444), 0);
+    lv_obj_set_style_border_width(panel, 1, 0);
+    lv_obj_set_style_radius(panel, 12, 0);
+    lv_obj_clear_flag(panel, LV_OBJ_FLAG_SCROLLABLE);
+
+    lv_obj_t * title = lv_label_create(panel);
+    lv_label_set_text(title, "Delete Image?");
+    lv_obj_set_style_text_color(title, lv_color_hex(0xFFFFFF), 0);
+    lv_obj_set_style_text_font(title, &lv_font_montserrat_20, 0);
+    lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 10);
+
+    lv_obj_t * text = lv_label_create(panel);
+    lv_label_set_text(text, "Are you sure you want to permanently\ndelete this image?");
+    lv_obj_set_style_text_color(text, lv_color_hex(0xAAAAAA), 0);
+    lv_obj_set_style_text_align(text, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_align(text, LV_ALIGN_CENTER, 0, -10);
+
+    lv_obj_t * dbtn = lv_btn_create(panel);
+    lv_obj_set_size(dbtn, 120, 40);
+    lv_obj_align(dbtn, LV_ALIGN_BOTTOM_LEFT, 20, -10);
+    lv_obj_set_style_bg_color(dbtn, lv_color_hex(0xAA0000), 0);
+    lv_obj_t * dl = lv_label_create(dbtn);
+    lv_label_set_text(dl, "Delete");
+    lv_obj_center(dl);
+
+    lv_obj_t * cbtn = lv_btn_create(panel);
+    lv_obj_set_size(cbtn, 120, 40);
+    lv_obj_align(cbtn, LV_ALIGN_BOTTOM_RIGHT, -20, -10);
+    lv_obj_set_style_bg_color(cbtn, lv_color_hex(0x444444), 0);
+    lv_obj_t * cl = lv_label_create(cbtn);
+    lv_label_set_text(cl, "Cancel");
+    lv_obj_center(cl);
+
+    struct DeleteCtx { lv_obj_t *modal; std::string path; };
+    DeleteCtx *ctx = new DeleteCtx{modal, path};
+
+    lv_obj_add_event_cb(dbtn, [](lv_event_t *e) {
+        DeleteCtx *ctx = (DeleteCtx*)lv_event_get_user_data(e);
+        _sd_delete_item(ctx->path.c_str());
+        lv_obj_del(ctx->modal);
+        delete ctx;
+    }, LV_EVENT_CLICKED, ctx);
+
+    lv_obj_add_event_cb(cbtn, [](lv_event_t *e) {
+        DeleteCtx *ctx = (DeleteCtx*)lv_event_get_user_data(e);
+        lv_obj_del(ctx->modal);
+        delete ctx;
+    }, LV_EVENT_CLICKED, ctx);
 }
 
 // ── View switching ────────────────────────────────────────────────────────────
@@ -420,7 +460,7 @@ void _sd_show_image(const char *path) {
         lv_refr_now(NULL);                 // Force immediate screen refresh
     }
 
-    // lv_image_cache_drop(&g_sd_img_dsc); // Handled by lv_image_set_src in LVGL 9
+    // lv_image_cache_drop(&g_sd_img_dsc); // Handled by lv_img_set_src in LVGL 9
 
     if (g_sd_raw_buf) { 
         free(g_sd_raw_buf); 
@@ -510,7 +550,7 @@ void _sd_show_image(const char *path) {
     // Update image descriptor
     g_sd_img_dsc.header.w = (uint32_t)iw;
     g_sd_img_dsc.header.h = (uint32_t)ih;
-    g_sd_img_dsc.header.cf = LV_COLOR_FORMAT_RGB565;
+    g_sd_img_dsc.header.cf = LV_COLOR_FORMAT_NATIVE;
     g_sd_img_dsc.data_size = (uint32_t)iw * ih * 2;
     g_sd_img_dsc.data = (const uint8_t*)g_sd_raw_buf;
 
@@ -670,7 +710,7 @@ void tab_sd_create(lv_obj_t *parent) {
     lv_obj_set_pos(g_sd_path_lbl, 20, 14);
 
     // Refresh button — top right, compact
-    lv_obj_t *rbtn = lv_button_create(parent);
+    lv_obj_t *rbtn = lv_btn_create(parent);
     lv_obj_set_size(rbtn, 90, 30);
     lv_obj_set_pos(rbtn, 530, 10);
     lv_obj_set_style_bg_color(rbtn, lv_color_hex(0x1C2828), LV_STATE_DEFAULT);
@@ -694,7 +734,7 @@ void tab_sd_create(lv_obj_t *parent) {
     }, LV_EVENT_CLICKED, nullptr);
 
     // Slideshow button
-    lv_obj_t *ssbtn = lv_button_create(parent);
+    lv_obj_t *ssbtn = lv_btn_create(parent);
     lv_obj_set_size(ssbtn, 130, 30);
     lv_obj_set_pos(ssbtn, 390, 10);
     lv_obj_set_style_bg_color(ssbtn, lv_color_hex(0x1C2828), LV_STATE_DEFAULT);
@@ -740,7 +780,7 @@ void tab_sd_create(lv_obj_t *parent) {
 
     // ── Full-screen image viewer ───────────────────────────────────────────────
     // We create this as a child of the root screen so it can cover everything
-    g_sd_viewer = lv_obj_create(lv_screen_active());
+    g_sd_viewer = lv_obj_create(lv_scr_act());
     lv_obj_set_size(g_sd_viewer, 800, 480);
     lv_obj_set_pos(g_sd_viewer, 0, 0);
     lv_obj_set_style_bg_color(g_sd_viewer, lv_color_hex(0x000000), 0);
@@ -767,7 +807,7 @@ void tab_sd_create(lv_obj_t *parent) {
     lv_obj_set_style_border_width(g_sd_img_obj, 0, 0);
 
     // Back button (child of g_sd_viewer, so it stays fixed relative to the screen)
-    lv_obj_t *bbtn = lv_button_create(g_sd_viewer);
+    lv_obj_t *bbtn = lv_btn_create(g_sd_viewer);
     lv_obj_set_size(bbtn, 100, 36);
     lv_obj_set_pos(bbtn, 8, 8);
     lv_obj_set_style_bg_color(bbtn, lv_color_hex(0x1C2828), LV_STATE_DEFAULT);
@@ -785,7 +825,7 @@ void tab_sd_create(lv_obj_t *parent) {
     lv_obj_add_event_cb(bbtn, _sd_back_cb, LV_EVENT_CLICKED, nullptr);
 
     // Delete button — top right
-    lv_obj_t *dbtn = lv_button_create(g_sd_viewer);
+    lv_obj_t *dbtn = lv_btn_create(g_sd_viewer);
     lv_obj_set_size(dbtn, 100, 36);
     lv_obj_set_pos(dbtn, 692, 8);
     lv_obj_set_style_bg_color(dbtn, lv_color_hex(0x281C1C), LV_STATE_DEFAULT);

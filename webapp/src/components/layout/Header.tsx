@@ -40,11 +40,21 @@ export const Header: React.FC<HeaderProps> = ({
     setTheme
 }) => {
     const context = useContext(GridContext) as any;
-    const { exportProject, importProject, syncToDevice } = context || {};
+    const { exportProject, importProject, syncToDevice, pullFromDevice } = context || {};
+
+    const TAB_LABELS: Record<string, string> = {
+        grid: "Builder", dashboard: "Dashboard", mirror: "Mirror",
+        wifi: "WiFi", logs: "Console", settings: "Settings"
+    };
 
     return (
         <header className="header" style={{ display: 'flex', alignItems: 'center', padding: '0 20px', height: '60px', background: theme === 'dark' ? '#1e293b' : '#fff', borderBottom: '1px solid rgba(0,0,0,0.1)' }}>
             <div className="logo" style={{ fontSize: '20px', fontWeight: 900, color: '#6366f1', letterSpacing: '1px' }}>GRIDOS</div>
+            {isMobile && (
+                <div style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)', fontSize: '13px', fontWeight: 800, color: theme === 'dark' ? '#94a3b8' : '#64748b', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+                    {TAB_LABELS[activeTab] || activeTab}
+                </div>
+            )}
             {!isMobile && (
                 <div className="tab-bar" style={{ display: 'flex', marginLeft: '40px', gap: '20px' }}>
                     {(["grid", "dashboard", "mirror", "wifi", "logs", "settings"] as const).map((id) => {
@@ -109,10 +119,18 @@ export const Header: React.FC<HeaderProps> = ({
                         placeholder="device ip..." 
                         style={{ background: 'rgba(0,0,0,0.05)', border: 'none', padding: '8px 12px', borderRadius: '8px', fontSize: '12px', width: '140px' }}
                     />
-                    <button 
-                        className="sync-btn" 
+                    <button
+                        onClick={pullFromDevice}
+                        style={{ background: '#0ea5e9', color: 'white', border: 'none', padding: '8px 16px', borderRadius: '8px', fontSize: '11px', fontWeight: 800, cursor: 'pointer' }}
+                        title="Pull current config from device into builder"
+                    >
+                        ⬇ PULL
+                    </button>
+                    <button
+                        className="sync-btn"
                         onClick={context?.syncToDevice}
                         style={{ background: '#16a34a', color: 'white', border: 'none', padding: '8px 16px', borderRadius: '8px', fontSize: '11px', fontWeight: 800, cursor: 'pointer' }}
+                        title="Push builder config to device"
                     >
                         ⬆ SYNC
                     </button>
@@ -135,22 +153,30 @@ export const Header: React.FC<HeaderProps> = ({
                     </div>
                 </div>
             )}
-            <div 
-                onClick={() => setActiveTab("wifi")} 
-                style={{ 
-                    cursor: 'pointer', 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    gap: '10px', 
-                    padding: '6px 12px',
-                    borderRadius: '8px',
-                    background: status?.connected ? 'rgba(22, 163, 74, 0.1)' : 'rgba(239, 68, 68, 0.1)',
-                    marginLeft: '20px'
-                }}
-            >
-                <span style={{ fontSize: '18px' }}>{status?.connected ? '📶' : '❌'}</span>
-                {!isMobile && <span style={{ fontSize: '11px', fontWeight: 800, color: status?.connected ? '#16a34a' : '#ef4444' }}>{status?.connected ? 'ONLINE' : 'OFFLINE'}</span>}
-            </div>
+            {!isMobile && (
+                <div
+                    onClick={() => setActiveTab("wifi")}
+                    style={{
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '10px',
+                        padding: '6px 12px',
+                        borderRadius: '8px',
+                        background: status?.connected ? 'rgba(22, 163, 74, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                        marginLeft: '20px'
+                    }}
+                >
+                    <span style={{ fontSize: '18px' }}>{status?.connected ? '📶' : '❌'}</span>
+                    <span style={{ fontSize: '11px', fontWeight: 800, color: status?.connected ? '#16a34a' : '#ef4444' }}>{status?.connected ? 'ONLINE' : 'OFFLINE'}</span>
+                </div>
+            )}
+            {isMobile && (
+                <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: status?.connected ? '#16a34a' : '#ef4444' }} />
+                    <span style={{ fontSize: '10px', fontWeight: 800, color: status?.connected ? '#16a34a' : '#ef4444' }}>{status?.connected ? 'ONLINE' : 'OFFLINE'}</span>
+                </div>
+            )}
         </header>
     );
 };

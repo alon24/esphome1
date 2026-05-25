@@ -31,6 +31,9 @@ export const CanvasArea: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
     const selectionSourceRef = useRef<'canvas' | 'other' | null>(null);
     const [contextMenu, setContextMenu] = useState<{ x: number, y: number, type: string, id: string, pageId: string } | null>(null);
     const longPressTimer = useRef<any>(null);
+    const pinchRef = useRef<{ startDist: number; startScale: number } | null>(null);
+    const scaleRef = useRef(scale);
+    useEffect(() => { scaleRef.current = scale; }, [scale]);
 
     useLayoutEffect(() => {
         if (pendingScrollRef.current && containerRef.current) {
@@ -214,6 +217,70 @@ export const CanvasArea: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
             clearInterval(tid);
         };
     }, [scale, project, worldScreens, worldPanels]);
+
+    // Auto-fit canvas scale on mobile first render and scroll to first screen
+    useEffect(() => {
+        if (!isMobile) return;
+        const applyMobileInit = () => {
+            const el = containerRef.current;
+            if (!el) return;
+            const containerW = el.clientWidth;
+            const containerH = el.clientHeight;
+            if (containerW === 0) return; // not mounted yet, retry
+            const fitScale = Math.round((containerW / baseWidth) * 10) / 10;
+            const clampedScale = Math.max(0.2, Math.min(1, fitScale));
+            const firstScreen = worldScreens[0];
+            const scrX = firstScreen ? firstScreen.x : 100;
+            const scrY = firstScreen ? firstScreen.y : 100;
+            // scrX/scrY are pixel coords within the border-box world div — no padding offset needed
+            const targetX = Math.max(0, scrX * clampedScale - 10);
+            const targetY = Math.max(0, scrY * clampedScale - 10);
+            setScale(clampedScale);
+            // Apply scroll after the scale re-render via pending ref, and also
+            // directly after a frame in case scale didn't change
+            pendingScrollRef.current = { x: targetX, y: targetY };
+            requestAnimationFrame(() => {
+                if (containerRef.current) {
+                    containerRef.current.scrollLeft = targetX;
+                    containerRef.current.scrollTop = targetY;
+                    pendingScrollRef.current = null;
+                }
+            });
+        };
+        // Run on next frame to ensure container has been laid out
+        requestAnimationFrame(applyMobileInit);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isMobile]);
+
+    // Pinch-to-zoom: native touch listeners (non-passive touchmove to call preventDefault)
+    useEffect(() => {
+        if (!isMobile) return;
+        const el = containerRef.current;
+        if (!el) return;
+        const getDist = (t: TouchList) =>
+            Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
+        const onTouchStart = (e: TouchEvent) => {
+            if (e.touches.length === 2)
+                pinchRef.current = { startDist: getDist(e.touches), startScale: scaleRef.current };
+        };
+        const onTouchMove = (e: TouchEvent) => {
+            if (e.touches.length === 2 && pinchRef.current) {
+                e.preventDefault();
+                const ratio = getDist(e.touches) / pinchRef.current.startDist;
+                const next = Math.round(Math.max(0.2, Math.min(2, pinchRef.current.startScale * ratio)) * 10) / 10;
+                setScale(next);
+            }
+        };
+        const onTouchEnd = () => { pinchRef.current = null; };
+        el.addEventListener('touchstart', onTouchStart, { passive: true });
+        el.addEventListener('touchmove', onTouchMove, { passive: false });
+        el.addEventListener('touchend', onTouchEnd, { passive: true });
+        return () => {
+            el.removeEventListener('touchstart', onTouchStart);
+            el.removeEventListener('touchmove', onTouchMove);
+            el.removeEventListener('touchend', onTouchEnd);
+        };
+    }, [isMobile]);
 
     const headerHeight = useMemo(() => {
         const h = project.panels.find((p: any) => p.name.toLowerCase().includes('header'));
@@ -1318,7 +1385,7 @@ export const CanvasArea: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
                 })}
             </div>
 
-            {showMinimap && (
+            {showMinimap && !isMobile && (
             <div style={{ position: 'fixed', bottom: 80, right: 20, width: 220, height: 160, background: theme === 'dark' ? 'rgba(15, 23, 42, 0.9)' : 'rgba(255,255,255,0.9)', backdropFilter: 'blur(10px)', borderRadius: '16px', zIndex: 10000, border: '1px solid rgba(148, 163, 184, 0.2)', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2)', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
                 <div style={{ padding: '8px 12px', borderBottom: '1px solid rgba(148, 163, 184, 0.1)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span style={{ fontSize: '10px', fontWeight: 900, color: '#6366f1', letterSpacing: '0.5px' }}>NAVIGATOR</span>
@@ -1393,22 +1460,23 @@ export const CanvasArea: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
             </div>
             )}
 
-            <div style={{ position: 'fixed', bottom: 20, right: 20, background: 'rgba(15, 23, 42, 0.8)', backdropFilter: 'blur(10px)', padding: '8px 16px', borderRadius: '20px', color: 'white', display: 'flex', gap: '15px', alignItems: 'center', zIndex: 10000, border: '1px solid rgba(255,255,255,0.1)' }}>
-                <button 
-                    onClick={() => setShowMinimap(!showMinimap)} 
+            <div style={{ position: 'fixed', bottom: isMobile ? 72 : 20, right: 20, background: 'rgba(15, 23, 42, 0.8)', backdropFilter: 'blur(10px)', padding: isMobile ? '10px 16px' : '8px 16px', borderRadius: '20px', color: 'white', display: isMobile ? 'none' : 'flex', gap: '15px', alignItems: 'center', zIndex: 10000, border: '1px solid rgba(255,255,255,0.1)' }}>
+                {!isMobile && <>
+                <button
+                    onClick={() => setShowMinimap(!showMinimap)}
                     style={{ background: showMinimap ? '#6366f1' : '#334155', border: 'none', color: 'white', cursor: 'pointer', fontSize: '10px', fontWeight: 'bold', padding: '4px 8px', borderRadius: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}
                 >
                     <span style={{ fontSize: '14px' }}>🗺️</span> MAP
                 </button>
                 <div style={{ width: '1px', height: '16px', background: 'rgba(255,255,255,0.2)' }} />
-                <button 
-                    onClick={() => setXrayMode(!xrayMode)} 
+                <button
+                    onClick={() => setXrayMode(!xrayMode)}
                     style={{ background: xrayMode ? '#f59e0b' : '#334155', border: 'none', color: 'white', cursor: 'pointer', fontSize: '10px', fontWeight: 'bold', padding: '4px 8px', borderRadius: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}
                 >
                     <span style={{ fontSize: '14px' }}>👁️</span> X-RAY
                 </button>
                 <div style={{ width: '1px', height: '16px', background: 'rgba(255,255,255,0.2)' }} />
-                <button 
+                <button
                     onClick={() => {
                         const h = project.panels.find((p: any) => p.name.toLowerCase().includes('header'));
                         if (h) {
@@ -1416,15 +1484,16 @@ export const CanvasArea: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
                         } else {
                             alert("No header panel found.");
                         }
-                    }} 
+                    }}
                     style={{ background: '#10b981', border: 'none', color: 'white', cursor: 'pointer', fontSize: '10px', fontWeight: 'bold', padding: '4px 8px', borderRadius: '4px' }}
                 >
                     GO TO HEADER
                 </button>
                 <div style={{ width: '1px', height: '16px', background: 'rgba(255,255,255,0.2)' }} />
-                <button onClick={() => setScale(Math.max(0.2, scale - 0.1))} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer' }}>−</button>
-                <span style={{ fontSize: '12px', fontWeight: 800 }}>{Math.round(scale * 100)}%</span>
-                <button onClick={() => setScale(Math.min(2, scale + 0.1))} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer' }}>+</button>
+                </>}
+                <button onClick={() => setScale(Math.max(0.2, scale - 0.1))} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', fontSize: isMobile ? '20px' : '14px', padding: isMobile ? '4px 8px' : '0', minWidth: isMobile ? '36px' : 'auto', minHeight: isMobile ? '36px' : 'auto' }}>−</button>
+                <span style={{ fontSize: isMobile ? '13px' : '12px', fontWeight: 800, minWidth: '40px', textAlign: 'center' }}>{Math.round(scale * 100)}%</span>
+                <button onClick={() => setScale(Math.min(2, scale + 0.1))} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', fontSize: isMobile ? '20px' : '14px', padding: isMobile ? '4px 8px' : '0', minWidth: isMobile ? '36px' : 'auto', minHeight: isMobile ? '36px' : 'auto' }}>+</button>
                 {/* Resize size tooltip */}
                 {resizeTooltip && (
                     <div style={{

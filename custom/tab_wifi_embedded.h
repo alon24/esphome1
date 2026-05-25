@@ -82,10 +82,16 @@ static void _cwifi_do_scan() {
 
     wifi_scan_config_t cfg = {};
     cfg.show_hidden = 1;
-    
+
     ESP_LOGI("WIFI", "Starting manual synchronous scan...");
-    esp_err_t err = esp_wifi_scan_start(&cfg, true); // blocking ~2-3 s
-    
+    esp_err_t err = esp_wifi_scan_start(&cfg, true);
+    if (err == ESP_ERR_WIFI_CONN) {
+        // STA is mid-connection (ESPHome reconnect loop); abort it first
+        esp_wifi_disconnect();
+        vTaskDelay(pdMS_TO_TICKS(350));
+        err = esp_wifi_scan_start(&cfg, true);
+    }
+
     if (err == ESP_OK) {
         uint16_t count = 0;
         esp_wifi_scan_get_ap_num(&count);
@@ -143,83 +149,87 @@ static void _cwifi_populate_list() {
         return;
     }
 
-    const int ROW_H = 48;
+    const int ROW_H  = 68;
+    const int ROW_GAP = 4;
+    int row_w = lv_obj_get_width(g_cwifi_list) - 4;
     int y = 0;
     for (const auto &res : g_cwifi_results) {
         lv_obj_t *row = lv_obj_create(g_cwifi_list);
         lv_obj_set_pos(row, 0, y);
-        lv_obj_set_size(row, lv_obj_get_width(g_cwifi_list) - 4, ROW_H);
-        lv_obj_set_style_bg_color(row, lv_color_hex(0x2a2a2a), LV_STATE_DEFAULT); // Lighter row for contrast
+        lv_obj_set_size(row, row_w, ROW_H);
+        lv_obj_set_style_bg_color(row, lv_color_hex(0x242424), LV_STATE_DEFAULT);
+        lv_obj_set_style_bg_color(row, lv_color_hex(0x2e2e40), LV_STATE_PRESSED);
         lv_obj_set_style_bg_opa(row, LV_OPA_COVER, LV_STATE_DEFAULT);
+        lv_obj_set_style_bg_opa(row, LV_OPA_COVER, LV_STATE_PRESSED);
         lv_obj_set_style_radius(row, 6, LV_STATE_DEFAULT);
         _panel_reset(row);
         lv_obj_clear_flag(row, LV_OBJ_FLAG_SCROLLABLE);
 
-        // ── Signal strength bar panel ───────────────────────────────────────
         int bars = _rssi_bars(res.rssi);
         uint32_t col = _rssi_color(res.rssi);
-        // Ensure color is very bright for short-sighted accessibility
-        if (col == 0x00cc44) col = 0x00FF00; 
+        if (col == 0x00cc44) col = 0x00FF00;
         if (col == 0xff2222) col = 0xFF0000;
 
+        // ── Line 1: SSID (top, child 0) ──────────────────────────────────────
+        lv_obj_t *sl = lv_label_create(row);
+        lv_label_set_text(sl, (char*)res.ssid);
+        lv_obj_set_style_text_color(sl, lv_color_hex(0xffffff), LV_STATE_DEFAULT);
+        lv_obj_set_style_text_font(sl, &lv_font_montserrat_18, LV_STATE_DEFAULT);
+        _lbl_bg(sl, 0x242424);
+        lv_obj_set_pos(sl, 8, 6);
+        lv_label_set_long_mode(sl, LV_LABEL_LONG_DOT);
+        lv_obj_set_width(sl, row_w - 16);
+
+        // ── Line 2: signal bars (child 1) ─────────────────────────────────────
         lv_obj_t *bar_panel = lv_obj_create(row);
-        lv_obj_set_size(bar_panel, 30, 24);
-        lv_obj_set_pos(bar_panel, 4, 12);
-        lv_obj_set_style_bg_color(bar_panel, lv_color_hex(0x000000), LV_STATE_DEFAULT);
+        lv_obj_set_size(bar_panel, 36, 22);
+        lv_obj_set_pos(bar_panel, 8, 38);
+        lv_obj_set_style_bg_color(bar_panel, lv_color_hex(0x242424), LV_STATE_DEFAULT);
         lv_obj_set_style_bg_opa(bar_panel, LV_OPA_COVER, LV_STATE_DEFAULT);
         _panel_reset(bar_panel);
         lv_obj_clear_flag(bar_panel, LV_OBJ_FLAG_CLICKABLE);
 
         for (int b = 0; b < 5; b++) {
-            lv_coord_t bh = 4 + b * 4;
+            lv_coord_t bh = 5 + b * 4;
             lv_obj_t *bar = lv_obj_create(bar_panel);
-            lv_obj_set_size(bar, 3, bh);
-            lv_obj_set_pos(bar, 1 + b * 5, 24 - bh - 2);
+            lv_obj_set_size(bar, 4, bh);
+            lv_obj_set_pos(bar, 1 + b * 7, 22 - bh);
             lv_obj_set_style_radius(bar, 1, LV_STATE_DEFAULT);
-            lv_obj_set_style_bg_color(bar, b < bars ? lv_color_hex(col) : lv_color_hex(0x444444), LV_STATE_DEFAULT);
+            lv_obj_set_style_bg_color(bar,
+                b < bars ? lv_color_hex(col) : lv_color_hex(0x444444),
+                LV_STATE_DEFAULT);
             lv_obj_set_style_bg_opa(bar, LV_OPA_COVER, LV_STATE_DEFAULT);
             _panel_reset(bar);
             lv_obj_clear_flag(bar, LV_OBJ_FLAG_CLICKABLE);
         }
 
-        // SSID label (shifted right for bars) - PURE WHITE for high contrast
-        lv_obj_t *sl = lv_label_create(row);
-        lv_label_set_text(sl, (char*)res.ssid);
-        lv_obj_set_style_text_color(sl, lv_color_hex(0xffffff), LV_STATE_DEFAULT);
-        lv_obj_set_style_text_font(sl, &lv_font_montserrat_16, LV_STATE_DEFAULT);
-        _lbl_bg(sl, 0x2a2a2a);
-        lv_obj_set_pos(sl, 38, 8);
-        lv_label_set_long_mode(sl, LV_LABEL_LONG_DOT);
-        lv_obj_set_width(sl, lv_obj_get_width(g_cwifi_list) - 48);
-
-        // dBm label (shifted right for bars) - VIVID CYAN
+        // ── Line 2: dBm text (child 2) ────────────────────────────────────────
         lv_obj_t *dl = lv_label_create(row);
         char dbuf[16]; snprintf(dbuf, sizeof(dbuf), "%d dBm", (int)res.rssi);
         lv_label_set_text(dl, dbuf);
-        lv_obj_set_style_text_color(dl, lv_color_hex(0x00FFFF), LV_STATE_DEFAULT);
-        lv_obj_set_style_text_font(dl, &lv_font_montserrat_12, LV_STATE_DEFAULT);
-        _lbl_bg(dl, 0x2a2a2a);
-        lv_obj_set_pos(dl, 38, 28);
+        lv_obj_set_style_text_color(dl, lv_color_hex(col), LV_STATE_DEFAULT);
+        lv_obj_set_style_text_font(dl, &lv_font_montserrat_14, LV_STATE_DEFAULT);
+        _lbl_bg(dl, 0x242424);
+        lv_obj_set_pos(dl, 50, 40);
 
-        // Click → copy SSID
+        // Click → copy SSID (child 0 is the SSID label)
         lv_obj_add_flag(row, LV_OBJ_FLAG_CLICKABLE);
         lv_obj_set_user_data(row, g_cwifi_ssid_ta);
         lv_obj_add_event_cb(row, [](lv_event_t *e) {
             lv_obj_t *r  = (lv_obj_t*)lv_event_get_target(e);
             lv_obj_t *ta = (lv_obj_t*)lv_obj_get_user_data(r);
-            // SSID label is specifically child index 1 because bar_panel is 0
-            lv_obj_t *sl = lv_obj_get_child(r, 1); 
+            lv_obj_t *sl = lv_obj_get_child(r, 0);
             if (ta && sl) {
                 lv_textarea_set_text(ta, lv_label_get_text(sl));
                 if (g_cwifi_pass_ta) lv_textarea_set_text(g_cwifi_pass_ta, "");
             }
             if (g_cwifi_status_lbl) {
-                lv_label_set_text(g_cwifi_status_lbl, "SSID READY - Enter Password");
-                lv_obj_set_style_text_color(g_cwifi_status_lbl, lv_color_hex(0xFFFF00), LV_STATE_DEFAULT); // Bright Yellow
+                lv_label_set_text(g_cwifi_status_lbl, "SSID ready — enter password");
+                lv_obj_set_style_text_color(g_cwifi_status_lbl, lv_color_hex(0xFFFF00), LV_STATE_DEFAULT);
             }
         }, LV_EVENT_CLICKED, nullptr);
 
-        y += ROW_H + 4;
+        y += ROW_H + ROW_GAP;
     }
     ESP_LOGI("WIFI", "List populated with %d items", (int)g_cwifi_results.size());
     // Update content height for scrolling and enable it
@@ -261,8 +271,8 @@ void tab_wifi_create_embedded(lv_obj_t *parent) {
     if (ph <= 0) ph = 350;
     ESP_LOGI("WIFI", "Embedded create: %dx%d", pw, ph);
 
-    int lw = (pw * 40) / 100;              // D3: left 40%
-    int rw = pw - lw - 1;               // D3: right 60%
+    int lw = pw / 2;                        // D3: left 50%
+    int rw = pw - lw - 1;               // D3: right 50%
 
     // ── Left panel: NETWORKS list ─────────────────────────────────────────────  D4
     lv_obj_t *left = _make_panel(parent, 0, 0, lw, ph, 0x131313);
@@ -307,26 +317,26 @@ void tab_wifi_create_embedded(lv_obj_t *parent) {
     // SSID
     lv_obj_t *ssid_hdr = lv_label_create(right);
     lv_label_set_text(ssid_hdr, "SSID");
-    lv_obj_set_style_text_color(ssid_hdr, lv_color_hex(0xFF8800), LV_STATE_DEFAULT); // Vivid Orange
-    lv_obj_set_style_text_font(ssid_hdr, &lv_font_montserrat_12, LV_STATE_DEFAULT);
+    lv_obj_set_style_text_color(ssid_hdr, lv_color_hex(0xFF8800), LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(ssid_hdr, &lv_font_montserrat_14, LV_STATE_DEFAULT);
     _lbl_bg(ssid_hdr, 0x050505);
     lv_obj_set_pos(ssid_hdr, 10, 8);
 
     g_cwifi_ssid_ta = lv_textarea_create(right);
     lv_textarea_set_one_line(g_cwifi_ssid_ta, true);
     lv_textarea_set_placeholder_text(g_cwifi_ssid_ta, "Select network...");
-    lv_obj_set_pos(g_cwifi_ssid_ta, 8, 26);
-    lv_obj_set_size(g_cwifi_ssid_ta, rw - 16, 38);
+    lv_obj_set_pos(g_cwifi_ssid_ta, 8, 28);
+    lv_obj_set_size(g_cwifi_ssid_ta, rw - 16, 52);
     lv_obj_set_style_bg_color(g_cwifi_ssid_ta, lv_color_hex(0x1a1a1a), LV_STATE_DEFAULT);
     lv_obj_set_style_text_color(g_cwifi_ssid_ta, lv_color_hex(0xffffff), LV_STATE_DEFAULT);
-    lv_obj_set_style_text_font(g_cwifi_ssid_ta, &lv_font_montserrat_16, LV_STATE_DEFAULT);
-    lv_obj_set_style_border_color(g_cwifi_ssid_ta, lv_color_hex(0x00FFFF), LV_STATE_FOCUSED); // Electric Cyan
-    lv_obj_set_style_border_width(g_cwifi_ssid_ta, 3, LV_STATE_FOCUSED); // Thicker border
+    lv_obj_set_style_text_font(g_cwifi_ssid_ta, &lv_font_montserrat_20, LV_STATE_DEFAULT);
+    lv_obj_set_style_border_color(g_cwifi_ssid_ta, lv_color_hex(0x00FFFF), LV_STATE_FOCUSED);
+    lv_obj_set_style_border_width(g_cwifi_ssid_ta, 3, LV_STATE_FOCUSED);
     lv_obj_set_style_border_color(g_cwifi_ssid_ta, lv_color_hex(0x333333), LV_STATE_DEFAULT);
     lv_obj_set_style_border_width(g_cwifi_ssid_ta, 1, LV_STATE_DEFAULT);
     lv_obj_set_style_radius(g_cwifi_ssid_ta, 6, LV_STATE_DEFAULT);
-    lv_obj_set_style_pad_top(g_cwifi_ssid_ta, 4, LV_STATE_DEFAULT);
-    lv_obj_set_style_pad_bottom(g_cwifi_ssid_ta, 4, LV_STATE_DEFAULT);
+    lv_obj_set_style_pad_top(g_cwifi_ssid_ta, 6, LV_STATE_DEFAULT);
+    lv_obj_set_style_pad_bottom(g_cwifi_ssid_ta, 6, LV_STATE_DEFAULT);
     lv_obj_set_scroll_dir(g_cwifi_ssid_ta, LV_DIR_HOR);
     lv_obj_clear_flag(g_cwifi_ssid_ta, LV_OBJ_FLAG_SCROLL_ON_FOCUS);
     lv_obj_add_event_cb(g_cwifi_ssid_ta, [](lv_event_t *e) {
@@ -338,27 +348,27 @@ void tab_wifi_create_embedded(lv_obj_t *parent) {
     // PASSWORD
     lv_obj_t *pass_hdr = lv_label_create(right);
     lv_label_set_text(pass_hdr, "PASSWORD");
-    lv_obj_set_style_text_color(pass_hdr, lv_color_hex(0xFF8800), LV_STATE_DEFAULT); // Vivid Orange
-    lv_obj_set_style_text_font(pass_hdr, &lv_font_montserrat_12, LV_STATE_DEFAULT);
+    lv_obj_set_style_text_color(pass_hdr, lv_color_hex(0xFF8800), LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(pass_hdr, &lv_font_montserrat_14, LV_STATE_DEFAULT);
     _lbl_bg(pass_hdr, 0x050505);
-    lv_obj_set_pos(pass_hdr, 10, 74);
+    lv_obj_set_pos(pass_hdr, 10, 90);
 
     g_cwifi_pass_ta = lv_textarea_create(right);
     lv_textarea_set_one_line(g_cwifi_pass_ta, true);
     lv_textarea_set_password_mode(g_cwifi_pass_ta, true);
     lv_textarea_set_placeholder_text(g_cwifi_pass_ta, "Password...");
-    lv_obj_set_pos(g_cwifi_pass_ta, 8, 92);
-    lv_obj_set_size(g_cwifi_pass_ta, rw - 16, 38);
+    lv_obj_set_pos(g_cwifi_pass_ta, 8, 110);
+    lv_obj_set_size(g_cwifi_pass_ta, rw - 16, 52);
     lv_obj_set_style_bg_color(g_cwifi_pass_ta, lv_color_hex(0x1a1a1a), LV_STATE_DEFAULT);
     lv_obj_set_style_text_color(g_cwifi_pass_ta, lv_color_hex(0xffffff), LV_STATE_DEFAULT);
-    lv_obj_set_style_text_font(g_cwifi_pass_ta, &lv_font_montserrat_16, LV_STATE_DEFAULT);
-    lv_obj_set_style_border_color(g_cwifi_pass_ta, lv_color_hex(0x00FFFF), LV_STATE_FOCUSED); // Electric Cyan
-    lv_obj_set_style_border_width(g_cwifi_pass_ta, 3, LV_STATE_FOCUSED); // Thicker border
+    lv_obj_set_style_text_font(g_cwifi_pass_ta, &lv_font_montserrat_20, LV_STATE_DEFAULT);
+    lv_obj_set_style_border_color(g_cwifi_pass_ta, lv_color_hex(0x00FFFF), LV_STATE_FOCUSED);
+    lv_obj_set_style_border_width(g_cwifi_pass_ta, 3, LV_STATE_FOCUSED);
     lv_obj_set_style_border_color(g_cwifi_pass_ta, lv_color_hex(0x333333), LV_STATE_DEFAULT);
     lv_obj_set_style_border_width(g_cwifi_pass_ta, 1, LV_STATE_DEFAULT);
     lv_obj_set_style_radius(g_cwifi_pass_ta, 6, LV_STATE_DEFAULT);
-    lv_obj_set_style_pad_top(g_cwifi_pass_ta, 4, LV_STATE_DEFAULT);
-    lv_obj_set_style_pad_bottom(g_cwifi_pass_ta, 4, LV_STATE_DEFAULT);
+    lv_obj_set_style_pad_top(g_cwifi_pass_ta, 6, LV_STATE_DEFAULT);
+    lv_obj_set_style_pad_bottom(g_cwifi_pass_ta, 6, LV_STATE_DEFAULT);
     lv_obj_set_scroll_dir(g_cwifi_pass_ta, LV_DIR_HOR);
     lv_obj_clear_flag(g_cwifi_pass_ta, LV_OBJ_FLAG_SCROLL_ON_FOCUS);
     lv_obj_add_event_cb(g_cwifi_pass_ta, [](lv_event_t *e) {
@@ -367,17 +377,17 @@ void tab_wifi_create_embedded(lv_obj_t *parent) {
         else if (c == LV_EVENT_DEFOCUSED) _cwifi_kb_hide();
     }, LV_EVENT_ALL, nullptr);
 
-    // Eye toggle button for password visibility
+    // Eye toggle button
     lv_obj_t *eye_btn = lv_btn_create(right);
-    lv_obj_set_size(eye_btn, 38, 34);
+    lv_obj_set_size(eye_btn, 42, 44);
     lv_obj_align_to(eye_btn, g_cwifi_pass_ta, LV_ALIGN_RIGHT_MID, -2, 0);
     lv_obj_set_style_bg_opa(eye_btn, 0, 0);
     lv_obj_set_style_border_width(eye_btn, 0, 0);
     lv_obj_set_style_shadow_width(eye_btn, 0, 0);
     lv_obj_t *eye_lbl = lv_label_create(eye_btn);
     lv_label_set_text(eye_lbl, LV_SYMBOL_EYE_OPEN);
-    lv_obj_set_style_text_color(eye_lbl, lv_color_hex(0xFFFF00), LV_STATE_DEFAULT); // Vivid Yellow
-    lv_obj_set_style_text_font(eye_lbl, &lv_font_montserrat_18, LV_STATE_DEFAULT);
+    lv_obj_set_style_text_color(eye_lbl, lv_color_hex(0xFFFF00), LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(eye_lbl, &lv_font_montserrat_20, LV_STATE_DEFAULT);
     lv_obj_center(eye_lbl);
     lv_obj_add_event_cb(eye_btn, [](lv_event_t *e) {
         lv_obj_t *btn = (lv_obj_t*)lv_event_get_target(e);
@@ -388,7 +398,7 @@ void tab_wifi_create_embedded(lv_obj_t *parent) {
     }, LV_EVENT_CLICKED, nullptr);
 
     // D6: Buttons ─────────────────────────────────────────────────────────────
-    int btn_y = 142;
+    int btn_y = 174;
     int btn_w = (rw - 24) / 2;
 
     // SCAN button (green)
@@ -445,15 +455,15 @@ void tab_wifi_create_embedded(lv_obj_t *parent) {
     // D7: Status label ────────────────────────────────────────────────────────
     g_cwifi_status_lbl = lv_label_create(right);
     lv_label_set_text(g_cwifi_status_lbl, "Scan for networks to begin");
-    lv_obj_set_style_text_color(g_cwifi_status_lbl, lv_color_hex(0x00FFFF), LV_STATE_DEFAULT); // Vivid Cyan
+    lv_obj_set_style_text_color(g_cwifi_status_lbl, lv_color_hex(0x00FFFF), LV_STATE_DEFAULT);
     lv_obj_set_style_text_font(g_cwifi_status_lbl, &lv_font_montserrat_14, LV_STATE_DEFAULT);
     _lbl_bg(g_cwifi_status_lbl, 0x050505);
-    lv_obj_set_pos(g_cwifi_status_lbl, 10, 194);
+    lv_obj_set_pos(g_cwifi_status_lbl, 10, 224);
     lv_obj_set_width(g_cwifi_status_lbl, rw - 20);
     lv_label_set_long_mode(g_cwifi_status_lbl, LV_LABEL_LONG_WRAP);
 
     // ── AP MODE SETTINGS ─────────────────────────────────────────
-    int ap_y = 230;
+    int ap_y = 262;
     lv_obj_t *ap_sep = lv_obj_create(right);
     lv_obj_set_size(ap_sep, rw - 16, 2);
     lv_obj_set_pos(ap_sep, 8, ap_y);
@@ -470,6 +480,21 @@ void tab_wifi_create_embedded(lv_obj_t *parent) {
     lv_obj_set_pos(g_cwifi_ap_sw, rw - 55, ap_y + 6);
     lv_obj_set_size(g_cwifi_ap_sw, 40, 20);
     lv_obj_set_style_bg_color(g_cwifi_ap_sw, lv_color_hex(0x00CED1), (uint32_t)LV_PART_INDICATOR | (uint32_t)LV_STATE_CHECKED);
+    lv_obj_add_event_cb(g_cwifi_ap_sw, [](lv_event_t *e) {
+        if (lv_event_get_code(e) != LV_EVENT_VALUE_CHANGED) return;
+        // LVGL 9 fires VALUE_CHANGED before toggling state — negate to get new state
+        bool active = !lv_obj_has_state(g_cwifi_ap_sw, LV_STATE_CHECKED);
+        const char *s = g_cwifi_ap_ssid_ta ? lv_textarea_get_text(g_cwifi_ap_ssid_ta) : g_ap_ssid;
+        const char *p = g_cwifi_ap_pass_ta ? lv_textarea_get_text(g_cwifi_ap_pass_ta) : g_ap_password;
+        g_ap_always_on = active;
+        if (s && s[0]) strncpy(g_ap_ssid, s, sizeof(g_ap_ssid)-1);
+        if (p) strncpy(g_ap_password, p, sizeof(g_ap_password)-1);
+        ESP_LOGI("WIFI_AP", "Switch toggled: active=%s ssid=%s", active ? "YES" : "NO", g_ap_ssid);
+        wifi_apply_ap_settings(active, g_ap_ssid, g_ap_password);
+        system_settings_save();
+        if (g_cwifi_status_lbl)
+            lv_label_set_text(g_cwifi_status_lbl, active ? "AP Mode ON." : "AP Mode OFF.");
+    }, LV_EVENT_VALUE_CHANGED, nullptr);
 
     // AP SSID
     lv_obj_t *aps_hdr = lv_label_create(right);
@@ -558,19 +583,31 @@ void tab_wifi_create_embedded(lv_obj_t *parent) {
         bool act = lv_obj_has_state(g_cwifi_ap_sw, LV_STATE_CHECKED);
         const char *s = lv_textarea_get_text(pts[0]);
         const char *p = lv_textarea_get_text(pts[1]);
-        wifi_apply_ap_settings(act, s, p);
+        g_ap_always_on = act;
+        if (s && s[0]) strncpy(g_ap_ssid, s, sizeof(g_ap_ssid)-1);
+        if (p) strncpy(g_ap_password, p, sizeof(g_ap_password)-1);
+        wifi_apply_ap_settings(act, g_ap_ssid, g_ap_password);
+        system_settings_save();
         if (g_cwifi_status_lbl) lv_label_set_text(g_cwifi_status_lbl, "AP Settings applied.");
     }, LV_EVENT_CLICKED, nullptr);
 
     // Set scroll padding to ensure button represents bottom of list
     lv_obj_set_style_pad_bottom(right, 20, LV_STATE_DEFAULT);
 
-    // Auto-populate saved SSID
+    // Auto-populate saved STA credentials
     wifi_config_t conf;
     if (esp_wifi_get_config(WIFI_IF_STA, &conf) == ESP_OK && conf.sta.ssid[0]) {
         lv_textarea_set_text(g_cwifi_ssid_ta, (char*)conf.sta.ssid);
         lv_textarea_set_text(g_cwifi_pass_ta, (char*)conf.sta.password);
         lv_label_set_text(g_cwifi_status_lbl, "Saved credentials loaded");
+    }
+
+    // Populate AP fields from saved settings
+    if (g_cwifi_ap_ssid_ta) lv_textarea_set_text(g_cwifi_ap_ssid_ta, g_ap_ssid);
+    if (g_cwifi_ap_pass_ta) lv_textarea_set_text(g_cwifi_ap_pass_ta, g_ap_password);
+    if (g_cwifi_ap_sw) {
+        if (g_ap_always_on) lv_obj_add_state(g_cwifi_ap_sw, LV_STATE_CHECKED);
+        else lv_obj_clear_state(g_cwifi_ap_sw, LV_STATE_CHECKED);
     }
 
     // D9: Floating keyboard — full screen width, anchored bottom ─────────────

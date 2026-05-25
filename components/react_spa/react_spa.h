@@ -66,6 +66,70 @@ static char* g_spa_cache_buf = nullptr;
 static size_t g_spa_cache_len = 0;
 static std::atomic<bool> g_spa_cache_dirty{true};
 
+// HTTP WiFi scan — driven by WIFI_EVENT_SCAN_DONE registered *before* ESPHome's
+// WiFi component (setup priority 251 > 250), so our handler always reads AP
+// records first, before ESPHome's handler can consume them.
+static SemaphoreHandle_t s_http_scan_mtx = nullptr;   // one scan at a time
+static SemaphoreHandle_t s_http_scan_sem = nullptr;   // signals scan done
+static volatile bool     s_our_scan_pending = false;  // guard: only steal if we started the scan
+static uint16_t          s_http_scan_count = 0;
+static wifi_ap_record_t  s_http_scan_recs[24];
+static esp_err_t         s_http_scan_err = ESP_OK;
+static esp_event_handler_instance_t s_scan_done_instance = nullptr;
+static esp_event_handler_instance_t s_sta_connected_instance = nullptr;
+static volatile bool s_stay_disconnected = false;  // set by disconnect/forget, cleared by connect
+
+static void _ensure_ap_on() {
+    wifi_mode_t mode = WIFI_MODE_NULL;
+    esp_wifi_get_mode(&mode);
+    if (mode == WIFI_MODE_STA) {
+        // ESPHome dropped the AP after connecting — restore APSTA
+        esp_wifi_set_mode(WIFI_MODE_APSTA);
+    }
+    wifi_config_t ap_cfg = {};
+    strncpy((char*)ap_cfg.ap.ssid, ::g_ap_ssid, 32);
+    ap_cfg.ap.ssid_len = strlen(::g_ap_ssid);
+    strncpy((char*)ap_cfg.ap.password, ::g_ap_password, 64);
+    ap_cfg.ap.max_connection = 4;
+    ap_cfg.ap.channel = 1;
+    ap_cfg.ap.authmode = (strlen(::g_ap_password) > 7) ? WIFI_AUTH_WPA2_PSK : WIFI_AUTH_OPEN;
+    esp_wifi_set_config(WIFI_IF_AP, &ap_cfg);
+    ESP_LOGI("react_spa", "AP ensured: ssid=%s mode=%d", ::g_ap_ssid, (int)mode);
+}
+
+// Called on every STA connect event. When user requested disconnect: fight ESPHome back to AP-only.
+// Otherwise: if AP is meant to be on (g_ap_always_on), ensure it stays up — ESPHome tends to
+// drop the AP interface after STA connects successfully.
+static void _wifi_sta_connected_cb(void *, esp_event_base_t, int32_t, void *) {
+    if (s_stay_disconnected) {
+        ESP_LOGI("react_spa", "STA connected but disconnect was requested — forcing AP-only");
+        esp_wifi_disconnect();
+        esp_wifi_set_mode(WIFI_MODE_AP);
+    } else if (::g_ap_always_on) {
+        _ensure_ap_on();
+    }
+}
+
+// Called from the event-loop task for WIFI_EVENT_SCAN_DONE.
+// Because we registered before ESPHome's WiFi component, we run first and
+// capture AP records before ESPHome's handler can clear them.
+static void _wifi_scan_done_cb(void *, esp_event_base_t, int32_t, void *) {
+    ESP_LOGI("react_spa", "scan_done_cb: pending=%d", (int)s_our_scan_pending);
+    if (!s_our_scan_pending) return;
+    s_our_scan_pending = false;
+
+    uint16_t n = 0;
+    esp_wifi_scan_get_ap_num(&n);
+    if (n > 24) n = 24;
+    s_http_scan_count = n;
+    s_http_scan_err = ESP_OK;
+    if (n > 0) {
+        esp_err_t get_err = esp_wifi_scan_get_ap_records(&n, s_http_scan_recs);
+        ESP_LOGI("react_spa", "scan_done_cb: get_records n=%d err=%d", (int)n, (int)get_err);
+    }
+    xSemaphoreGive(s_http_scan_sem);
+}
+
 static std::string g_pending_nav_screen = "";
 
 static void json_escape(const char *in, char *out, size_t out_len) {
@@ -119,14 +183,50 @@ class ReactSPAComponent : public Component {
   }
   
   void setup() override {
+    s_http_scan_mtx = xSemaphoreCreateMutex();
+    s_http_scan_sem = xSemaphoreCreateBinary();
+    // Event handler registration and httpd_start are deferred to loop() via _start_server():
+    // lwIP and the default event loop are not yet initialized at this setup priority.
     ::system_settings_load();
     load_active_path();
     refresh_spa_cache();
+  }
+
+  void loop() override {
+    if (!server_) {
+      _start_server();
+    }
+  }
+
+  void _start_server() {
+    // Register WiFi event handlers now that the event loop is guaranteed to exist.
+    if (!s_scan_done_instance) {
+        esp_err_t reg_err = esp_event_handler_instance_register(WIFI_EVENT, WIFI_EVENT_SCAN_DONE,
+                                            _wifi_scan_done_cb, nullptr, &s_scan_done_instance);
+        ESP_LOGI(TAG, "scan_done handler registered: %s", reg_err == ESP_OK ? "OK" : esp_err_to_name(reg_err));
+    }
+    if (!s_sta_connected_instance) {
+        esp_event_handler_instance_register(WIFI_EVENT, WIFI_EVENT_STA_CONNECTED,
+                                            _wifi_sta_connected_cb, nullptr, &s_sta_connected_instance);
+    }
+
+    // Migrate stale RTC-cached SSID from old default "GRIDOS_AP" → "GridOS-AP".
+    // RTC memory persists across soft reboots so the inline default change alone won't help.
+    if (strcmp(::g_ap_ssid, "GRIDOS_AP") == 0 || strlen(::g_ap_ssid) == 0) {
+        strncpy(::g_ap_ssid, "GridOS-AP", sizeof(::g_ap_ssid) - 1);
+        strncpy(::g_ap_password, "esp32display", sizeof(::g_ap_password) - 1);
+    }
+    // Only start AP if the user wants it on (persisted preference loaded in setup()).
+    // Previously this forced g_ap_always_on=true on every boot, erasing saved "AP off" state.
+    if (::g_ap_always_on) {
+        _ensure_ap_on();
+    }
 
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
     config.server_port = port_;
     config.uri_match_fn = httpd_uri_match_wildcard;
     config.max_uri_handlers = 40;
+    config.max_open_sockets = 12; // Default is 7; raise to handle push batches without crashing
     config.stack_size = 16384; // Increase stack for JSON/FS operations
     config.ctrl_port = 32769; // Shift control port to avoid conflict with default web server
 
@@ -167,6 +267,7 @@ class ReactSPAComponent : public Component {
     reg("/api/wifi/status", HTTP_GET, wifi_status_handler);
     reg("/api/wifi/scan", HTTP_GET, wifi_scan_handler);
     reg("/api/wifi/connect", HTTP_POST, wifi_connect_handler);
+    reg("/api/wifi/disconnect", HTTP_POST, wifi_disconnect_handler);
     reg("/api/wifi/forget", HTTP_POST, wifi_forget_handler);
     reg("/api/wifi/ap", HTTP_POST, wifi_ap_handler);
 
@@ -223,6 +324,25 @@ class ReactSPAComponent : public Component {
         free(body);
         httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
         return httpd_resp_sendstr(req, "{\"status\":\"ok\"}");
+    });
+
+    reg("/api/grid/panels", HTTP_GET, [](httpd_req_t *req) {
+        FILE* f = fopen("/littlefs/panels.json", "r");
+        if (!f) {
+            httpd_resp_set_type(req, "application/json");
+            return httpd_resp_sendstr(req, "[]");
+        }
+        fseek(f, 0, SEEK_END);
+        size_t sz = ftell(f);
+        fseek(f, 0, SEEK_SET);
+        char* buf = (char*)malloc(sz + 1);
+        fread(buf, 1, sz, f);
+        buf[sz] = '\0';
+        fclose(f);
+        httpd_resp_set_type(req, "application/json");
+        esp_err_t res = httpd_resp_sendstr(req, buf);
+        free(buf);
+        return res;
     });
 
     reg("/api/grid/panels", HTTP_POST, [](httpd_req_t *req) {
@@ -578,6 +698,15 @@ class ReactSPAComponent : public Component {
     if (pass && pass[0]) strncpy((char*)cfg.sta.password, pass, sizeof(cfg.sta.password) - 1);
     cfg.sta.threshold.authmode = strlen(pass) ? WIFI_AUTH_WPA2_PSK : WIFI_AUTH_OPEN;
 
+    s_stay_disconnected = false;  // user is explicitly connecting — allow STA
+    // Restore STA interface if we were in AP-only mode after a disconnect/forget
+    wifi_mode_t cur_mode = WIFI_MODE_NULL;
+    esp_wifi_get_mode(&cur_mode);
+    if (cur_mode == WIFI_MODE_AP) {
+        esp_wifi_set_mode(WIFI_MODE_APSTA);
+        vTaskDelay(pdMS_TO_TICKS(300));
+    }
+
     esp_wifi_disconnect();
     vTaskDelay(pdMS_TO_TICKS(100));
     esp_wifi_set_storage(WIFI_STORAGE_FLASH);
@@ -585,6 +714,17 @@ class ReactSPAComponent : public Component {
     esp_wifi_connect();
 
     return httpd_resp_sendstr(req, "{\"status\":\"connecting\"}");
+  }
+
+  static esp_err_t wifi_disconnect_handler(httpd_req_t *req) {
+    set_cors(req);
+    s_stay_disconnected = true;
+    esp_wifi_disconnect();
+    vTaskDelay(pdMS_TO_TICKS(200));
+    ::wifi_apply_ap_settings(true, ::g_ap_ssid, ::g_ap_password);
+    esp_wifi_set_mode(WIFI_MODE_AP);
+    ESP_LOGI(TAG, "WiFi disconnected (AP-only, will resist ESPHome reconnect)");
+    return httpd_resp_sendstr(req, "{\"status\":\"disconnected\"}");
   }
 
   static esp_err_t wifi_forget_handler(httpd_req_t *req) {
@@ -595,43 +735,95 @@ class ReactSPAComponent : public Component {
     vTaskDelay(pdMS_TO_TICKS(100));
     esp_wifi_set_storage(WIFI_STORAGE_FLASH);
     esp_wifi_set_config(WIFI_IF_STA, &cfg);
-    ESP_LOGI(TAG, "WiFi STA credentials cleared");
+    s_stay_disconnected = true;
+    ::wifi_apply_ap_settings(true, ::g_ap_ssid, ::g_ap_password);
+    esp_wifi_set_mode(WIFI_MODE_AP);
+    ESP_LOGI(TAG, "WiFi STA credentials cleared (AP-only, will resist ESPHome reconnect)");
     return httpd_resp_sendstr(req, "{\"status\":\"forgotten\"}");
   }
 
   static esp_err_t wifi_scan_handler(httpd_req_t *req) {
     set_cors(req);
-    wifi_scan_config_t cfg = {};
-    cfg.show_hidden = 0;
-    esp_wifi_scan_start(&cfg, true);
 
-    uint16_t count = 0;
-    esp_wifi_scan_get_ap_num(&count);
-    if (count > 20) count = 20;
+    // Only one concurrent HTTP scan
+    if (xSemaphoreTake(s_http_scan_mtx, pdMS_TO_TICKS(500)) != pdTRUE) {
+        httpd_resp_set_type(req, "application/json");
+        return httpd_resp_sendstr(req, "{\"networks\":[],\"error\":\"scan_busy\"}");
+    }
+
+    // Drain any stale completion signal from a previous scan
+    xSemaphoreTake(s_http_scan_sem, 0);
+
+    // AP-only mode can't scan; promote to APSTA
+    wifi_mode_t mode = WIFI_MODE_NULL;
+    esp_wifi_get_mode(&mode);
+    if (mode == WIFI_MODE_AP) {
+        esp_wifi_set_mode(WIFI_MODE_APSTA);
+        vTaskDelay(pdMS_TO_TICKS(200));
+    }
+
+    wifi_scan_config_t cfg = {};
+    cfg.show_hidden = 1;
+    cfg.scan_type = WIFI_SCAN_TYPE_ACTIVE;
+    cfg.scan_time.active.min = 200;
+    cfg.scan_time.active.max = 600;
+
+    s_http_scan_count = 0;
+    s_http_scan_err = ESP_OK;
+    // Set flag before starting scan so our event handler knows to capture results.
+    s_our_scan_pending = true;
+
+    esp_err_t start_err = esp_wifi_scan_start(&cfg, false);
+    ESP_LOGI(TAG, "wifi_scan_handler: scan started mode=%d err=%d", (int)mode, (int)start_err);
+    if (start_err != ESP_OK) {
+        s_our_scan_pending = false;
+        xSemaphoreGive(s_http_scan_mtx);
+        ESP_LOGW(TAG, "esp_wifi_scan_start failed: %d", (int)start_err);
+        httpd_resp_set_type(req, "application/json");
+        return httpd_resp_sendstr(req, "{\"networks\":[],\"error\":\"scan_busy\"}");
+    }
+
+    // Wait for _wifi_scan_done_cb to capture results and signal completion
+    bool done = xSemaphoreTake(s_http_scan_sem, pdMS_TO_TICKS(10000)) == pdTRUE;
+    s_our_scan_pending = false;  // safe cleanup in case of timeout
+    xSemaphoreGive(s_http_scan_mtx);
+
+    if (!done) {
+        ESP_LOGW(TAG, "WiFi scan timed out");
+        httpd_resp_set_type(req, "application/json");
+        return httpd_resp_sendstr(req, "{\"networks\":[],\"error\":\"scan_timeout\"}");
+    }
+
+    ESP_LOGI(TAG, "scan_handler result: count=%d err=%d", (int)s_http_scan_count, (int)s_http_scan_err);
+
+    if (s_http_scan_count == 0) {
+        httpd_resp_set_type(req, "application/json");
+        return httpd_resp_sendstr(req, "{\"networks\":[],\"error\":\"scan_empty\"}");
+    }
 
     char *json = (char*)malloc(4096);
     if (!json) {
         httpd_resp_set_type(req, "application/json");
-        return httpd_resp_sendstr(req, "{\"networks\":[]}");
+        return httpd_resp_sendstr(req, "{\"networks\":[],\"error\":\"oom\"}");
     }
 
     int pos = snprintf(json, 4096, "{\"networks\":[");
     bool first = true;
-
-    if (count > 0) {
-        wifi_ap_record_t *recs = (wifi_ap_record_t*)malloc(count * sizeof(wifi_ap_record_t));
-        if (recs && esp_wifi_scan_get_ap_records(&count, recs) == ESP_OK) {
-            for (int i = 0; i < count && pos < 3900; i++) {
-                if (recs[i].ssid[0] == '\0') continue;
-                bool secure = (recs[i].authmode != WIFI_AUTH_OPEN);
-                pos += snprintf(json + pos, 4096 - pos, "%s{\"ssid\":\"%s\",\"rssi\":%d,\"secure\":%s}",
-                    first ? "" : ",", (char*)recs[i].ssid, recs[i].rssi, secure ? "true" : "false");
-                first = false;
-            }
+    for (int i = 0; i < (int)s_http_scan_count && pos < 3900; i++) {
+        if (s_http_scan_recs[i].ssid[0] == '\0') continue;
+        bool secure = (s_http_scan_recs[i].authmode != WIFI_AUTH_OPEN);
+        char safe[65];
+        int si = 0, di = 0;
+        while (s_http_scan_recs[i].ssid[si] && di < 62) {
+            char c = s_http_scan_recs[i].ssid[si++];
+            if (c == '"' || c == '\\') safe[di++] = '\\';
+            safe[di++] = c;
         }
-        if (recs) free(recs);
+        safe[di] = '\0';
+        pos += snprintf(json + pos, 4096 - pos, "%s{\"ssid\":\"%s\",\"rssi\":%d,\"secure\":%s}",
+            first ? "" : ",", safe, s_http_scan_recs[i].rssi, secure ? "true" : "false");
+        first = false;
     }
-
     snprintf(json + pos, 4096 - pos, "]}");
     httpd_resp_set_type(req, "application/json");
     esp_err_t ret = httpd_resp_sendstr(req, json);

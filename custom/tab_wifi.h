@@ -34,7 +34,8 @@ static lv_obj_t *g_wifi_ap_ip_lbl   = nullptr;  // AP IP Status
 static volatile bool g_wifi_scanning  = false;
 static volatile bool g_wifi_scan_done = false;
 static TaskHandle_t g_wifi_scan_task_handle = nullptr;
-static std::vector<ScanResult> g_wifi_scan_results; // shared results for tab_wifi.h
+static std::vector<ScanResult> g_wifi_scan_results;
+static bool g_wifi_ap_sw_syncing = false; // prevents tick-sync from re-triggering toggle cb
 
 static void _wifi_on_delete(lv_event_t *e) {
     if (g_wifi_keyboard) {
@@ -77,6 +78,12 @@ static void _wifi_scan_task(void *pvParameters) {
     wifi_scan_config_t cfg = {};
     cfg.show_hidden = 0;
     esp_err_t err = esp_wifi_scan_start(&cfg, true);
+    if (err == ESP_ERR_WIFI_CONN) {
+        // STA is mid-connection (ESPHome reconnect loop); abort it first
+        esp_wifi_disconnect();
+        vTaskDelay(pdMS_TO_TICKS(350));
+        err = esp_wifi_scan_start(&cfg, true);
+    }
     if (err == ESP_OK) {
         uint16_t count = 0;
         esp_wifi_scan_get_ap_num(&count);
@@ -322,7 +329,7 @@ void tab_wifi_create(lv_obj_t *parent, lv_obj_t *root) {
     }, LV_EVENT_ALL, nullptr);
 
     // Show/Hide Password Button
-    lv_obj_t *eye_btn = lv_button_create(right);
+    lv_obj_t *eye_btn = lv_btn_create(right);
     lv_obj_set_size(eye_btn, 40, 40);
     lv_obj_set_pos(eye_btn, 302, 106);
     lv_obj_set_style_bg_color(eye_btn, lv_color_hex(0x333333), 0);
@@ -415,6 +422,21 @@ void tab_wifi_create(lv_obj_t *parent, lv_obj_t *root) {
     lv_obj_set_pos(g_wifi_ap_sw, 300, 276);
     lv_obj_set_style_bg_color(g_wifi_ap_sw, lv_color_hex(0x00CED1), (uint32_t)LV_PART_INDICATOR | (uint32_t)LV_STATE_CHECKED);
 
+    lv_obj_add_event_cb(g_wifi_ap_sw, [](lv_event_t *e) {
+        if (lv_event_get_code(e) != LV_EVENT_VALUE_CHANGED) return;
+        if (g_wifi_ap_sw_syncing) return;
+        bool active = lv_obj_has_state(g_wifi_ap_sw, LV_STATE_CHECKED);
+        const char *ssid = g_wifi_ap_ssid_ta ? lv_textarea_get_text(g_wifi_ap_ssid_ta) : g_ap_ssid;
+        const char *pass = g_wifi_ap_pass_ta ? lv_textarea_get_text(g_wifi_ap_pass_ta) : g_ap_password;
+        g_ap_always_on = active;
+        if (ssid) strncpy(g_ap_ssid, ssid, 32);
+        if (pass) strncpy(g_ap_password, pass, 64);
+        wifi_apply_ap_settings(active, g_ap_ssid, g_ap_password);
+        system_settings_save();
+        if (g_wifi_status_lbl)
+            lv_label_set_text(g_wifi_status_lbl, active ? "AP Mode ON." : "AP Mode OFF.");
+    }, LV_EVENT_VALUE_CHANGED, nullptr);
+
     // AP SSID
     lv_obj_t *aps_hdr = lv_label_create(right);
     lv_label_set_text(aps_hdr, "AP SSID");
@@ -487,8 +509,8 @@ void tab_wifi_create(lv_obj_t *parent, lv_obj_t *root) {
         lv_label_set_text(g_wifi_status_lbl, "AP Settings applied & saved.");
     }, LV_EVENT_CLICKED, nullptr);
 
-    // ── Floating keyboard — child of lv_screen_active() per manufacturer example.
-    g_wifi_keyboard = lv_keyboard_create(lv_screen_active());
+    // ── Floating keyboard — child of lv_scr_act() per manufacturer example.
+    g_wifi_keyboard = lv_keyboard_create(lv_scr_act());
     // lv_obj_set_pos(g_wifi_keyboard, 0, 280);
     lv_obj_set_size(g_wifi_keyboard, 800, 200);
     lv_obj_set_style_bg_color(g_wifi_keyboard, lv_color_hex(0x111111), LV_STATE_DEFAULT);
@@ -552,6 +574,20 @@ static void tab_wifi_tick() {
             lv_label_set_text(g_wifi_ap_ip_lbl, buf);
         } else {
             lv_label_set_text(g_wifi_ap_ip_lbl, "Portal IP: OFF");
+        }
+    }
+
+    // Sync AP switch to live WiFi mode (won't fire VALUE_CHANGED because of syncing flag)
+    if (g_wifi_ap_sw) {
+        wifi_mode_t mode;
+        esp_wifi_get_mode(&mode);
+        bool ap_on = (mode == WIFI_MODE_AP || mode == WIFI_MODE_APSTA);
+        bool sw_on = lv_obj_has_state(g_wifi_ap_sw, LV_STATE_CHECKED);
+        if (ap_on != sw_on) {
+            g_wifi_ap_sw_syncing = true;
+            if (ap_on) lv_obj_add_state(g_wifi_ap_sw, LV_STATE_CHECKED);
+            else lv_obj_clear_state(g_wifi_ap_sw, LV_STATE_CHECKED);
+            g_wifi_ap_sw_syncing = false;
         }
     }
 }

@@ -10,13 +10,32 @@ def patch_now():
         os.path.join(project_dir, ".esphome", "build", "esp32-display", "src", "lv_conf.h")
     ]
     
+    # Patch lvgl_esphome.h to include lv_conf.h BEFORE the #ifndef LV_CONF_H block
+    # Without this, LV_CONF_SKIP=1 is set and all widget settings are ignored.
+    lvgl_esphome_paths = [
+        os.path.join(project_dir, ".esphome", "build", "grid-os-s3", "src",
+                     "esphome", "components", "lvgl", "lvgl_esphome.h"),
+    ]
+    for p in lvgl_esphome_paths:
+        if os.path.exists(p):
+            with open(p, "r") as f:
+                txt = f.read()
+            inject = '#include "lv_conf.h"\n'
+            marker = "#ifndef LV_CONF_H"
+            if inject not in txt and marker in txt:
+                txt = txt.replace(marker, inject + marker, 1)
+                with open(p, "w") as f:
+                    f.write(txt)
+                print(f"patch_lvgl: injected lv_conf.h include into {p}")
+
     for conf_path in potential_paths:
         if os.path.exists(conf_path):
             print(f"Patching {conf_path} to enable LVGL features...")
             with open(conf_path, "r") as f:
                 content = f.read()
-            
+
             changed = False
+
             if "#define LV_USE_CHART 0" in content:
                 content = content.replace("#define LV_USE_CHART 0", "#define LV_USE_CHART 1")
                 print("Successfully patched LV_USE_CHART to 1")

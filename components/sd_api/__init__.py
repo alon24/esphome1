@@ -2,7 +2,7 @@ import esphome.config_validation as cv
 from esphome.const import CONF_ID
 
 CODEOWNERS = ["@user"]
-DEPENDENCIES = ["web_server_base", "sd_card"]
+DEPENDENCIES = ["web_server_base"]
 
 CONFIG_SCHEMA = cv.Schema({})
 

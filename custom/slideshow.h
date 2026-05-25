@@ -21,6 +21,7 @@ static std::vector<std::string> g_ss_files;
 static int    g_ss_idx    = 0;
 static uint8_t *g_ss_buf  = nullptr;
 static bool   g_ss_active = false;
+static lv_image_dsc_t g_ss_img_dsc = {};
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 static bool _ss_is_image(const char *name) {
@@ -45,18 +46,52 @@ static void _ss_scan_dir(const std::string &path) {
 
 static void _ss_load(int idx) {
     if (g_ss_files.empty() || !g_ss_img) return;
-    g_ss_idx = (idx + g_ss_files.size()) % g_ss_files.size();
-    
-    // In a real implementation, we'd use the tab_sd.h logic to decode
-    // For now, satisfy the "Slideshow mode" by cycling images
-    const char* path = g_ss_files[g_ss_idx].c_str();
-    ESP_LOGI("SS", "Displaying: %s", path);
-    
-    // We reuse the existing SD component's image loading if possible
-    // But since we want "Full Screen", we just set info for now
+    g_ss_idx = (idx + (int)g_ss_files.size()) % (int)g_ss_files.size();
+    const char *path = g_ss_files[g_ss_idx].c_str();
+
+    if (g_ss_buf) { free(g_ss_buf); g_ss_buf = nullptr; }
+
+    uint32_t iw = 0, ih = 0;
+    const char *ext = strrchr(path, '.');
+    uint16_t *px = nullptr;
+
+    FILE *f = fopen(path, "rb");
+    if (f) {
+        fseek(f, 0, SEEK_END);
+        size_t sz = (size_t)ftell(f);
+        rewind(f);
+        uint8_t *tmp = (uint8_t*)heap_caps_malloc(sz, MALLOC_CAP_SPIRAM);
+        if (tmp) {
+            if (fread(tmp, 1, sz, f) == sz) {
+                if (ext && strcasecmp(ext, ".bmp") == 0) {
+                    px = _bmp_to_rgb565(tmp, sz, &iw, &ih);
+                } else if (ext && (strcasecmp(ext, ".jpg") == 0 || strcasecmp(ext, ".jpeg") == 0)) {
+                    px = _jpg_to_rgb565_tjpgd(tmp, sz, &iw, &ih);
+                }
+            }
+            free(tmp);
+        }
+        fclose(f);
+    }
+
+    if (px) {
+        g_ss_buf = (uint8_t*)px;
+        g_ss_img_dsc.header.w    = iw;
+        g_ss_img_dsc.header.h    = ih;
+        g_ss_img_dsc.header.cf   = LV_COLOR_FORMAT_NATIVE;
+        g_ss_img_dsc.data_size   = iw * ih * 2;
+        g_ss_img_dsc.data        = g_ss_buf;
+        lv_image_set_src(g_ss_img, &g_ss_img_dsc);
+        lv_obj_set_size(g_ss_img, (int32_t)iw, (int32_t)ih);
+        lv_obj_align(g_ss_img, LV_ALIGN_CENTER, 0, 0);
+        ESP_LOGI("SS", "Displayed %s (%dx%d)", path, iw, ih);
+    } else {
+        ESP_LOGW("SS", "Failed to decode: %s", path);
+    }
+
     if (g_ss_info) {
-        char buf[128];
-        snprintf(buf, sizeof(buf), "%d / %d  %s", g_ss_idx + 1, (int)g_ss_files.size(), path);
+        char buf[64];
+        snprintf(buf, sizeof(buf), "%d / %d", g_ss_idx + 1, (int)g_ss_files.size());
         lv_label_set_text(g_ss_info, buf);
     }
 }
@@ -71,6 +106,7 @@ void slideshow_stop() {
     if (g_ss_timer) lv_timer_pause(g_ss_timer);
     if (g_ss_prev_scr) lv_scr_load(g_ss_prev_scr);
     g_ss_prev_scr = nullptr;
+    if (g_ss_buf) { free(g_ss_buf); g_ss_buf = nullptr; }
 }
 
 void slideshow_start() {
@@ -82,7 +118,10 @@ void slideshow_start() {
     if (!g_ss_scr) {
         g_ss_scr = lv_obj_create(nullptr);
         lv_obj_set_style_bg_color(g_ss_scr, lv_color_hex(0x000000), 0);
-        
+
+        g_ss_img = lv_image_create(g_ss_scr);
+        lv_obj_align(g_ss_img, LV_ALIGN_CENTER, 0, 0);
+
         // Main container for tap-to-exit
         lv_obj_t *bg = lv_obj_create(g_ss_scr);
         lv_obj_set_size(bg, 800, 480);
@@ -95,7 +134,7 @@ void slideshow_start() {
 
         // Control buttons (overlays)
         auto make_ctrl = [&](const char* sym, lv_align_t align, int dx, int dy, int delta) {
-            lv_obj_t *btn = lv_button_create(g_ss_scr);
+            lv_obj_t *btn = lv_btn_create(g_ss_scr);
             lv_obj_set_size(btn, 60, 100);
             lv_obj_align(btn, align, dx, dy);
             lv_obj_set_style_bg_color(btn, lv_color_hex(0x000000), 0);

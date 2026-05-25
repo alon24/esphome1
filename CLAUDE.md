@@ -29,4 +29,6 @@
 ## 📟 Hardware & ESPHome Rules
 1. **Clean Slate:** ALWAYS run `./scripts/erase.sh` BEFORE flashing if you modify `flash_mode`, `psram`, or `partitions.csv`.
 2. **Verification:** If the board is silent after `entry`, use the **GPIO 2 Blink Test** in `on_boot` to verify the CPU stage.
-3. **SD Safety:** Always pull **GPIO 38 (Touch CS)** High during SD initialization to prevent bus conflicts.
+3. **SD Safety**: Always pull **GPIO 38 (Touch CS)** High during SD initialization to prevent bus conflicts.
+4. **Display Driver**: Use `mipi_rgb` for all Sunton 8048S043 boards; `rpi_dpi_rgb` is deprecated and may cause timing drift.
+5. **UI Debugging**: Use `lv_obj_set_style_border_width(obj, 2, 0)` with high opacity colors (Red/Yellow) to diagnose spatial drift in nested grids.

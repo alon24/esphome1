@@ -7,7 +7,8 @@ CONFIG_SCHEMA = cv.Schema({
 })
 
 async def to_code(config):
-    base_dir = "/app/esphome1/components/esp_littlefs"
+    import os
+    base_dir = os.path.dirname(__file__)
     
     # Include paths
     cg.add_build_flag(f"-I{base_dir}/include")

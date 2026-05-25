@@ -180,12 +180,11 @@ export const PropertiesPanel: React.FC = () => {
                         </div>
                         <div className="prop-group">
                             <div className="prop-label">Background Color</div>
-                            <div className="prop-color">
-                                <input type="color" style={{visibility:'hidden', width:0, height:0, position:'absolute'}} id="cp-scr-bg-def" value={`#${safeHex(activeScreen.bg)}`} onChange={e => updateScreen(activeScreenId, { bg: parseInt(e.target.value.substring(1), 16) })} />
-                                <label htmlFor="cp-scr-bg-def" style={{display:'flex', alignItems:'center', gap:'8px', cursor:'pointer', width:'100%'}}>
-                                    <div className="color-swatch" style={{ background: `#${safeHex(activeScreen.bg)}` }}></div>
-                                    <span className="color-val">#{safeHex(activeScreen.bg)}</span>
-                                </label>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <input type="color" value={`#${safeHex(activeScreen.bg)}`}
+                                    onChange={e => updateScreen(activeScreenId, { bg: parseInt(e.target.value.substring(1), 16) })}
+                                    style={{ width: '44px', height: '36px', border: '2px solid #334155', borderRadius: '8px', cursor: 'pointer', padding: '2px 3px', background: '#1e293b' }} />
+                                <span style={{ fontFamily: 'monospace', fontSize: '12px', color: '#94a3b8' }}>#{safeHex(activeScreen.bg)}</span>
                             </div>
                         </div>
                         <hr className="prop-divider" />
@@ -292,20 +291,21 @@ export const PropertiesPanel: React.FC = () => {
         const itemRow = item.row || 0;
 
         // ----------- COLOR PICKERS (shared helpers) -----------
-        const ColorRow = ({ label, field, id }: { label: string; field: string; id: string }) => (
-            <div className="prop-group">
-                <div className="prop-label">{label}</div>
-                <div className="prop-color">
-                    <input type="color" style={{ visibility: 'hidden', width: 0, height: 0, position: 'absolute' }} id={id}
-                        value={`#${safeHex(item[field])}`}
-                        onChange={e => updateItem(selectedEntity.pageId, item.id, { [field]: parseInt(e.target.value.substring(1), 16) })} />
-                    <label htmlFor={id} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', width: '100%' }}>
-                        <div className="color-swatch" style={{ background: `#${safeHex(item[field])}` }} />
-                        <span className="color-val">#{safeHex(item[field])}</span>
-                    </label>
+        const ColorRow = ({ label, field, defaultVal = 0x000000 }: { label: string; field: string; defaultVal?: number }) => {
+            const val = item[field] !== undefined && item[field] !== null ? item[field] : defaultVal;
+            const hex = safeHex(val);
+            return (
+                <div className="prop-group">
+                    <div className="prop-label">{label}</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <input type="color" value={`#${hex}`}
+                            onChange={e => updateItem(selectedEntity.pageId, item.id, { [field]: parseInt(e.target.value.substring(1), 16) })}
+                            style={{ width: '44px', height: '36px', border: '2px solid #334155', borderRadius: '8px', cursor: 'pointer', padding: '2px 3px', background: '#1e293b', flexShrink: 0 }} />
+                        <span style={{ fontFamily: 'monospace', fontSize: '12px', color: '#94a3b8' }}>#{hex}</span>
+                    </div>
                 </div>
-            </div>
-        );
+            );
+        };
 
         content = (
             <>
@@ -570,21 +570,19 @@ export const PropertiesPanel: React.FC = () => {
                         <div className="prop-group">
                             <div className="prop-label">Background Color</div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <div className="prop-color" style={{ flex: 1, opacity: item.noBg ? 0.3 : 1, pointerEvents: item.noBg ? 'none' : 'auto' }}>
-                                    <input type="color" style={{ visibility: 'hidden', width: 0, height: 0, position: 'absolute' }} id="cp-item-bg" value={`#${safeHex(item.color)}`} onChange={e => updateItem(selectedEntity.pageId, item.id, { color: parseInt(e.target.value.substring(1), 16) })} />
-                                    <label htmlFor="cp-item-bg" style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', width: '100%' }}>
-                                        <div className="color-swatch" style={{ background: `#${safeHex(item.color)}` }} />
-                                        <span className="color-val">#{safeHex(item.color)}</span>
-                                    </label>
-                                </div>
+                                <input type="color" value={`#${safeHex(item.color)}`}
+                                    onChange={e => updateItem(selectedEntity.pageId, item.id, { color: parseInt(e.target.value.substring(1), 16) })}
+                                    disabled={!!item.noBg}
+                                    style={{ width: '44px', height: '36px', border: '2px solid #334155', borderRadius: '8px', cursor: item.noBg ? 'not-allowed' : 'pointer', padding: '2px 3px', background: '#1e293b', flexShrink: 0, opacity: item.noBg ? 0.3 : 1 }} />
+                                <span style={{ fontFamily: 'monospace', fontSize: '12px', color: '#94a3b8', flex: 1, opacity: item.noBg ? 0.3 : 1 }}>#{safeHex(item.color)}</span>
                                 <button onClick={() => updateItem(selectedEntity.pageId, item.id, { noBg: !item.noBg })}
-                                    style={{ padding: '6px 10px', fontSize: '9px', borderRadius: '6px', border: '1px solid #e2e8f0', background: item.noBg ? '#6366f1' : 'white', color: item.noBg ? 'white' : '#64748b', cursor: 'pointer', fontWeight: 'bold' }}>
-                                    {item.noBg ? 'TRANSPARENT' : 'SOLID'}
+                                    style={{ padding: '6px 10px', fontSize: '9px', borderRadius: '6px', border: '1px solid #334155', background: item.noBg ? '#6366f1' : '#1e293b', color: item.noBg ? 'white' : '#64748b', cursor: 'pointer', fontWeight: 'bold' }}>
+                                    {item.noBg ? 'TRANSP' : 'SOLID'}
                                 </button>
                             </div>
                         </div>
 
-                        <ColorRow label="Text Color" field="textColor" id="cp-item-txt" />
+                        <ColorRow label="Text Color" field="textColor" defaultVal={0xFFFFFF} />
 
                         <div className="prop-row" style={{ marginTop: '8px' }}>
                             <div className="prop-group">
@@ -615,7 +613,7 @@ export const PropertiesPanel: React.FC = () => {
                             </div>
                         </div>
 
-                        <ColorRow label="Border Color" field="borderColor" id="cp-item-border" />
+                        <ColorRow label="Border Color" field="borderColor" />
                     </>
                 )}
 
@@ -705,12 +703,11 @@ export const PropertiesPanel: React.FC = () => {
                 </div>
                 <div className="prop-group">
                     <div className="prop-label">Background Color</div>
-                    <div className="prop-color">
-                        <input type="color" style={{visibility:'hidden', width:0, height:0, position:'absolute'}} id="cp-pan-bg" value={`#${safeHex(pan.bg)}`} onChange={e => updatePanel(pan.id, { bg: parseInt(e.target.value.substring(1), 16) })} />
-                        <label htmlFor="cp-pan-bg" style={{display:'flex', alignItems:'center', gap:'8px', cursor:'pointer', width:'100%'}}>
-                            <div className="color-swatch" style={{ background: `#${safeHex(pan.bg)}` }}></div>
-                            <span className="color-val">#{safeHex(pan.bg)}</span>
-                        </label>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <input type="color" value={`#${safeHex(pan.bg)}`}
+                            onChange={e => updatePanel(pan.id, { bg: parseInt(e.target.value.substring(1), 16) })}
+                            style={{ width: '44px', height: '36px', border: '2px solid #334155', borderRadius: '8px', cursor: 'pointer', padding: '2px 3px', background: '#1e293b' }} />
+                        <span style={{ fontFamily: 'monospace', fontSize: '12px', color: '#94a3b8' }}>#{safeHex(pan.bg)}</span>
                     </div>
                 </div>
                 <div className="prop-row">
