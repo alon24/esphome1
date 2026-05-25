@@ -30,3 +30,13 @@ compile_log.txt
 esphome1
 fix_platformio.py
 scripts/reconnect.sh
+
+# Playwright / browser test screenshots and artifacts
+*.png
+*.jpeg
+*.jpg
+.playwright-mcp/
+build_log*.txt
+build_output*.txt
+build_log_raw.txt
+scratch/
