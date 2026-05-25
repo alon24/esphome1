@@ -6,6 +6,17 @@ substitutions:
 esphome:
   name: ${name}
   friendly_name: ${friendly_name}
+  on_boot:
+    - priority: 600
+      then:
+        - light.turn_on:
+            id: backlight
+            brightness: 100%
+    - priority: 500
+      then:
+        - lambda: |-
+            // Run at t≈0 so it happens before the 3s window-clear in the interval
+            triple_reset_check();
   platformio_options:
     extra_scripts: 
       - ../../../scripts/patch_lvgl.py
@@ -51,6 +62,9 @@ esp32:
       CONFIG_VFS_SUPPORT_DIR: "y"
       CONFIG_LWIP_MAX_SOCKETS: "16"
       CONFIG_ESP_MAIN_TASK_STACK_SIZE: "65536"
+      CONFIG_ESP_WIFI_ENABLE_WPA3_SAE: "y"
+      CONFIG_ESP_WIFI_SOFTAP_SAE_SUPPORT: "y"
+      CONFIG_WPA_MBEDTLS_CRYPTO: "y"
   partitions: partitions.csv
 
 psram:
@@ -67,6 +81,11 @@ wifi:
 ota:
   - platform: esphome
     password: !secret ota_password
+
+captive_portal:
+
+mdns:
+  disabled: false
 
 api:
   encryption:
@@ -107,7 +126,8 @@ light:
 
 # ─── Display (Native RGB Driver) ─────────────────────────────────────────────
 display:
-  - platform: rpi_dpi_rgb
+  - platform: mipi_rgb
+    model: RPI
     id: main_display
     color_order: RGB
     dimensions:
@@ -117,6 +137,12 @@ display:
     hsync_pin: 39
     vsync_pin: 41
     pclk_pin: 42
+    hsync_front_porch: 8
+    hsync_pulse_width: 4
+    hsync_back_porch: 8
+    vsync_front_porch: 8
+    vsync_pulse_width: 4
+    vsync_back_porch: 8
     pclk_frequency: 16MHz
     pclk_inverted: true
     data_pins:
@@ -143,6 +169,7 @@ image:
     id: dummy_img
     type: RGB
     transparency: alpha_channel
+    resize: 160x160  # Reduced size to avoid "image too big" warning
 
 lvgl:
   displays:
@@ -173,8 +200,27 @@ lvgl:
     - roller: { options: "Opt" }
     - bar: {}
     - image: { src: dummy_img }
+    - textarea: { text: "" }
+    - keyboard: {}
+    - buttonmatrix: { rows: [ { buttons: [ { text: "OK" } ] } ] }
   pages:
     - id: dashboard_page
+      widgets:
+        - obj:
+            id: grid_trigger
+            layout:
+              type: GRID
+              grid_rows: [FR(1)]
+              grid_columns: [FR(1)]
+            widgets:
+              - label: { text: "T", grid_cell_row_pos: 0, grid_cell_column_pos: 0 }
+            hidden: true
+        - obj:
+            id: flex_trigger
+            layout: { type: flex }
+            widgets:
+              - label: { text: "F" }
+            hidden: true
       on_boot:
         - lambda: |-
             #include <lvgl.h>
@@ -198,6 +244,11 @@ interval:
   - interval: 1s
     then:
       - lambda: |-
+          // Clear the triple-reset window after 3s of normal running
+          static uint8_t _boot_ticks = 0;
+          if (_boot_ticks < 255) _boot_ticks++;
+          if (_boot_ticks == 8) triple_reset_clear_window();
+
           slideshow_tick();
           grid_config_tick();
           auto now = id(sntp_time).now();
@@ -208,7 +259,7 @@ external_components:
   - source:
       type: local
       path: components
-    components: [react_spa, esp_littlefs]
+    components: [react_spa, esp_littlefs, sd_api]
 
 # sd_card is disabled to prevent interrupt depletion and boot conflicts
 # sd_card:

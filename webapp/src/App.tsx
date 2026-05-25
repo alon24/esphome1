@@ -1,4 +1,6 @@
 import { Header, type WifiStatus } from "./components/layout/Header";
+import { MobileNav } from "./components/layout/MobileNav";
+import { MobileBuilder } from "./components/mobile/MobileBuilder";
 import { Sidebar } from "./components/editor/Sidebar";
 import { PropertiesPanel } from "./components/editor/PropertiesPanel";
 import { CanvasArea } from "./components/editor/CanvasArea";
@@ -42,39 +44,50 @@ const s: Record<string, React.CSSProperties> = {
 // --- API ---
 // When served from the device itself, use the current hostname as the device URL.
 // In development (localhost), use the configured remoteIp.
+
+// When no explicit device URL is known, prefix API calls with the Vite base URL so
+// they route:  browser → code-server (/proxy/3009/) → Vite proxy (/api) → device.
+// Strips trailing slash so it can be joined directly with "/api/…".
+const getApiFallbackPrefix = () => (import.meta.env.BASE_URL ?? "/").replace(/\/$/, "");
+
 const getDeviceBaseUrl = () => {
-    const h = window.location.hostname;
-    if (h !== 'localhost' && h !== '127.0.0.1') return `http://${h}`;
+    // Explicit stored IP always wins (set via WifiManager device IP input)
     const ip = localStorage.getItem("ds_remote_ip") || "";
-    return ip ? `http://${ip}` : "";
+    if (ip) return `http://${ip}`;
+    // App served directly from the device (port 80 / default — not code-server)
+    const h = window.location.hostname;
+    const port = window.location.port;
+    if (h !== 'localhost' && h !== '127.0.0.1' && (!port || port === '80' || port === '443')) {
+        return `http://${h}`;
+    }
+    return "";
 };
 
 const API = {
     getDeviceUrl(): string { return getDeviceBaseUrl(); },
     async getWifi(): Promise<WifiStatus | null> {
-        const base = getDeviceBaseUrl();
-        if (!base) return { connected: false, ip: "0.0.0.0", ssid: "", ap_active: false, ap_always_on: false };
+        const base = getDeviceBaseUrl() || getApiFallbackPrefix();
         try {
             const r = await fetch(`${base}/api/wifi/status`);
             return r.ok ? r.json() : null;
         } catch { return null; }
     },
     async scanWifi(): Promise<{ ssid: string; rssi: number; secure: boolean }[]> {
-        const base = getDeviceBaseUrl();
-        if (!base) throw new Error("NO_DEVICE");
+        const base = getDeviceBaseUrl() || getApiFallbackPrefix();
         try {
             const r = await fetch(`${base}/api/wifi/scan`);
             if (!r.ok) throw new Error(`HTTP ${r.status}`);
             const data = await r.json();
+            if (data.error === "scan_busy") throw new Error("SCAN_BUSY");
+            if (data.error === "scan_empty") throw new Error("SCAN_EMPTY");
             return data.networks || [];
         } catch (e: any) {
-            if (e?.message === "NO_DEVICE") throw e;
+            if (e?.message === "SCAN_BUSY" || e?.message === "SCAN_EMPTY") throw e;
             throw new Error("FETCH_FAILED");
         }
     },
     async connectWifi({ ssid, password }: { ssid: string; password: string }): Promise<boolean> {
-        const base = getDeviceBaseUrl();
-        if (!base) return false;
+        const base = getDeviceBaseUrl() || getApiFallbackPrefix();
         try {
             const r = await fetch(`${base}/api/wifi/connect`, {
                 method: 'POST',
@@ -84,17 +97,22 @@ const API = {
             return r.ok;
         } catch { return false; }
     },
+    async disconnectWifi(): Promise<boolean> {
+        const base = getDeviceBaseUrl() || getApiFallbackPrefix();
+        try {
+            const r = await fetch(`${base}/api/wifi/disconnect`, { method: 'POST', headers: { 'Content-Type': 'application/json' } });
+            return r.ok;
+        } catch { return false; }
+    },
     async forgetWifi(): Promise<boolean> {
-        const base = getDeviceBaseUrl();
-        if (!base) return false;
+        const base = getDeviceBaseUrl() || getApiFallbackPrefix();
         try {
             const r = await fetch(`${base}/api/wifi/forget`, { method: 'POST', headers: { 'Content-Type': 'application/json' } });
             return r.ok;
         } catch { return false; }
     },
     async updateSettings(opts: any) {
-        const base = getDeviceBaseUrl();
-        if (!base) return true;
+        const base = getDeviceBaseUrl() || getApiFallbackPrefix();
         try {
             await fetch(`${base}/api/wifi/ap`, {
                 method: 'POST',
@@ -738,6 +756,50 @@ function App({ isMobile, width }: { isMobile: boolean, width: number }) {
         } catch (err) { console.error(err); }
     }, [project, remoteIp, activeScreenId, baseWidth, baseHeight]);
 
+    const pullFromDevice = useCallback(async () => {
+        // Use explicit IP if set, else auto-detect from current hostname (device-served webapp)
+        const deviceUrl = remoteIp ? `http://${remoteIp}` : getDeviceBaseUrl();
+        if (!deviceUrl) throw new Error("No device IP configured. Set it in the Device panel.");
+        const get = (path: string) => fetch(`${deviceUrl}${path}`);
+
+        // Sequential fetches — ESP32 httpd has a small socket pool; parallel Promise.all crashes device
+        const screensRes = await get('/api/grid/screens');
+        if (!screensRes.ok) throw new Error(`HTTP ${screensRes.status} on /api/grid/screens`);
+        const screensData = await screensRes.json().catch(() => ({}));
+        const screenIds: string[] = Array.isArray(screensData?.screens) ? screensData.screens : [];
+        if (screenIds.length === 0) throw new Error("Device returned no screens.");
+
+        const screenConfigs: any[] = [];
+        for (const id of screenIds) {
+            const r = await get(`/api/grid/config?name=${id}`);
+            if (r.ok) {
+                const cfg = await r.json().catch(() => null);
+                if (cfg) screenConfigs.push(cfg);
+            }
+        }
+
+        const panelsRes = await get('/api/grid/panels');
+        const panels = panelsRes.ok ? await panelsRes.json().catch(() => []) : [];
+
+        const paneGridsRes = await get('/api/grid/pane-grids');
+        const paneGrids = paneGridsRes.ok ? await paneGridsRes.json().catch(() => []) : [];
+
+        // Normalize to ensure all required arrays exist before handing to React
+        const safeScreens = screenConfigs.map((s: any) => ({
+            ...s,
+            pages: (Array.isArray(s.pages) ? s.pages : []).map((p: any) => ({
+                ...p,
+                items: Array.isArray(p.items) ? p.items : [],
+            })),
+        }));
+        if (safeScreens.length === 0) throw new Error("No valid screen configs received.");
+
+        // Replace project and clear undo history — pull is a fresh sync, not an undoable edit
+        setHistory({ past: [], present: { screens: safeScreens, panels: Array.isArray(panels) ? panels : [], paneGrids: Array.isArray(paneGrids) ? paneGrids : [] }, future: [] });
+        setActiveScreenId(safeScreens[0]?.id || "main");
+        setSelections({});
+    }, [remoteIp, setProject]);
+
     const reorderGridItem = useCallback((gridId: string, itemId: string, newCol: number, newRow: number) => {
         setProject(prev => ({
             ...prev,
@@ -878,15 +940,15 @@ function App({ isMobile, width }: { isMobile: boolean, width: number }) {
     const contextValue = useMemo(() => ({
         project, setProject, undo, redo, activeScreenId, setActiveScreenId, selections, setSelections, setSelectedEntity,
         selectedEntity: lastSelectedEntity, addScreen, removeScreen, updateScreen, addPage, removePage, updatePage,
-        addItem, updateItem, removeItem, reorderItem, addPanel, updatePanel, removePanel, moveItemToPage, syncToDevice, exportProject, importProject, resetProject,
+        addItem, updateItem, removeItem, reorderItem, addPanel, updatePanel, removePanel, moveItemToPage, syncToDevice, pullFromDevice, exportProject, importProject, resetProject,
         baseWidth, setBaseWidth, baseHeight, setBaseHeight, scale, setScale, propsLocation, setPropsLocation, theme, setTheme, activeTab, setActiveTab,
         reorderGridItem, moveItemToGrid, alignSelection
-    }), [project, activeScreenId, selections, lastSelectedEntity, addScreen, removeScreen, updateScreen, addPage, removePage, updatePage, addItem, updateItem, removeItem, reorderItem, addPanel, updatePanel, removePanel, moveItemToPage, syncToDevice, exportProject, importProject, resetProject, baseWidth, baseHeight, scale, propsLocation, theme, activeTab, setProject, undo, redo, reorderGridItem, moveItemToGrid, alignSelection]);
+    }), [project, activeScreenId, selections, lastSelectedEntity, addScreen, removeScreen, updateScreen, addPage, removePage, updatePage, addItem, updateItem, removeItem, reorderItem, addPanel, updatePanel, removePanel, moveItemToPage, syncToDevice, pullFromDevice, exportProject, importProject, resetProject, baseWidth, baseHeight, scale, propsLocation, theme, activeTab, setProject, undo, redo, reorderGridItem, moveItemToGrid, alignSelection]);
 
 	return (
 		<div style={{ ...s.app, background: theme === 'dark' ? '#0f172a' : '#f8fafc', color: theme === 'dark' ? '#f8fafc' : '#1e293b' }}>
             <GridContext.Provider value={contextValue}>
-                <main style={{ flex: 1, overflow: "hidden", position: "relative" }}>
+                <main style={{ flex: 1, overflow: "hidden", position: "relative", paddingBottom: isMobile ? '56px' : 0 }}>
                     {activeTab === "grid" ? (
                         <GridTab 
                             isMobile={isMobile} 
@@ -916,53 +978,97 @@ function App({ isMobile, width }: { isMobile: boolean, width: number }) {
                             setPropsLocation={setPropsLocation}
                         />
                     ) : (
-                        <>
-                            <Header 
-                                activeTab={activeTab} 
-                                setActiveTab={setActiveTab} 
-                                status={status} 
-                                remoteIp={remoteIp} 
-                                setRemoteIp={setRemoteIp} 
-                                isMobile={isMobile} 
+                        <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+                            <Header
+                                activeTab={activeTab}
+                                setActiveTab={setActiveTab}
+                                status={status}
+                                remoteIp={remoteIp}
+                                setRemoteIp={setRemoteIp}
+                                isMobile={isMobile}
                                 propsLocation={propsLocation}
                                 setPropsLocation={setPropsLocation}
                                 theme={theme}
                                 setTheme={setTheme}
                             />
-                            {activeTab === "wifi" && <WifiManager status={status} onRefresh={refreshWifi} API={API} remoteIp={remoteIp} setRemoteIp={setRemoteIp} />}
-                            {activeTab === "settings" && <SettingsManager status={status} onRefresh={refreshWifi} API={API} />}
-                            {activeTab === "logs" && <div style={{ padding: 40 }}>Console logs coming soon...</div>}
-                            {activeTab === "mirror" && <div style={{ padding: 40 }}>Mirror mode coming soon...</div>}
-                        </>
+                            <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden' }}>
+                                {activeTab === "wifi" && <WifiManager status={status} onRefresh={refreshWifi} API={API} remoteIp={remoteIp} setRemoteIp={setRemoteIp} />}
+                                {activeTab === "settings" && <SettingsManager status={status} onRefresh={refreshWifi} API={API} />}
+                                {activeTab === "logs" && <div style={{ padding: 40 }}>Console logs coming soon...</div>}
+                                {activeTab === "mirror" && <div style={{ padding: 40 }}>Mirror mode coming soon...</div>}
+                            </div>
+                        </div>
                     )}
                 </main>
+                {isMobile && <MobileNav activeTab={activeTab} setActiveTab={setActiveTab} theme={theme} />}
             </GridContext.Provider>
 		</div>
 	);
 }
 
+const BUILDER_TABS = ['layers', 'canvas', 'props', 'widgets'] as const;
+type BuilderTab = typeof BUILDER_TABS[number];
+
 function GridTab({ isMobile, width, wifiStatus, remoteIp, setRemoteIp, propsLocation, setPropsLocation, theme, setTheme, activeTab, setActiveTab }: any) {
-    const { propsLocation: contextPropsLocation } = useContext(GridContext) as any;
+    const context = useContext(GridContext) as any;
+    const { propsLocation: contextPropsLocation, selections, activeScreenId, removeItem } = context || {};
+    const [builderTab, setBuilderTab] = useState<BuilderTab>('canvas');
+    const swipeRef = useRef<{ x: number; y: number } | null>(null);
+
+    // Task 6: Auto-switch to Props when a canvas item is tapped (mobile only)
+    useEffect(() => {
+        if (!isMobile) return;
+        const sel = selections?.[activeScreenId] || [];
+        if (sel.length > 0 && sel[0]?.type === 'item' && builderTab === 'canvas') {
+            setBuilderTab('props');
+        }
+    }, [selections, activeScreenId, isMobile]);
+
+    const bg = theme === 'dark' ? '#0f172a' : '#f8fafc';
+    const border = theme === 'dark' ? '#1e293b' : '#e2e8f0';
+
+    // Task 9: mini selection strip (shown on canvas tab with an active selection)
+    const activeSel = (selections?.[activeScreenId] || [])[0];
+    const selStrip = isMobile && builderTab === 'canvas' && activeSel ? (
+        <div style={{ display: 'flex', alignItems: 'center', padding: '6px 12px', background: '#6366f1', gap: '8px', flexShrink: 0 }}>
+            <span style={{ flex: 1, fontSize: '11px', fontWeight: 800, color: 'white', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {activeSel.label || activeSel.name || activeSel.type || 'Selected'}
+            </span>
+            <button type="button" onClick={() => setBuilderTab('props')} style={{ background: 'rgba(255,255,255,0.25)', border: 'none', color: 'white', padding: '4px 10px', borderRadius: '6px', fontSize: '10px', fontWeight: 800, cursor: 'pointer' }}>PROPS</button>
+            {activeSel.type === 'item' && (
+                <button type="button" onClick={() => removeItem?.(activeSel.pageId, activeSel.id)} style={{ background: 'rgba(239,68,68,0.8)', border: 'none', color: 'white', padding: '4px 10px', borderRadius: '6px', fontSize: '10px', fontWeight: 800, cursor: 'pointer' }}>DEL</button>
+            )}
+        </div>
+    ) : null;
+
 	return (
         <div style={{ display: "flex", flex: 1, height: "100%", flexDirection: "column", overflow: "hidden" }}>
-            <Header 
-                activeTab={activeTab} 
-                setActiveTab={setActiveTab} 
-                status={wifiStatus} 
-                remoteIp={remoteIp} 
-                setRemoteIp={setRemoteIp} 
-                isMobile={isMobile} 
+            <Header
+                activeTab={activeTab}
+                setActiveTab={setActiveTab}
+                status={wifiStatus}
+                remoteIp={remoteIp}
+                setRemoteIp={setRemoteIp}
+                isMobile={isMobile}
                 propsLocation={propsLocation}
                 setPropsLocation={setPropsLocation}
                 theme={theme}
                 setTheme={setTheme}
             />
-            <div style={{ flex: 1, display: "flex", overflow: "hidden", position: "relative" }}>
-                {!isMobile && <Sidebar />}
-                {contextPropsLocation === 'left' && !isMobile && <PropertiesPanel />}
-                <CanvasArea isMobile={isMobile} />
-                {contextPropsLocation === 'right' && !isMobile && <PropertiesPanel />}
-            </div>
+            {isMobile ? (
+                <MobileBuilder
+                    wifiStatus={wifiStatus}
+                    remoteIp={remoteIp}
+                    setRemoteIp={setRemoteIp}
+                />
+            ) : (
+                <div style={{ flex: 1, display: "flex", overflow: "hidden", position: "relative" }}>
+                    <Sidebar />
+                    {contextPropsLocation === 'left' && <PropertiesPanel />}
+                    <CanvasArea isMobile={isMobile} />
+                    {contextPropsLocation === 'right' && <PropertiesPanel />}
+                </div>
+            )}
         </div>
 	);
 }

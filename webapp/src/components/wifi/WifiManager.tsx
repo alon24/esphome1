@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 interface Network {
     ssid: string;
@@ -21,8 +21,20 @@ export const WifiManager: React.FC<WifiManagerProps> = ({ status, onRefresh, API
     const [password, setPassword] = useState("");
     const [connecting, setConnecting] = useState(false);
     const [forgetting, setForgetting] = useState(false);
+    const [disconnecting, setDisconnecting] = useState(false);
     const [statusMsg, setStatusMsg] = useState<{ text: string; type: 'info' | 'error' | 'ok' } | null>(null);
     const [ipInput, setIpInput] = useState(remoteIp || "");
+    const [apEnabled, setApEnabled] = useState<boolean>(true);
+    const [apSsid, setApSsid] = useState("GridOS-AP");
+    const [apPass, setApPass] = useState("");
+    const [apSaving, setApSaving] = useState(false);
+
+    useEffect(() => {
+        if (status) {
+            setApEnabled(!!status.ap_active);
+            if (status.ap_ssid) setApSsid(status.ap_ssid);
+        }
+    }, [status?.ap_active, status?.ap_ssid]);
 
     const deviceUrl = API.getDeviceUrl?.() || "";
     const hasDevice = !!deviceUrl;
@@ -35,11 +47,6 @@ export const WifiManager: React.FC<WifiManagerProps> = ({ status, onRefresh, API
     };
 
     const handleScan = async () => {
-        const base = API.getDeviceUrl?.() || "";
-        if (!base) {
-            setStatusMsg({ text: "Set the device IP address above to scan for networks.", type: 'error' });
-            return;
-        }
         setScanning(true);
         setStatusMsg(null);
         try {
@@ -51,8 +58,10 @@ export const WifiManager: React.FC<WifiManagerProps> = ({ status, onRefresh, API
                 setStatusMsg({ text: `Found ${results.length} network${results.length !== 1 ? 's' : ''}.`, type: 'ok' });
             }
         } catch (e: any) {
-            if (e?.message === "NO_DEVICE") {
-                setStatusMsg({ text: "No device configured. Enter the device IP above.", type: 'error' });
+            if (e?.message === "SCAN_BUSY") {
+                setStatusMsg({ text: "Device WiFi is busy (another scan in progress). Try again in a few seconds.", type: 'error' });
+            } else if (e?.message === "SCAN_EMPTY") {
+                setStatusMsg({ text: "No networks found. The radio may be busy — wait a moment and try again.", type: 'info' });
             } else {
                 setStatusMsg({ text: "Scan failed — check that the device is reachable and firmware is up to date.", type: 'error' });
             }
@@ -82,13 +91,31 @@ export const WifiManager: React.FC<WifiManagerProps> = ({ status, onRefresh, API
         }
     };
 
+    const handleDisconnect = async () => {
+        setDisconnecting(true);
+        setStatusMsg(null);
+        try {
+            const ok = await API.disconnectWifi();
+            if (ok) {
+                setStatusMsg({ text: "Disconnected. Device is now in AP mode.", type: 'ok' });
+                setTimeout(onRefresh, 2000);
+            } else {
+                setStatusMsg({ text: "Disconnect request failed.", type: 'error' });
+            }
+        } catch {
+            setStatusMsg({ text: "Error sending disconnect request.", type: 'error' });
+        } finally {
+            setDisconnecting(false);
+        }
+    };
+
     const handleForget = async () => {
         setForgetting(true);
         setStatusMsg(null);
         try {
             const ok = await API.forgetWifi();
             if (ok) {
-                setStatusMsg({ text: "Saved credentials cleared. Device will disconnect from WiFi.", type: 'ok' });
+                setStatusMsg({ text: "Credentials cleared. Device switched to AP mode.", type: 'ok' });
                 setTimeout(onRefresh, 2000);
             } else {
                 setStatusMsg({ text: "Forget request failed.", type: 'error' });
@@ -97,6 +124,26 @@ export const WifiManager: React.FC<WifiManagerProps> = ({ status, onRefresh, API
             setStatusMsg({ text: "Error sending forget request.", type: 'error' });
         } finally {
             setForgetting(false);
+        }
+    };
+
+    const handleApSave = async (newEnabled?: boolean) => {
+        const active = newEnabled !== undefined ? newEnabled : apEnabled;
+        setApSaving(true);
+        setStatusMsg(null);
+        try {
+            const ok = await API.updateSettings({ active, always_on: active, ssid: apSsid.trim(), password: apPass });
+            if (ok) {
+                setApEnabled(active);
+                setStatusMsg({ text: active ? `AP "${apSsid.trim()}" activated.` : 'AP turned off.', type: 'ok' });
+                setTimeout(onRefresh, 1500);
+            } else {
+                setStatusMsg({ text: 'AP update failed.', type: 'error' });
+            }
+        } catch {
+            setStatusMsg({ text: 'Error sending AP update.', type: 'error' });
+        } finally {
+            setApSaving(false);
         }
     };
 
@@ -147,21 +194,46 @@ export const WifiManager: React.FC<WifiManagerProps> = ({ status, onRefresh, API
                 )}
             </div>
 
-            {/* Scan header */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div style={{ fontSize: '13px', color: '#64748b' }}>
-                    Scan the device's WiFi radio to find nearby networks.
+            {/* Scan + results — results appear immediately below the scan button */}
+            <div className="wifi-card">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 16px', borderBottom: networks.length > 0 || scanning ? '1px solid rgba(255,255,255,0.06)' : 'none' }}>
+                    <div style={{ fontSize: '13px', color: '#64748b' }}>
+                        {scanning ? 'Scanning…' : networks.length > 0 ? `${networks.length} network${networks.length !== 1 ? 's' : ''} found` : 'Scan for nearby networks'}
+                    </div>
+                    <button className="scan-btn" onClick={handleScan} disabled={scanning}>
+                        {scanning ? 'Scanning…' : 'Scan'}
+                    </button>
                 </div>
-                <button className="scan-btn" onClick={handleScan} disabled={scanning}>
-                    {scanning ? 'Scanning…' : 'Scan Networks'}
-                </button>
-            </div>
 
-            {statusMsg && (
-                <div style={{ padding: '10px 14px', background: '#1e293b', borderRadius: '8px', color: msgColor, fontSize: '13px', borderLeft: `3px solid ${msgColor}` }}>
-                    {statusMsg.text}
-                </div>
-            )}
+                {statusMsg && (
+                    <div style={{ padding: '10px 16px', borderBottom: networks.length > 0 ? '1px solid rgba(255,255,255,0.06)' : 'none', color: msgColor, fontSize: '12px', background: 'rgba(0,0,0,0.15)' }}>
+                        {statusMsg.text}
+                    </div>
+                )}
+
+                {networks.length === 0 && !scanning && !statusMsg && (
+                    <div style={{ padding: '24px', textAlign: 'center', color: '#475569', fontSize: '13px' }}>
+                        Press Scan to search.
+                    </div>
+                )}
+
+                {networks.map((net, i) => (
+                    <div key={`${net.ssid}-${i}`} onClick={() => { setSelectedNet(net); setPassword(""); }}
+                        style={{ display: 'flex', alignItems: 'center', padding: '12px 16px', cursor: 'pointer', borderBottom: i < networks.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none', transition: 'background 0.1s' }}>
+                        {getSignalBars(net.rssi)}
+                        <div style={{ flex: 1 }}>
+                            <div style={{ fontWeight: 800, color: 'var(--text-primary)', fontSize: '14px' }}>{net.ssid}</div>
+                            <div style={{ fontSize: '11px', color: '#64748b', marginTop: '2px' }}>
+                                {net.secure ? '🔒 Secured' : '🔓 Open'} · {net.rssi} dBm
+                                {net.ssid === status?.ssid && <span style={{ color: '#10b981', marginLeft: '8px' }}>● Saved</span>}
+                            </div>
+                        </div>
+                        <button className="scan-btn" style={{ height: '30px', padding: '0 12px', fontSize: '12px', background: '#1e293b', color: '#6366f1', border: '1px solid #334155' }}>
+                            Connect
+                        </button>
+                    </div>
+                ))}
+            </div>
 
             {/* Current connection */}
             <div className="wifi-card" style={{ padding: '18px 20px', borderLeft: `5px solid ${status?.connected ? '#10b981' : '#475569'}` }}>
@@ -175,53 +247,69 @@ export const WifiManager: React.FC<WifiManagerProps> = ({ status, onRefresh, API
                             <div style={{ fontSize: '13px', color: '#6366f1', marginTop: '2px' }}>{status?.ip}</div>
                         )}
                     </div>
-                    {hasSavedCredentials && (
-                        <button onClick={handleForget} disabled={forgetting}
-                            style={{ padding: '8px 14px', background: '#7f1d1d', border: '1px solid #b91c1c', borderRadius: '8px', color: '#fca5a5', fontSize: '12px', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                            {forgetting ? 'Clearing…' : 'Forget Network'}
-                        </button>
-                    )}
+                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                        {status?.connected && (
+                            <button onClick={handleDisconnect} disabled={disconnecting}
+                                style={{ padding: '8px 14px', background: '#172554', border: '1px solid #1d4ed8', borderRadius: '8px', color: '#93c5fd', fontSize: '12px', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                                {disconnecting ? 'Disconnecting…' : 'Disconnect'}
+                            </button>
+                        )}
+                        {hasSavedCredentials && (
+                            <button onClick={handleForget} disabled={forgetting}
+                                style={{ padding: '8px 14px', background: '#7f1d1d', border: '1px solid #b91c1c', borderRadius: '8px', color: '#fca5a5', fontSize: '12px', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                                {forgetting ? 'Clearing…' : 'Forget Network'}
+                            </button>
+                        )}
+                    </div>
                 </div>
             </div>
 
-            {/* AP status */}
-            {status?.ap_active && (
-                <div className="wifi-card" style={{ padding: '14px 20px', borderLeft: '5px solid #6366f1' }}>
-                    <div style={{ fontSize: '11px', fontWeight: 900, color: '#64748b', letterSpacing: '1px', marginBottom: '6px' }}>HOTSPOT (AP MODE)</div>
-                    <div style={{ display: 'flex', gap: '28px', flexWrap: 'wrap' }}>
-                        <div><div style={{ fontSize: '11px', color: '#94a3b8' }}>SSID</div><div style={{ fontWeight: 800, color: 'var(--text-primary)' }}>{status.ap_ssid || 'GridOS-AP'}</div></div>
-                        <div><div style={{ fontSize: '11px', color: '#94a3b8' }}>IP</div><div style={{ fontWeight: 800, color: '#6366f1' }}>{status.ap_ip || '192.168.4.1'}</div></div>
+            {/* AP config card — always visible */}
+            <div className="wifi-card" style={{ padding: '16px 20px', borderLeft: `5px solid ${status?.ap_active ? '#6366f1' : '#334155'}` }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+                    <div style={{ fontSize: '11px', fontWeight: 900, color: '#64748b', letterSpacing: '1px' }}>
+                        HOTSPOT (AP MODE)&nbsp;
+                        {status?.ap_active
+                            ? <span style={{ color: '#6366f1' }}>● ACTIVE · {status.ap_ip || '192.168.4.1'}</span>
+                            : <span style={{ color: '#475569' }}>● OFF</span>}
+                    </div>
+                    <button
+                        onClick={() => handleApSave(!apEnabled)}
+                        disabled={apSaving}
+                        style={{ padding: '6px 14px', borderRadius: '8px', border: 'none', fontWeight: 700, fontSize: '12px', cursor: 'pointer',
+                            background: apEnabled ? '#4c1d95' : '#1e293b',
+                            color: apEnabled ? '#c4b5fd' : '#64748b' }}>
+                        {apSaving ? '…' : apEnabled ? 'ON' : 'OFF'}
+                    </button>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '12px' }}>
+                    <div>
+                        <div style={{ fontSize: '11px', fontWeight: 800, color: '#64748b', marginBottom: '4px' }}>SSID</div>
+                        <input
+                            type="text"
+                            value={apSsid}
+                            onChange={e => setApSsid(e.target.value)}
+                            style={{ width: '100%', boxSizing: 'border-box', height: '36px', padding: '0 10px', background: '#0f172a', border: '1px solid #334155', borderRadius: '8px', color: 'white', fontSize: '13px', outline: 'none' }}
+                        />
+                    </div>
+                    <div>
+                        <div style={{ fontSize: '11px', fontWeight: 800, color: '#64748b', marginBottom: '4px' }}>PASSWORD <span style={{ fontWeight: 400, color: '#475569' }}>(leave empty for open)</span></div>
+                        <input
+                            type="text"
+                            value={apPass}
+                            onChange={e => setApPass(e.target.value)}
+                            placeholder="No password"
+                            style={{ width: '100%', boxSizing: 'border-box', height: '36px', padding: '0 10px', background: '#0f172a', border: '1px solid #334155', borderRadius: '8px', color: 'white', fontSize: '13px', outline: 'none' }}
+                        />
                     </div>
                 </div>
-            )}
-
-            {/* Network list */}
-            <div className="wifi-card">
-                <div style={{ padding: '10px 18px', background: 'rgba(0,0,0,0.1)', borderBottom: '1px solid rgba(255,255,255,0.06)', fontSize: '11px', fontWeight: 900, color: '#64748b', letterSpacing: '0.5px' }}>
-                    AVAILABLE NETWORKS ({networks.length})
-                </div>
-                {networks.length === 0 ? (
-                    <div style={{ padding: '32px', textAlign: 'center', color: '#475569', fontSize: '14px' }}>
-                        {scanning ? 'Scanning…' : 'Press Scan Networks to search.'}
-                    </div>
-                ) : (
-                    networks.map(net => (
-                        <div key={net.ssid} onClick={() => { setSelectedNet(net); setPassword(""); }}
-                            style={{ display: 'flex', alignItems: 'center', padding: '12px 16px', cursor: 'pointer', borderBottom: '1px solid rgba(255,255,255,0.04)', transition: 'background 0.1s' }}>
-                            {getSignalBars(net.rssi)}
-                            <div style={{ flex: 1 }}>
-                                <div style={{ fontWeight: 800, color: 'var(--text-primary)', fontSize: '14px' }}>{net.ssid}</div>
-                                <div style={{ fontSize: '11px', color: '#64748b', marginTop: '2px' }}>
-                                    {net.secure ? '🔒 Secured' : '🔓 Open'} · {net.rssi} dBm
-                                    {net.ssid === status?.ssid && <span style={{ color: '#10b981', marginLeft: '8px' }}>● Saved</span>}
-                                </div>
-                            </div>
-                            <button className="scan-btn" style={{ height: '30px', padding: '0 12px', fontSize: '12px', background: '#1e293b', color: '#6366f1', border: '1px solid #334155' }}>
-                                Connect
-                            </button>
-                        </div>
-                    ))
-                )}
+                <button
+                    className="scan-btn"
+                    onClick={() => handleApSave()}
+                    disabled={apSaving}
+                    style={{ height: '34px', padding: '0 18px', fontSize: '12px' }}>
+                    {apSaving ? 'Saving…' : 'Save & Apply'}
+                </button>
             </div>
 
             {/* Connect modal */}

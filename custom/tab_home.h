@@ -862,10 +862,12 @@ static void _home_render_item_actual(lv_obj_t *parent, const GridItem &it, int o
         else lv_obj_set_style_text_align(obj, LV_TEXT_ALIGN_CENTER, 0);
 
         if (it.radius > 0) lv_obj_set_style_radius(obj, it.radius, 0);
+        // Always set border explicitly so LVGL theme default (2px) doesn't bleed through
+        lv_obj_set_style_border_width(obj, it.borderWidth, 0);
         if (it.borderWidth > 0) {
-            lv_obj_set_style_border_width(obj, it.borderWidth, 0);
             lv_obj_set_style_border_color(obj, lv_color_hex(it.borderColor), 0);
         }
+        lv_obj_set_style_shadow_width(obj, 0, 0);
 
         // Navigation Action
         std::string final_action = it.action;

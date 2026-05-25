@@ -36,12 +36,21 @@ static void maindashboard_create(lv_obj_t *parent) {
     system_settings_load();
     void grid_config_load(const char* name, bool force); // Forward decl
     grid_config_load(nullptr, false); // Load persistent active screen
-    
-    // Apply boot-time AP settings
-    if (g_ap_always_on) {
-        ::wifi_apply_ap_settings(true, g_ap_ssid, g_ap_password);
-        ESP_LOGI("SYS", "Persistent AP Mode Active on Boot: %s", g_ap_ssid);
+
+    // Triple-reset recovery: override AP setting before applying
+    ESP_LOGI("RESET", "Dashboard init: triple_ap=%d, reset_count=%d",
+             (int)g_triple_reset_ap, (int)g_reset_count);
+    bool show_recovery_overlay = false;
+    if (g_triple_reset_ap) {
+        g_triple_reset_ap = false;
+        g_ap_always_on    = true;
+        show_recovery_overlay = true;
+        ESP_LOGI("RESET", "*** RECOVERY OVERLAY: AP mode forced ON (ssid=%s) ***", g_ap_ssid);
     }
+
+    // Apply boot-time AP settings — enforce saved preference in both directions
+    ::wifi_apply_ap_settings(g_ap_always_on, g_ap_ssid, g_ap_password);
+    ESP_LOGI("SYS", "Boot AP: %s (ssid=%s)", g_ap_always_on ? "ON" : "OFF", g_ap_ssid);
     lv_obj_clean(parent);
     lv_obj_t *scr = parent;
 
@@ -140,7 +149,50 @@ static void maindashboard_create(lv_obj_t *parent) {
     lv_obj_set_style_bg_opa(g_dash_main_cont, LV_OPA_COVER, 0);
 
     tab_home_create(g_dash_main_cont);
-    
+
+    // Show triple-reset recovery overlay on top of content for 5 seconds
+    if (show_recovery_overlay) {
+        ESP_LOGI("RESET", "Creating recovery overlay on screen");
+        lv_obj_t *ov = lv_obj_create(scr);
+        lv_obj_set_size(ov, 800, 480);
+        lv_obj_set_pos(ov, 0, 0);
+        lv_obj_set_style_bg_color(ov, lv_color_hex(0x100800), 0);
+        lv_obj_set_style_bg_opa(ov, LV_OPA_COVER, 0);
+        lv_obj_set_style_border_color(ov, lv_color_hex(0xFFAA00), 0);
+        lv_obj_set_style_border_width(ov, 4, 0);
+        lv_obj_clear_flag(ov, LV_OBJ_FLAG_SCROLLABLE);
+
+        lv_obj_t *icon = lv_label_create(ov);
+        lv_label_set_text(icon, LV_SYMBOL_WIFI "  " LV_SYMBOL_WARNING);
+        lv_obj_set_style_text_font(icon, &lv_font_montserrat_24, 0);
+        lv_obj_set_style_text_color(icon, lv_color_hex(0xFFAA00), 0);
+        lv_obj_align(icon, LV_ALIGN_CENTER, 0, -70);
+
+        lv_obj_t *lbl = lv_label_create(ov);
+        lv_label_set_text(lbl, "GOING TO AP MODE\nAFTER 3 RESETS");
+        lv_obj_set_style_text_font(lbl, &lv_font_montserrat_22, 0);
+        lv_obj_set_style_text_color(lbl, lv_color_hex(0xFFAA00), 0);
+        lv_obj_set_style_text_align(lbl, LV_TEXT_ALIGN_CENTER, 0);
+        lv_obj_set_width(lbl, 700);
+        lv_obj_align(lbl, LV_ALIGN_CENTER, 0, 0);
+
+        lv_obj_t *sub = lv_label_create(ov);
+        char sub_buf[80];
+        snprintf(sub_buf, sizeof(sub_buf), "Connect to: %s", g_ap_ssid);
+        lv_label_set_text(sub, sub_buf);
+        lv_obj_set_style_text_font(sub, &lv_font_montserrat_18, 0);
+        lv_obj_set_style_text_color(sub, lv_color_hex(0xAAAAAA), 0);
+        lv_obj_set_style_text_align(sub, LV_TEXT_ALIGN_CENTER, 0);
+        lv_obj_align(sub, LV_ALIGN_CENTER, 0, 60);
+
+        lv_timer_create([](lv_timer_t *t) {
+            lv_obj_t *o = (lv_obj_t*)lv_timer_get_user_data(t);
+            if (lv_obj_is_valid(o)) lv_obj_del(o);
+            lv_timer_del(t);
+            ESP_LOGI("RESET", "Recovery overlay dismissed");
+        }, 5000, ov);
+    }
+
     ESP_LOGI("DASH", "Dashboard build complete.");
 }
 

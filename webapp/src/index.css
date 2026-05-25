@@ -1,6 +1,26 @@
-@import url("https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800;900&display=swap");
+/* Fonts now loaded via index.html for PWA compatibility */
 
 :root {
+    /* Mobile AMOLED tokens (Samsung S26 Ultra target) */
+    --mob-bg:          #000000;
+    --mob-surface:     #0d0d0d;
+    --mob-surface-2:   #161616;
+    --mob-surface-3:   #1e1e1e;
+    --mob-border:      #262626;
+    --mob-accent:      #7c5cfc;
+    --mob-accent-dim:  rgba(124, 92, 252, 0.15);
+    --mob-online:      #22c55e;
+    --mob-offline:     #ef4444;
+    --mob-dirty:       #f59e0b;
+    --mob-text:        #f1f5f9;
+    --mob-text-muted:  #64748b;
+    --mob-text-dim:    #334155;
+    --mob-danger:      #ef4444;
+    --mob-font-head:   'Syne', sans-serif;
+    --mob-font-body:   'DM Sans', sans-serif;
+    --mob-font-mono:   'IBM Plex Mono', monospace;
+
+
 	--primary: #6d28d9;
 	--primary-hover: #5b21b6;
     --primary-glow: rgba(109, 40, 217, 0.2);
@@ -893,4 +913,31 @@ body {
 }
 .add-item-mini:hover {
     opacity: 1;
+}
+
+/* ── MOBILE OVERRIDES (≤640px) ── */
+@media (max-width: 640px) {
+    /* Sidebar always fills full width */
+    .sidebar, .sidebar.palette-hidden {
+        width: 100% !important;
+        border-right: none;
+    }
+    .layers-side { min-width: 0 !important; }
+
+    /* Layers sub-tab: show only the layer tree, hide palette */
+    .mobile-layers-view .palette-side { display: none !important; }
+
+    /* Widgets sub-tab: hide layer tree, show palette full width */
+    .mobile-widgets-view .layers-side { display: none !important; }
+    .mobile-widgets-view .palette-side {
+        width: 100% !important;
+        border-left: none !important;
+        display: flex !important;
+    }
+
+    /* Props panel fills full width */
+    .props-panel.open, .props-inner { width: 100% !important; }
+
+    /* Prevent double-tap zoom on buttons */
+    button { touch-action: manipulation; }
 }
